@@ -241,6 +241,27 @@
             </span>
 
           
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span><br>
+            <span class="post-meta-item" title="本文字数">
+              <span class="post-meta-item-icon">
+                <i class="far fa-file-word"></i>
+              </span>
+                <span class="post-meta-item-text">本文字数：</span>
+              <span>902</span>
+            </span>
+            <span class="post-meta-item" title="阅读时长">
+              <span class="post-meta-item-icon">
+                <i class="far fa-clock"></i>
+              </span>
+                <span class="post-meta-item-text">阅读时长 &asymp;</span>
+              <span>1 分钟</span>
+            </span>
 
         </div>
       </header>
@@ -258,15 +279,14 @@
 </li>
 <li><p>构建llvm子项目</p>
 <figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">cd allo/externals/llvm-project</span><br><span class="line"><span class="meta prompt_"># </span><span class="language-bash">Apply our patch</span></span><br><span class="line">git apply ../llvm_patch</span><br><span class="line"><span class="meta prompt_"># </span><span class="language-bash">Python 3.12 is required</span></span><br><span class="line">mkdir -p build</span><br></pre></td></tr></table></figure>
-
 <p>由于需要python bind11，以及后续需要pip install很多python库，因此这里推荐用conda创建虚拟环境：</p>
 <figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">conda create -n allo python=3.12         # python版本一定是3.12</span><br><span class="line">conda activate allo</span><br><span class="line">pip install pybind11</span><br></pre></td></tr></table></figure>
-
 <p>编写shell脚本，一键构建llvm：</p>
 <figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">cd build</span><br><span class="line">cmake -G Ninja ../llvm \</span><br><span class="line">    -DLLVM_ENABLE_PROJECTS=&quot;clang;mlir;openmp&quot; \</span><br><span class="line">    -DLLVM_BUILD_EXAMPLES=ON \</span><br><span class="line">    -DLLVM_TARGETS_TO_BUILD=&quot;host&quot; \</span><br><span class="line">    -DCMAKE_BUILD_TYPE=Release \</span><br><span class="line">    -DLLVM_ENABLE_ASSERTIONS=ON \</span><br><span class="line">    -DLLVM_INSTALL_UTILS=ON \</span><br><span class="line">    -DMLIR_ENABLE_BINDINGS_PYTHON=ON \</span><br><span class="line">    -DPython3_EXECUTABLE=`which python3`</span><br><span class="line">ninja -j $(nproc)</span><br><span class="line"><span class="meta prompt_"></span></span><br><span class="line"><span class="meta prompt_"># </span><span class="language-bash"><span class="built_in">export</span> environment variable</span></span><br><span class="line">export LLVM_BUILD_DIR=$(pwd)</span><br></pre></td></tr></table></figure>
 </li>
 <li><p>构建Allo项目，首先回退到项目根目录，运行如下命令：</p>
-<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">python3 -m pip install -v -e . -i https://pypi.tuna.tsinghua.edu.cn/simple  # 建议用清华镜像，否则容易拉取失败</span><br></pre></td></tr></table></figure></li>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">python3 -m pip install -v -e . -i https://pypi.tuna.tsinghua.edu.cn/simple  # 建议用清华镜像，否则容易拉取失败</span><br></pre></td></tr></table></figure>
+</li>
 </ol>
 <h2 id="参考资料"><a href="#参考资料" class="headerlink" title="参考资料"></a><font color = brown>参考资料</font></h2><ol>
 <li><a target="_blank" rel="noopener" href="https://cornell-zhang.github.io/allo/">Allo doc</a></li>
@@ -415,11 +435,43 @@
     <i class="fa fa-heart"></i>
   </span>
   <span class="author" itemprop="copyrightHolder">Leon Dou</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-area"></i>
+    </span>
+      <span class="post-meta-item-text">站点总字数：</span>
+    <span title="站点总字数">1k</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+      <span class="post-meta-item-text">站点阅读时长 &asymp;</span>
+    <span title="站点阅读时长">1 分钟</span>
 </div>
   <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://pisces.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Pisces</a> 强力驱动
   </div>
 
         
+<div class="busuanzi-count">
+  <script data-pjax async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
 
 
 
