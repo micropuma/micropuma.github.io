@@ -5,7 +5,6 @@
     <url>/2025/03/29/Allo%E9%A1%B9%E7%9B%AE%E5%88%9D%E6%8E%A2/</url>
     <content><![CDATA[<p><img src="/images/image-20250330205827771.png" alt="image-20250330205827771"></p>
 <span id="more"></span>
-
 <h2 id="项目构建"><a href="#项目构建" class="headerlink" title="项目构建"></a><font color = brown>项目构建</font></h2><p>主要参考<a href="https://cornell-zhang.github.io/allo/setup/index.html">Allo doc</a>的set up章节，这里我选择源码构建的方式。项目构建流程如下：</p>
 <ol>
 <li><p>clone项目</p>
@@ -13,15 +12,14 @@
 </li>
 <li><p>构建llvm子项目</p>
 <figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">cd allo/externals/llvm-project</span><br><span class="line"><span class="meta prompt_"># </span><span class="language-bash">Apply our patch</span></span><br><span class="line">git apply ../llvm_patch</span><br><span class="line"><span class="meta prompt_"># </span><span class="language-bash">Python 3.12 is required</span></span><br><span class="line">mkdir -p build</span><br></pre></td></tr></table></figure>
-
 <p>由于需要python bind11，以及后续需要pip install很多python库，因此这里推荐用conda创建虚拟环境：</p>
 <figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">conda create -n allo python=3.12         # python版本一定是3.12</span><br><span class="line">conda activate allo</span><br><span class="line">pip install pybind11</span><br></pre></td></tr></table></figure>
-
 <p>编写shell脚本，一键构建llvm：</p>
 <figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">cd build</span><br><span class="line">cmake -G Ninja ../llvm \</span><br><span class="line">    -DLLVM_ENABLE_PROJECTS=&quot;clang;mlir;openmp&quot; \</span><br><span class="line">    -DLLVM_BUILD_EXAMPLES=ON \</span><br><span class="line">    -DLLVM_TARGETS_TO_BUILD=&quot;host&quot; \</span><br><span class="line">    -DCMAKE_BUILD_TYPE=Release \</span><br><span class="line">    -DLLVM_ENABLE_ASSERTIONS=ON \</span><br><span class="line">    -DLLVM_INSTALL_UTILS=ON \</span><br><span class="line">    -DMLIR_ENABLE_BINDINGS_PYTHON=ON \</span><br><span class="line">    -DPython3_EXECUTABLE=`which python3`</span><br><span class="line">ninja -j $(nproc)</span><br><span class="line"><span class="meta prompt_"></span></span><br><span class="line"><span class="meta prompt_"># </span><span class="language-bash"><span class="built_in">export</span> environment variable</span></span><br><span class="line">export LLVM_BUILD_DIR=$(pwd)</span><br></pre></td></tr></table></figure>
 </li>
 <li><p>构建Allo项目，首先回退到项目根目录，运行如下命令：</p>
-<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">python3 -m pip install -v -e . -i https://pypi.tuna.tsinghua.edu.cn/simple  # 建议用清华镜像，否则容易拉取失败</span><br></pre></td></tr></table></figure></li>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">python3 -m pip install -v -e . -i https://pypi.tuna.tsinghua.edu.cn/simple  # 建议用清华镜像，否则容易拉取失败</span><br></pre></td></tr></table></figure>
+</li>
 </ol>
 <h2 id="Allo项目使用"><a href="#Allo项目使用" class="headerlink" title="Allo项目使用"></a><font color = brown>Allo项目使用</font></h2><h2 id="Allo项目架构"><a href="#Allo项目架构" class="headerlink" title="Allo项目架构"></a><font color = brown>Allo项目架构</font></h2><p><img src="/images/image-20250331184126715.png" alt="image-20250331184126715"></p>
 <h3 id="前端"><a href="#前端" class="headerlink" title="前端"></a><font color = green>前端</font></h3><p><code>Allo</code>项目在前端使用python语言编写，主要完成<strong>python系统</strong>和<strong>pytorch系统</strong>到mlir系统的接入。针对pytorch系统，用于可以使用<code>torch.compile(model, &quot;allo&quot;)</code>将pytorch代码编译成allo的中间表达形式，借助于TorchDynamo系统。具体的，基于<code>torch.fx</code>作为高层ir，将其中的每一个pytorch计算单元翻译成allo的function call，后续转换和优化交由allo来完成。硬件无关优化比如算子融合在torch系统中完成，而硬件相关优化则由allo完成，两者是正交关系。</p>
@@ -50,9 +48,8 @@
   <entry>
     <title>计算密集算子融合</title>
     <url>/2025/03/31/%E8%AE%A1%E7%AE%97%E5%AF%86%E9%9B%86%E7%AE%97%E5%AD%90%E8%9E%8D%E5%90%88/</url>
-    <content><![CDATA[<p><img src="F:\LeonBlog\source\images\image-20250331211738664.png" alt="image-20250331211738664"></p>
+    <content><![CDATA[<p><img src=".\images\image-20250331211738664.png" alt="image-20250331211738664"></p>
 <span id="more"></span>
-
 <blockquote>
 <p>机器学习中算子可以分为<strong>计算密集算子</strong>和<strong>访存密集算子</strong>，之前的博客已经讲解了<strong>访存密集算子融合技术</strong>，本文重点解读计算密集算子融合，即针对gemm的计算优化。</p>
 </blockquote>
@@ -69,11 +66,10 @@
       </tags>
   </entry>
   <entry>
-    <title>算子融合实战</title>
-    <url>/2025/03/29/%E8%AE%BF%E5%AD%98%E5%AF%86%E9%9B%86%E7%AE%97%E5%AD%90%E4%BC%98%E5%8C%96/</url>
-    <content><![CDATA[<p><img src="/./images/bladedisc1.png"></p>
+    <title>访存密集算子融合</title>
+    <url>/2025/03/31/%E8%AE%BF%E5%AD%98%E5%AF%86%E9%9B%86%E7%AE%97%E5%AD%90%E8%9E%8D%E5%90%88/</url>
+    <content><![CDATA[<p><img src="/images/image-20250331214150737.png" alt="image-20250331214150737"></p>
 <span id="more"></span>
-
 <blockquote>
 <p>这是算子优化系列的第一篇，主要聚焦于存储密集型算子的融合优化。探讨这一主题的动机源于 BladeDISC 编译器，这个由阿里云开发的编译器专注于解决动态 shape 问题，并在大模型业务中实现了显著的优化。BladeDISC 的一大亮点是复用了 astitch 论文中提出的多元访存算子融合方法，因此，本文将对这一问题展开深入讨论。</p>
 </blockquote>
