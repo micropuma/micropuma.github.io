@@ -48,13 +48,13 @@
       </tags>
   </entry>
   <entry>
-    <title>算子融合实战</title>
-    <url>/2025/03/29/%E8%AE%BF%E5%AD%98%E5%AF%86%E9%9B%86%E7%AE%97%E5%AD%90%E4%BC%98%E5%8C%96/</url>
-    <content><![CDATA[<p><img src="/./images/bladedisc1.png"></p>
+    <title>计算密集算子优化.md</title>
+    <url>/2025/03/31/%E8%AE%A1%E7%AE%97%E5%AF%86%E9%9B%86%E7%AE%97%E5%AD%90%E4%BC%98%E5%8C%96-md/</url>
+    <content><![CDATA[<p><img src="/images/image-20250331211738664.png" alt="image-20250331211738664"></p>
 <span id="more"></span>
 
 <blockquote>
-<p>这是算子优化系列的第一篇，主要聚焦于存储密集型算子的融合优化。探讨这一主题的动机源于 BladeDISC 编译器，这个由阿里云开发的编译器专注于解决动态 shape 问题，并在大模型业务中实现了显著的优化。BladeDISC 的一大亮点是复用了 astitch 论文中提出的多元访存算子融合方法，因此，本文将对这一问题展开深入讨论。</p>
+<p>机器学习中算子可以分为<strong>计算密集算子</strong>和<strong>访存密集算子</strong>，之前的博客已经讲解了<strong>访存密集算子融合技术</strong>，本文重点解读计算密集算子融合，即针对gemm的计算优化。</p>
 </blockquote>
 ]]></content>
       <categories>
@@ -69,13 +69,13 @@
       </tags>
   </entry>
   <entry>
-    <title>计算密集算子优化.md</title>
-    <url>/2025/03/31/%E8%AE%A1%E7%AE%97%E5%AF%86%E9%9B%86%E7%AE%97%E5%AD%90%E4%BC%98%E5%8C%96-md/</url>
-    <content><![CDATA[<p><img src="/images/image-20250331211738664.png" alt="image-20250331211738664"></p>
+    <title>算子融合实战</title>
+    <url>/2025/03/29/%E8%AE%BF%E5%AD%98%E5%AF%86%E9%9B%86%E7%AE%97%E5%AD%90%E4%BC%98%E5%8C%96/</url>
+    <content><![CDATA[<p><img src="/./images/bladedisc1.png"></p>
 <span id="more"></span>
 
 <blockquote>
-<p>机器学习中算子可以分为<strong>计算密集算子</strong>和<strong>访存密集算子</strong>，之前的博客已经讲解了<strong>访存密集算子融合技术</strong>，本文重点解读计算密集算子融合，即针对gemm的计算优化。</p>
+<p>这是算子优化系列的第一篇，主要聚焦于存储密集型算子的融合优化。探讨这一主题的动机源于 BladeDISC 编译器，这个由阿里云开发的编译器专注于解决动态 shape 问题，并在大模型业务中实现了显著的优化。BladeDISC 的一大亮点是复用了 astitch 论文中提出的多元访存算子融合方法，因此，本文将对这一问题展开深入讨论。</p>
 </blockquote>
 ]]></content>
       <categories>
