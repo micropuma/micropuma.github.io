@@ -1,6 +1,26 @@
 <?xml version="1.0" encoding="utf-8"?>
 <search>
   <entry>
+    <title>计算密集算子融合</title>
+    <url>/2025/03/31/%E8%AE%A1%E7%AE%97%E5%AF%86%E9%9B%86%E7%AE%97%E5%AD%90%E8%9E%8D%E5%90%88/</url>
+    <content><![CDATA[<p><img src=".\images\image-20250331211738664.png" alt="image-20250331211738664"></p>
+<span id="more"></span>
+<blockquote>
+<p>机器学习中算子可以分为<strong>计算密集算子</strong>和<strong>访存密集算子</strong>，之前的博客已经讲解了<strong>访存密集算子融合技术</strong>，本文重点解读计算密集算子融合，即针对gemm的计算优化。</p>
+</blockquote>
+]]></content>
+      <categories>
+        <category>编译技术</category>
+        <category>机器学习编译</category>
+        <category>mlir</category>
+      </categories>
+      <tags>
+        <tag>算子融合技术</tag>
+        <tag>机器学习编译器</tag>
+        <tag>mlir</tag>
+      </tags>
+  </entry>
+  <entry>
     <title>Allo项目初探</title>
     <url>/2025/03/29/Allo%E9%A1%B9%E7%9B%AE%E5%88%9D%E6%8E%A2/</url>
     <content><![CDATA[<p><img src="/images/image-20250330205827771.png" alt="image-20250330205827771"></p>
@@ -21,7 +41,15 @@
 <figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">python3 -m pip install -v -e . -i https://pypi.tuna.tsinghua.edu.cn/simple  # 建议用清华镜像，否则容易拉取失败</span><br></pre></td></tr></table></figure>
 </li>
 </ol>
-<h2 id="Allo项目使用"><a href="#Allo项目使用" class="headerlink" title="Allo项目使用"></a><font color = brown>Allo项目使用</font></h2><h2 id="Allo项目架构"><a href="#Allo项目架构" class="headerlink" title="Allo项目架构"></a><font color = brown>Allo项目架构</font></h2><p><img src="/images/image-20250331184126715.png" alt="image-20250331184126715"></p>
+<h2 id="Allo项目使用"><a href="#Allo项目使用" class="headerlink" title="Allo项目使用"></a><font color = brown>Allo项目使用</font></h2><h3 id="Pytorch集成例子"><a href="#Pytorch集成例子" class="headerlink" title="Pytorch集成例子"></a><font color = green>Pytorch集成例子</font></h3><p>Allo项目除了使用ADL（加速定义语言）来描述计算任务外，也可以集成在pytorch中使用。具体参考<a href="https://cornell-zhang.github.io/allo/dive/pytorch.html">allo pytorch集成例子</a>。</p>
+<p>具体代码如下：</p>
+<figure class="highlight python"><table><tr><td class="code"><pre><span class="line"><span class="keyword">import</span> torch</span><br><span class="line"><span class="keyword">import</span> torch.nn.functional <span class="keyword">as</span> F</span><br><span class="line"><span class="keyword">import</span> torch.nn <span class="keyword">as</span> nn</span><br><span class="line"></span><br><span class="line"><span class="keyword">class</span> <span class="title class_">Model</span>(nn.Module):</span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">__init__</span>(<span class="params">self</span>):</span><br><span class="line">        <span class="built_in">super</span>(Model, <span class="variable language_">self</span>).__init__()</span><br><span class="line"></span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">forward</span>(<span class="params">self, x, y</span>):</span><br><span class="line">        x = x + y</span><br><span class="line">        x = F.relu(x)</span><br><span class="line">        <span class="keyword">return</span> x</span><br><span class="line"></span><br><span class="line">model = Model()</span><br><span class="line">model.<span class="built_in">eval</span>()</span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> allo</span><br><span class="line">example_inputs = [torch.rand(<span class="number">1</span>, <span class="number">3</span>, <span class="number">10</span>, <span class="number">10</span>), torch.rand(<span class="number">1</span>, <span class="number">3</span>, <span class="number">10</span>, <span class="number">10</span>)]</span><br><span class="line">llvm_mod = allo.frontend.from_pytorch(model, example_inputs=example_inputs)</span><br><span class="line"></span><br><span class="line">golden = model(*example_inputs)</span><br><span class="line">np_inputs = [x.detach().numpy() <span class="keyword">for</span> x <span class="keyword">in</span> example_inputs]</span><br><span class="line">res = llvm_mod(*np_inputs)</span><br><span class="line">torch.testing.assert_close(res, golden.detach().numpy())</span><br><span class="line"><span class="built_in">print</span>(<span class="string">&quot;Passed!&quot;</span>)</span><br><span class="line"></span><br><span class="line">mod = allo.frontend.from_pytorch(model, example_inputs=example_inputs, target=<span class="string">&quot;vhls&quot;</span>)</span><br><span class="line"><span class="built_in">print</span>(mod.hls_code)</span><br></pre></td></tr></table></figure>
+<p>执行如下scirpt：</p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line"><span class="meta prompt_">#</span><span class="language-bash">!/bin/bash</span></span><br><span class="line"></span><br><span class="line">LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libstdc++.so.6 python test.py</span><br></pre></td></tr></table></figure>
+<blockquote>
+<p>:key:注意，由于conda环境中的libstdc++版本低，可能会在import allo的时候报错。强制指定系统libstdc++版本即可。</p>
+</blockquote>
+<h2 id="Allo项目架构"><a href="#Allo项目架构" class="headerlink" title="Allo项目架构"></a><font color = brown>Allo项目架构</font></h2><p><img src="/images/image-20250331184126715.png" alt="image-20250331184126715"></p>
 <h3 id="前端"><a href="#前端" class="headerlink" title="前端"></a><font color = green>前端</font></h3><p><code>Allo</code>项目在前端使用python语言编写，主要完成<strong>python系统</strong>和<strong>pytorch系统</strong>到mlir系统的接入。针对pytorch系统，用于可以使用<code>torch.compile(model, &quot;allo&quot;)</code>将pytorch代码编译成allo的中间表达形式，借助于TorchDynamo系统。具体的，基于<code>torch.fx</code>作为高层ir，将其中的每一个pytorch计算单元翻译成allo的function call，后续转换和优化交由allo来完成。硬件无关优化比如算子融合在torch系统中完成，而硬件相关优化则由allo完成，两者是正交关系。</p>
 <h2 id="代码生成"><a href="#代码生成" class="headerlink" title="代码生成"></a><font color = green>代码生成</font></h2><p>用户通过<code>s.build(&lt;target&gt;)</code>来针对指定硬件生成代码。目前支持的后端硬件有：CPU，AMD的fpga以及AMD AIE（Ryzen AI）。</p>
 <h2 id="中间优化"><a href="#中间优化" class="headerlink" title="中间优化"></a><font color = green>中间优化</font></h2><p>这一部分完全在mlir系统中完成所有的优化。</p>
@@ -46,26 +74,6 @@
       </tags>
   </entry>
   <entry>
-    <title>计算密集算子融合</title>
-    <url>/2025/03/31/%E8%AE%A1%E7%AE%97%E5%AF%86%E9%9B%86%E7%AE%97%E5%AD%90%E8%9E%8D%E5%90%88/</url>
-    <content><![CDATA[<p><img src=".\images\image-20250331211738664.png" alt="image-20250331211738664"></p>
-<span id="more"></span>
-<blockquote>
-<p>机器学习中算子可以分为<strong>计算密集算子</strong>和<strong>访存密集算子</strong>，之前的博客已经讲解了<strong>访存密集算子融合技术</strong>，本文重点解读计算密集算子融合，即针对gemm的计算优化。</p>
-</blockquote>
-]]></content>
-      <categories>
-        <category>编译技术</category>
-        <category>机器学习编译</category>
-        <category>mlir</category>
-      </categories>
-      <tags>
-        <tag>机器学习编译器</tag>
-        <tag>mlir</tag>
-        <tag>算子融合技术</tag>
-      </tags>
-  </entry>
-  <entry>
     <title>访存密集算子融合</title>
     <url>/2025/03/31/%E8%AE%BF%E5%AD%98%E5%AF%86%E9%9B%86%E7%AE%97%E5%AD%90%E8%9E%8D%E5%90%88/</url>
     <content><![CDATA[<p><img src="/images/image-20250331214150737.png" alt="image-20250331214150737"></p>
@@ -80,9 +88,9 @@
         <category>mlir</category>
       </categories>
       <tags>
+        <tag>算子融合技术</tag>
         <tag>机器学习编译器</tag>
         <tag>mlir</tag>
-        <tag>算子融合技术</tag>
       </tags>
   </entry>
 </search>
