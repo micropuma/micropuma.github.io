@@ -20,18 +20,21 @@
     var CONFIG = {"hostname":"example.com","root":"/","scheme":"Pisces","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":true,"show_result":true,"style":"mac"},"back2top":{"enable":true,"sidebar":false,"scrollpercent":true},"bookmark":{"enable":true,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":"gitalk","storage":true,"lazyload":false,"nav":null,"activeClass":"gitalk"},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":5,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
   </script>
 
-  <meta name="description" content="关注领域：体系结构，编译技术">
-<meta property="og:type" content="article">
+  <meta property="og:type" content="article">
 <meta property="og:title" content="tpu-mlir初探">
 <meta property="og:url" content="http://example.com/2025/04/08/tpu-mlir%E5%88%9D%E6%8E%A2/index.html">
 <meta property="og:site_name" content="Leon&#39;s Blog">
-<meta property="og:description" content="关注领域：体系结构，编译技术">
 <meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://example.com/images/image-20250411150531193.png">
+<meta property="og:image" content="http://example.com/images/image-20250411151435735.png">
 <meta property="article:published_time" content="2025-04-08T12:26:28.000Z">
-<meta property="article:modified_time" content="2025-04-08T12:26:28.505Z">
+<meta property="article:modified_time" content="2025-04-11T12:44:19.096Z">
 <meta property="article:author" content="Leon Dou">
-<meta property="article:tag" content="compiler, system, c++">
+<meta property="article:tag" content="机器学习编译器">
+<meta property="article:tag" content="mlir">
+<meta property="article:tag" content="异构计算系统">
 <meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://example.com/images/image-20250411150531193.png">
 
 <link rel="canonical" href="http://example.com/2025/04/08/tpu-mlir%E5%88%9D%E6%8E%A2/">
 
@@ -219,6 +222,34 @@
 
               <time title="创建时间：2025-04-08 20:26:28" itemprop="dateCreated datePublished" datetime="2025-04-08T20:26:28+08:00">2025-04-08</time>
             </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2025-04-11 20:44:19" itemprop="dateModified" datetime="2025-04-11T20:44:19+08:00">2025-04-11</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/%E7%BC%96%E8%AF%91%E6%8A%80%E6%9C%AF/" itemprop="url" rel="index"><span itemprop="name">编译技术</span></a>
+                </span>
+                  ，
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/%E7%BC%96%E8%AF%91%E6%8A%80%E6%9C%AF/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0%E7%BC%96%E8%AF%91/" itemprop="url" rel="index"><span itemprop="name">机器学习编译</span></a>
+                </span>
+                  ，
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/%E7%BC%96%E8%AF%91%E6%8A%80%E6%9C%AF/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0%E7%BC%96%E8%AF%91/TPU%E6%8A%80%E6%9C%AF/" itemprop="url" rel="index"><span itemprop="name">TPU技术</span></a>
+                </span>
+                  ，
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/%E7%BC%96%E8%AF%91%E6%8A%80%E6%9C%AF/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0%E7%BC%96%E8%AF%91/TPU%E6%8A%80%E6%9C%AF/%E9%87%8F%E5%8C%96%E6%8A%80%E6%9C%AF/" itemprop="url" rel="index"><span itemprop="name">量化技术</span></a>
+                </span>
+            </span>
 
           
             <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
@@ -233,14 +264,14 @@
                 <i class="far fa-file-word"></i>
               </span>
                 <span class="post-meta-item-text">本文字数：</span>
-              <span>0</span>
+              <span>2k</span>
             </span>
             <span class="post-meta-item" title="阅读时长">
               <span class="post-meta-item-icon">
                 <i class="far fa-clock"></i>
               </span>
                 <span class="post-meta-item-text">阅读时长 &asymp;</span>
-              <span>1 分钟</span>
+              <span>2 分钟</span>
             </span>
 
         </div>
@@ -252,7 +283,105 @@
     <div class="post-body" itemprop="articleBody">
 
       
-        
+        <p><img src="/images/image-20250411150531193.png" alt="image-20250411150531193"></p>
+<span id="more"></span>
+<blockquote>
+<p>TPU-MLIR是算能开发的一套端到端编译框架，支持将onnx模型编译到多款tpu上运行。该项目基于mlir，写法标准，是极佳的mlir学习项目。从中可以学到mlir的各种语法，多层级ir的设计，以及如何完成runtime的接入。</p>
+</blockquote>
+<h2 id="项目构建"><a href="#项目构建" class="headerlink" title="项目构建"></a><font color = brown>项目构建</font></h2><h2 id="项目架构以及技术点解读"><a href="#项目架构以及技术点解读" class="headerlink" title="项目架构以及技术点解读"></a><font color = brown>项目架构以及技术点解读</font></h2><h3 id="整体架构"><a href="#整体架构" class="headerlink" title="整体架构"></a><font color  = green>整体架构</font></h3><p>这一部分主要参考<a target="_blank" rel="noopener" href="http://arxiv.org/abs/2210.15016">TPU-MLIR论文</a>。</p>
+<p><img src="/images/image-20250411151435735.png" alt="image-20250411151435735"></p>
+<p>上图中的框架，对应代码是<code>tpu-mlir/regression/run_model.py</code>。该顶层模块中调用<code>model_transfer.py</code>和<code>model_deploy.py</code>， 分别完成模型 —&gt; top ir —&gt; tpu ir 和tpu ir到<a target="_blank" rel="noopener" href="https://doc.sophgo.com/docs/3.0.0/docs_latest_release/nntc/html/usage/bmodel.html">bmodel部署</a>。</p>
+<p>接下来先简要用流程图的方式解读一下两个phase的驱动程序做了什么</p>
+<p><code>model_transfer.py</code></p>
+<pre class="mermaid">graph TD
+    A[开始] --> B[初始化模型转换器]
+    B --> C{选择框架类型}
+    C -->|ONNX| D[创建OnnxConverter实例]
+    C -->|Caffe| E[创建CaffeConverter实例]
+    C -->|TFLite| F[创建TFLiteConverter实例]
+    C -->|PyTorch| G[创建TorchConverter实例]
+    C -->|MLIR| H[创建MlirTransformer实例]
+
+    D --> I[生成原始MLIR]
+    E --> I
+    F --> I
+    G --> I
+    H --> I
+
+    I --> J[执行图优化]
+    J --> K[应用模式匹配优化]
+    K --> L{是否验证模型}
+    L -->|是| M[加载测试数据]
+    M --> N[原始模型推理]
+    N --> O[MLIR模型推理]
+    O --> P[结果对比验证]
+    P --> Q[输出验证结果]
+    L -->|否| R[跳过验证]
+
+    Q --> S[清理临时文件]
+    R --> S
+    S --> T[结束]
+
+    style A fill:#90EE90,stroke:#4CAF50
+    style B fill:#FFD700,stroke:#FFA500
+    style C fill:#87CEEB,stroke:#1E90FF
+    style D,E,F,G,H fill:#E1BEE7,stroke:#9C27B0
+    style I,J,K fill:#BBDEFB,stroke:#2196F3
+    style L fill:#FFCCCC,stroke:#FF5252
+    style M,N,O,P,Q fill:#C8E6C9,stroke:#4CAF50
+    style R,S,T fill:#FFE0B2,stroke:#FF9800</pre>
+
+<p><code>model_deploy.py</code></p>
+<pre class="mermaid">graph TD
+    A[开始] --> B[解析命令行参数]
+    B --> C{芯片类型?}
+    C --> |CPU| D[生成TOSA MLIR]
+    C --> |其他芯片| E[生成TPU MLIR]
+    D --> F[保存TOSA MLIR]
+    E --> G[执行MLIR验证]
+    G --> H{验证通过?}
+    H --> |是| I[编译生成BModel]
+    H --> |否| Z[报错退出]
+    I --> J{启用验证?}
+    J --> |是| K[执行BModel推理验证]
+    J --> |否| L[跳过验证]
+    K --> M{验证通过?}
+    M --> |是| N[清理临时文件]
+    M --> |否| Z
+    N --> O[保存BModel]
+    L --> O
+    O --> P[结束]
+
+    style A fill:#f9f,stroke:#333
+    style Z fill:#f00,stroke:#333
+    style O fill:#0f0,stroke:#333</pre>
+
+<p>上述两个流程图讲解比较宏观，参考<a target="_blank" rel="noopener" href="https://tpumlir.org/docs/developer_manual/04_over_design.html">TPU-MLIR 官方文档</a>理解更细节的mlir转换图。</p>
+<h3 id="架构亮点"><a href="#架构亮点" class="headerlink" title="架构亮点"></a><font color = green>架构亮点</font></h3><blockquote>
+<p>TPU-MLIR项目的价值一是提供mlir学习资料，整个项目的架构和实现比较简洁，二是提供tpu设计思路，此部分值得我们重点关注</p>
+</blockquote>
+<ul>
+<li><strong>ONNX converter</strong>：用python编写的前端工具，可以用来参考如何将高级语言快速转换为mlir ir。</li>
+<li><strong>多层级ir</strong>：TPU-MLIR设计了Top dialect和Tpu dialect，是比较经典的ir设计（硬件无关ir，统一不同模型框架语义，以及硬件相关ir，负责提供硬件抽象），诸如GLOW编译器也是这种ir设计。可以用来参考如何使用mlir系统设计ir抽象。</li>
+<li><strong>优化pass</strong>：这一部分是TPU-MLIR的一个重点，主要有如下方面。<ul>
+<li>动态shape，TPU-MLIR是支持动态shape的inference的，可以做参考</li>
+<li>高层算子融合pass</li>
+<li>TPU相关pass，这一部分是后续重点关注pass。包括：<ul>
+<li>TPU inference，主要借助于onnx 的runtime，后续会专门介绍</li>
+<li>weight-reorder，op-reorder等tpu专属优化</li>
+<li>layer group优化，类似局部缓存融合优化（<a target="_blank" rel="noopener" href="https://dl.acm.org/doi/10.1145/3503222.3507723">Astitch论文</a>），后续专门介绍</li>
+</ul>
+</li>
+<li>量化，TPU-MLIR对于量化操作做了诸多考量，包含带<strong>calibration的量化</strong>，对称量化和非对称量化等。</li>
+</ul>
+</li>
+</ul>
+<h2 id="参考资料"><a href="#参考资料" class="headerlink" title="参考资料"></a><font color = brown>参考资料</font></h2><ol>
+<li><a target="_blank" rel="noopener" href="https://github.com/micropuma/tpu-mlir">TPU-MLIR github</a></li>
+<li><a target="_blank" rel="noopener" href="http://arxiv.org/abs/2210.15016">TPU-MLIR论文</a></li>
+<li><a target="_blank" rel="noopener" href="https://zhuanlan.zhihu.com/p/613328745">TPU-MLIR博客</a></li>
+</ol>
+
     </div>
 
     
@@ -260,6 +389,11 @@
     
 
       <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0%E7%BC%96%E8%AF%91%E5%99%A8/" rel="tag"># 机器学习编译器</a>
+              <a href="/tags/mlir/" rel="tag"># mlir</a>
+              <a href="/tags/%E5%BC%82%E6%9E%84%E8%AE%A1%E7%AE%97%E7%B3%BB%E7%BB%9F/" rel="tag"># 异构计算系统</a>
+          </div>
 
         
 
@@ -270,7 +404,10 @@
     <a href="/2025/04/08/Transform-Dialect-tutorial1/" rel="prev" title="Transform Dialect tutorial1">
       <i class="fa fa-chevron-left"></i> Transform Dialect tutorial1
     </a></div>
-      <div class="post-nav-item"></div>
+      <div class="post-nav-item">
+    <a href="/2025/04/11/tpu-mlir%E6%BA%90%E7%A0%81%E8%A7%A3%E8%AF%BB/" rel="next" title="tpu-mlir源码解读">
+      tpu-mlir源码解读 <i class="fa fa-chevron-right"></i>
+    </a></div>
     </div>
       </footer>
     
@@ -330,6 +467,7 @@
 
       <!--noindex-->
       <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E9%A1%B9%E7%9B%AE%E6%9E%84%E5%BB%BA"><span class="nav-number">1.</span> <span class="nav-text">项目构建</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E9%A1%B9%E7%9B%AE%E6%9E%B6%E6%9E%84%E4%BB%A5%E5%8F%8A%E6%8A%80%E6%9C%AF%E7%82%B9%E8%A7%A3%E8%AF%BB"><span class="nav-number">2.</span> <span class="nav-text">项目架构以及技术点解读</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%95%B4%E4%BD%93%E6%9E%B6%E6%9E%84"><span class="nav-number">2.1.</span> <span class="nav-text">整体架构</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%9E%B6%E6%9E%84%E4%BA%AE%E7%82%B9"><span class="nav-number">2.2.</span> <span class="nav-text">架构亮点</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%8F%82%E8%80%83%E8%B5%84%E6%96%99"><span class="nav-number">3.</span> <span class="nav-text">参考资料</span></a></li></ol></div>
       </div>
       <!--/noindex-->
 
@@ -343,14 +481,14 @@
       <div class="site-state-item site-state-posts">
           <a href="/archives/">
         
-          <span class="site-state-item-count">7</span>
+          <span class="site-state-item-count">8</span>
           <span class="site-state-item-name">日志</span>
         </a>
       </div>
       <div class="site-state-item site-state-categories">
             <a href="/categories/">
           
-        <span class="site-state-item-count">9</span>
+        <span class="site-state-item-count">11</span>
         <span class="site-state-item-name">分类</span></a>
       </div>
       <div class="site-state-item site-state-tags">
@@ -393,13 +531,13 @@
       <i class="fa fa-chart-area"></i>
     </span>
       <span class="post-meta-item-text">站点总字数：</span>
-    <span title="站点总字数">57k</span>
+    <span title="站点总字数">60k</span>
     <span class="post-meta-divider">|</span>
     <span class="post-meta-item-icon">
       <i class="fa fa-coffee"></i>
     </span>
       <span class="post-meta-item-text">站点阅读时长 &asymp;</span>
-    <span title="站点阅读时长">52 分钟</span>
+    <span title="站点阅读时长">54 分钟</span>
 </div>
   <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://pisces.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Pisces</a> 强力驱动
   </div>
