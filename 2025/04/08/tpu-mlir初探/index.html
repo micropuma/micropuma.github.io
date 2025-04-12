@@ -27,8 +27,9 @@
 <meta property="og:locale" content="zh_CN">
 <meta property="og:image" content="http://example.com/images/image-20250411150531193.png">
 <meta property="og:image" content="http://example.com/images/image-20250411151435735.png">
+<meta property="og:image" content="http://example.com/images/image-20250412125832691.png">
 <meta property="article:published_time" content="2025-04-08T12:26:28.000Z">
-<meta property="article:modified_time" content="2025-04-11T12:44:19.096Z">
+<meta property="article:modified_time" content="2025-04-12T07:46:02.027Z">
 <meta property="article:author" content="Leon Dou">
 <meta property="article:tag" content="机器学习编译器">
 <meta property="article:tag" content="mlir">
@@ -227,7 +228,7 @@
                   <i class="far fa-calendar-check"></i>
                 </span>
                 <span class="post-meta-item-text">更新于</span>
-                <time title="修改时间：2025-04-11 20:44:19" itemprop="dateModified" datetime="2025-04-11T20:44:19+08:00">2025-04-11</time>
+                <time title="修改时间：2025-04-12 15:46:02" itemprop="dateModified" datetime="2025-04-12T15:46:02+08:00">2025-04-12</time>
               </span>
             <span class="post-meta-item">
               <span class="post-meta-item-icon">
@@ -264,7 +265,7 @@
                 <i class="far fa-file-word"></i>
               </span>
                 <span class="post-meta-item-text">本文字数：</span>
-              <span>2k</span>
+              <span>2.3k</span>
             </span>
             <span class="post-meta-item" title="阅读时长">
               <span class="post-meta-item-icon">
@@ -285,12 +286,17 @@
       
         <p><img src="/images/image-20250411150531193.png" alt="image-20250411150531193"></p>
 <span id="more"></span>
+
 <blockquote>
 <p>TPU-MLIR是算能开发的一套端到端编译框架，支持将onnx模型编译到多款tpu上运行。该项目基于mlir，写法标准，是极佳的mlir学习项目。从中可以学到mlir的各种语法，多层级ir的设计，以及如何完成runtime的接入。</p>
 </blockquote>
-<h2 id="项目构建"><a href="#项目构建" class="headerlink" title="项目构建"></a><font color = brown>项目构建</font></h2><h2 id="项目架构以及技术点解读"><a href="#项目架构以及技术点解读" class="headerlink" title="项目架构以及技术点解读"></a><font color = brown>项目架构以及技术点解读</font></h2><h3 id="整体架构"><a href="#整体架构" class="headerlink" title="整体架构"></a><font color  = green>整体架构</font></h3><p>这一部分主要参考<a target="_blank" rel="noopener" href="http://arxiv.org/abs/2210.15016">TPU-MLIR论文</a>。</p>
+<h2 id="项目构建"><a href="#项目构建" class="headerlink" title="项目构建"></a><font color = brown>项目构建</font></h2><p>参考<a target="_blank" rel="noopener" href="https://github.com/sophgo/tpu-mlir">tpu-mlir github</a>，整个项目的构建比较简单：</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">docker pull sophgo/tpuc_dev:latest     # 获取tpu-mlir镜像</span><br><span class="line"><span class="meta prompt_"># </span><span class="language-bash">myname1234 is just an example, you can <span class="built_in">set</span> your own name</span></span><br><span class="line">docker run --privileged --name myname1234 -v $PWD:/workspace -it sophgo/tpuc_dev:latest    # 构建容器</span><br><span class="line">cd tpu-mlir</span><br><span class="line">source ./envsetup.sh</span><br><span class="line">./build.sh</span><br></pre></td></tr></table></figure>
+
+<h2 id="项目架构以及技术点解读"><a href="#项目架构以及技术点解读" class="headerlink" title="项目架构以及技术点解读"></a><font color = brown>项目架构以及技术点解读</font></h2><h3 id="整体架构"><a href="#整体架构" class="headerlink" title="整体架构"></a><font color  = green>整体架构</font></h3><p>这一部分主要参考<a target="_blank" rel="noopener" href="http://arxiv.org/abs/2210.15016">TPU-MLIR论文</a>。</p>
 <p><img src="/images/image-20250411151435735.png" alt="image-20250411151435735"></p>
-<p>上图中的框架，对应代码是<code>tpu-mlir/regression/run_model.py</code>。该顶层模块中调用<code>model_transfer.py</code>和<code>model_deploy.py</code>， 分别完成模型 —&gt; top ir —&gt; tpu ir 和tpu ir到<a target="_blank" rel="noopener" href="https://doc.sophgo.com/docs/3.0.0/docs_latest_release/nntc/html/usage/bmodel.html">bmodel部署</a>。</p>
+<p>上图中的框架，对应代码是<code>tpu-mlir/regression/run_model.py</code>。该顶层模块中调用<code>model_transfer.py</code>和<code>model_deploy.py</code>， 分别完成模型 –&gt; top ir –&gt; tpu ir 和tpu ir到<a target="_blank" rel="noopener" href="https://doc.sophgo.com/docs/3.0.0/docs_latest_release/nntc/html/usage/bmodel.html">bmodel部署</a>。如果想要得到int8的模型，则需要调用<code>run_calibration.py</code>。具体流程如下图所示：</p>
+<p><img src="/images/image-20250412125832691.png" alt="image-20250412125832691"></p>
 <p>接下来先简要用流程图的方式解读一下两个phase的驱动程序做了什么</p>
 <p><code>model_transfer.py</code></p>
 <pre class="mermaid">graph TD
@@ -301,13 +307,13 @@
     C -->|TFLite| F[创建TFLiteConverter实例]
     C -->|PyTorch| G[创建TorchConverter实例]
     C -->|MLIR| H[创建MlirTransformer实例]
-
+    
     D --> I[生成原始MLIR]
     E --> I
     F --> I
     G --> I
     H --> I
-
+    
     I --> J[执行图优化]
     J --> K[应用模式匹配优化]
     K --> L{是否验证模型}
@@ -317,7 +323,7 @@
     O --> P[结果对比验证]
     P --> Q[输出验证结果]
     L -->|否| R[跳过验证]
-
+    
     Q --> S[清理临时文件]
     R --> S
     S --> T[结束]
@@ -331,7 +337,9 @@
     style M,N,O,P,Q fill:#C8E6C9,stroke:#4CAF50
     style R,S,T fill:#FFE0B2,stroke:#FF9800</pre>
 
+<p>用于将不同的机器学习模型转变成mlir ir表示形式。</p>
 <p><code>model_deploy.py</code></p>
+<p>将mlir中间表示形式变成硬件模型。</p>
 <pre class="mermaid">graph TD
     A[开始] --> B[解析命令行参数]
     B --> C{芯片类型?}
@@ -351,7 +359,7 @@
     N --> O[保存BModel]
     L --> O
     O --> P[结束]
-
+    
     style A fill:#f9f,stroke:#333
     style Z fill:#f00,stroke:#333
     style O fill:#0f0,stroke:#333</pre>
@@ -481,7 +489,7 @@
       <div class="site-state-item site-state-posts">
           <a href="/archives/">
         
-          <span class="site-state-item-count">8</span>
+          <span class="site-state-item-count">10</span>
           <span class="site-state-item-name">日志</span>
         </a>
       </div>
@@ -531,13 +539,13 @@
       <i class="fa fa-chart-area"></i>
     </span>
       <span class="post-meta-item-text">站点总字数：</span>
-    <span title="站点总字数">60k</span>
+    <span title="站点总字数">62k</span>
     <span class="post-meta-divider">|</span>
     <span class="post-meta-item-icon">
       <i class="fa fa-coffee"></i>
     </span>
       <span class="post-meta-item-text">站点阅读时长 &asymp;</span>
-    <span title="站点阅读时长">54 分钟</span>
+    <span title="站点阅读时长">56 分钟</span>
 </div>
   <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://pisces.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Pisces</a> 强力驱动
   </div>

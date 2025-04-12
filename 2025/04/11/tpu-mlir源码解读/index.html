@@ -27,7 +27,7 @@
 <meta property="og:locale" content="zh_CN">
 <meta property="og:image" content="http://example.com/images/image-20250411150531193.png">
 <meta property="article:published_time" content="2025-04-11T07:26:18.000Z">
-<meta property="article:modified_time" content="2025-04-11T08:23:13.120Z">
+<meta property="article:modified_time" content="2025-04-12T15:19:43.725Z">
 <meta property="article:author" content="Leon Dou">
 <meta property="article:tag" content="机器学习编译器">
 <meta property="article:tag" content="mlir">
@@ -218,10 +218,16 @@
                 <i class="far fa-calendar"></i>
               </span>
               <span class="post-meta-item-text">发表于</span>
-              
 
-              <time title="创建时间：2025-04-11 15:26:18 / 修改时间：16:23:13" itemprop="dateCreated datePublished" datetime="2025-04-11T15:26:18+08:00">2025-04-11</time>
+              <time title="创建时间：2025-04-11 15:26:18" itemprop="dateCreated datePublished" datetime="2025-04-11T15:26:18+08:00">2025-04-11</time>
             </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2025-04-12 23:19:43" itemprop="dateModified" datetime="2025-04-12T23:19:43+08:00">2025-04-12</time>
+              </span>
             <span class="post-meta-item">
               <span class="post-meta-item-icon">
                 <i class="far fa-folder"></i>
@@ -257,14 +263,14 @@
                 <i class="far fa-file-word"></i>
               </span>
                 <span class="post-meta-item-text">本文字数：</span>
-              <span>89</span>
+              <span>1.8k</span>
             </span>
             <span class="post-meta-item" title="阅读时长">
               <span class="post-meta-item-icon">
                 <i class="far fa-clock"></i>
               </span>
                 <span class="post-meta-item-text">阅读时长 &asymp;</span>
-              <span>1 分钟</span>
+              <span>2 分钟</span>
             </span>
 
         </div>
@@ -278,10 +284,43 @@
       
         <p><img src="/images/image-20250411150531193.png" alt="image-20250411150531193"></p>
 <span id="more"></span>
+
 <blockquote>
 <p>本博客主要学习TPU-MLIR的代码结构，mlir编程技术等。</p>
 </blockquote>
-<h2 id="多层级IR设计"><a href="#多层级IR设计" class="headerlink" title="多层级IR设计"></a><font color = brown>多层级IR设计</font></h2><h3 id="Interface设计"><a href="#Interface设计" class="headerlink" title="Interface设计"></a><font color = green>Interface设计</font></h3><h2 id="Pass优化设计"><a href="#Pass优化设计" class="headerlink" title="Pass优化设计"></a><font color = brown>Pass优化设计</font></h2><h2 id="参考资料"><a href="#参考资料" class="headerlink" title="参考资料"></a><font color = brown>参考资料</font></h2><ol>
+<h2 id="代码结构"><a href="#代码结构" class="headerlink" title="代码结构"></a><font color = brown>代码结构</font></h2><p>TPU-MLIR项目的一大特点，就是代码结构非常规整。</p>
+<ul>
+<li><p>tools中是各种驱动工具</p>
+</li>
+<li><p>python中是python binding的驱动工具</p>
+</li>
+<li><p>include文件结构如下：</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br></pre></td><td class="code"><pre><span class="line">├── CMakeLists.txt</span><br><span class="line">├── tpu_mlir</span><br><span class="line">│   ├── Backend</span><br><span class="line">│   ├── Builder</span><br><span class="line">│   │   ├── BM168x</span><br><span class="line">│   ├── CMakeLists.txt</span><br><span class="line">│   ├── Conversion</span><br><span class="line">│   │   ├── TopToLinalg</span><br><span class="line">│   │   ├── TopToTosa</span><br><span class="line">│   │   └── TopToTpu</span><br><span class="line">│   ├── Dialect</span><br><span class="line">│   │   ├── CMakeLists.txt</span><br><span class="line">│   │   ├── Top</span><br><span class="line">│   │   │   ├── CMakeLists.txt</span><br><span class="line">│   │   │   ├── IR</span><br><span class="line">│   │   │   │   ├── CMakeLists.txt</span><br><span class="line">│   │   │   │   ├── TopOps.h</span><br><span class="line">│   │   │   │   └── TopOps.td</span><br><span class="line">│   │   │   └── Transforms</span><br><span class="line">│   │   │       ├── CMakeLists.txt</span><br><span class="line">│   │   │       ├── Passes.h</span><br><span class="line">│   │   │       └── Passes.td</span><br><span class="line">│   │   └── Tpu</span><br><span class="line">│   │       ├── CMakeLists.txt</span><br><span class="line">│   │       ├── IR</span><br><span class="line">│   │       │   ├── CMakeLists.txt</span><br><span class="line">│   │       │   ├── TpuOps.h</span><br><span class="line">│   │       │   └── TpuOps.td</span><br><span class="line">│   │       └── Transforms</span><br><span class="line">│   │           ├── CoreParallel</span><br><span class="line">│   │           │   └── CoreParallel.hpp</span><br><span class="line">│   │           ├── DevParallel</span><br><span class="line">│   │           │   ├── Distribute.h</span><br><span class="line">│   │           │   └── DistributeUtils.h</span><br><span class="line">│   │           ├── LayerGroup</span><br><span class="line">│   │           ├── Passes.h</span><br><span class="line">│   │           ├── Passes.td</span><br><span class="line">│   │           └── TruncOp</span><br><span class="line">│   │               └── TruncOp.h</span><br><span class="line">│   ├── InitAll.h</span><br><span class="line">│   ├── Interfaces</span><br><span class="line">│   ├── Support</span><br><span class="line">│   └── Traits</span><br><span class="line">│       ├── Traits.h</span><br><span class="line">│       └── Traits.td</span><br><span class="line">└── tpu_mlir-c</span><br><span class="line">    ├── Dialects.h</span><br><span class="line">    └── RegisterEverything.h</span><br></pre></td></tr></table></figure>
+
+<p>这个文件结构十分值得解读。</p>
+<ul>
+<li>Conversion是dailect之间的转换函数</li>
+<li>Backend和builder是辅助tpu 方言代码生成npu bmodel</li>
+<li>Dialect中包含top顶层dialect和tpu dialect<ul>
+<li>ir是方言的定义</li>
+<li>transforms是ir内部的优化pass，tpu dialect有比较多的优化pass</li>
+</ul>
+</li>
+<li>Interface中包含operation使用的接口定义，同理traits的作用</li>
+<li>Support的作用是代码生成过程中的api支持，后续会详细解读</li>
+</ul>
+</li>
+<li><p>lib文件结构类似，特殊的在dialect文件夹下多了Canonicalize文件夹，<strong>该文件作用是针对每个operation完成一些图层面优化</strong>。</p>
+</li>
+</ul>
+<h2 id="多层级IR设计"><a href="#多层级IR设计" class="headerlink" title="多层级IR设计"></a><font color = brown>多层级IR设计</font></h2><h2 id="Top-dialect设计"><a href="#Top-dialect设计" class="headerlink" title="Top dialect设计"></a><font color = green>Top dialect设计</font></h2><p>这一部分是很好的机器学习静态图表示的资料，因为<code>Top dialect</code>完整的涵盖了机器学习的大部分算子操作，做了相当完善的抽象。这里的解读以<code>Top_conv</code>算子来解读。</p>
+<h4 id="Interface设计"><a href="#Interface设计" class="headerlink" title="Interface设计"></a>Interface设计</h4><h4 id="Canoicalization设计"><a href="#Canoicalization设计" class="headerlink" title="Canoicalization设计"></a>Canoicalization设计</h4><h2 id="Pass优化设计"><a href="#Pass优化设计" class="headerlink" title="Pass优化设计"></a><font color = brown>Pass优化设计</font></h2><h2 id="后端设计"><a href="#后端设计" class="headerlink" title="后端设计"></a><font color  = brown>后端设计</font></h2><figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line">|---include/tpu_mlir</span><br><span class="line">	|---Dialect</span><br><span class="line">		|---TPU/IR/TpuOps.td：各算子定义，codegen函数定义在traits中</span><br><span class="line">	|---Interfaces</span><br><span class="line">		|---*GenInterface.td：各种codegen模式的声明与实现</span><br><span class="line">|---lib</span><br><span class="line">	|---Backend</span><br><span class="line">		|---Arch.cpp：架构抽象基类，包含后端函数（供codegen调用）与硬件参数</span><br><span class="line">		|---BM168x：168x系列的架构类实现</span><br><span class="line">		|---CV18xx：cv18xx系列的架构类实现</span><br><span class="line">	|---Builder：bmodel定义</span><br><span class="line">	|---Dialect</span><br><span class="line">		|---Tpu</span><br><span class="line">			|---Interfaces：各op codegen函数的重载实现</span><br><span class="line">			|---Transforms</span><br><span class="line">				|---BM168x/Codegen.cpp：bm168系列codegen pass实现</span><br><span class="line">	|---Interfaces：</span><br><span class="line">		|---*GenInterface.cpp：各种codegen模式的补充实现（大部分逻辑实现在了td文件中）</span><br></pre></td></tr></table></figure>
+
+
+
+
+
+<h2 id="参考资料"><a href="#参考资料" class="headerlink" title="参考资料"></a><font color = brown>参考资料</font></h2><ol>
 <li><a target="_blank" rel="noopener" href="https://zhuanlan.zhihu.com/p/615180103">TPU-MLIR博客</a></li>
 <li><a target="_blank" rel="noopener" href="https://mlir.llvm.org/docs/Interfaces/">MLIR interface官方doc</a></li>
 <li></li>
@@ -309,7 +348,10 @@
     <a href="/2025/04/08/tpu-mlir%E5%88%9D%E6%8E%A2/" rel="prev" title="tpu-mlir初探">
       <i class="fa fa-chevron-left"></i> tpu-mlir初探
     </a></div>
-      <div class="post-nav-item"></div>
+      <div class="post-nav-item">
+    <a href="/2025/04/12/MLIR-Basic-ODS-framework/" rel="next" title="MLIR Basic: ODS framework">
+      MLIR Basic: ODS framework <i class="fa fa-chevron-right"></i>
+    </a></div>
     </div>
       </footer>
     
@@ -369,7 +411,7 @@
 
       <!--noindex-->
       <div class="post-toc-wrap sidebar-panel">
-          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%A4%9A%E5%B1%82%E7%BA%A7IR%E8%AE%BE%E8%AE%A1"><span class="nav-number">1.</span> <span class="nav-text">多层级IR设计</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#Interface%E8%AE%BE%E8%AE%A1"><span class="nav-number">1.1.</span> <span class="nav-text">Interface设计</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Pass%E4%BC%98%E5%8C%96%E8%AE%BE%E8%AE%A1"><span class="nav-number">2.</span> <span class="nav-text">Pass优化设计</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%8F%82%E8%80%83%E8%B5%84%E6%96%99"><span class="nav-number">3.</span> <span class="nav-text">参考资料</span></a></li></ol></div>
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BB%A3%E7%A0%81%E7%BB%93%E6%9E%84"><span class="nav-number">1.</span> <span class="nav-text">代码结构</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%A4%9A%E5%B1%82%E7%BA%A7IR%E8%AE%BE%E8%AE%A1"><span class="nav-number">2.</span> <span class="nav-text">多层级IR设计</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Top-dialect%E8%AE%BE%E8%AE%A1"><span class="nav-number">3.</span> <span class="nav-text">Top dialect设计</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#Interface%E8%AE%BE%E8%AE%A1"><span class="nav-number">3.0.1.</span> <span class="nav-text">Interface设计</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#Canoicalization%E8%AE%BE%E8%AE%A1"><span class="nav-number">3.0.2.</span> <span class="nav-text">Canoicalization设计</span></a></li></ol></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Pass%E4%BC%98%E5%8C%96%E8%AE%BE%E8%AE%A1"><span class="nav-number">4.</span> <span class="nav-text">Pass优化设计</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%90%8E%E7%AB%AF%E8%AE%BE%E8%AE%A1"><span class="nav-number">5.</span> <span class="nav-text">后端设计</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%8F%82%E8%80%83%E8%B5%84%E6%96%99"><span class="nav-number">6.</span> <span class="nav-text">参考资料</span></a></li></ol></div>
       </div>
       <!--/noindex-->
 
@@ -383,7 +425,7 @@
       <div class="site-state-item site-state-posts">
           <a href="/archives/">
         
-          <span class="site-state-item-count">8</span>
+          <span class="site-state-item-count">10</span>
           <span class="site-state-item-name">日志</span>
         </a>
       </div>
@@ -433,13 +475,13 @@
       <i class="fa fa-chart-area"></i>
     </span>
       <span class="post-meta-item-text">站点总字数：</span>
-    <span title="站点总字数">60k</span>
+    <span title="站点总字数">62k</span>
     <span class="post-meta-divider">|</span>
     <span class="post-meta-item-icon">
       <i class="fa fa-coffee"></i>
     </span>
       <span class="post-meta-item-text">站点阅读时长 &asymp;</span>
-    <span title="站点阅读时长">54 分钟</span>
+    <span title="站点阅读时长">56 分钟</span>
 </div>
   <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://pisces.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Pisces</a> 强力驱动
   </div>
