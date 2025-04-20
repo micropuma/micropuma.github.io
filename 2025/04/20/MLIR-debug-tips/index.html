@@ -20,22 +20,21 @@
     var CONFIG = {"hostname":"example.com","root":"/","scheme":"Pisces","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":true,"show_result":true,"style":"mac"},"back2top":{"enable":true,"sidebar":false,"scrollpercent":true},"bookmark":{"enable":true,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":"gitalk","storage":true,"lazyload":false,"nav":null,"activeClass":"gitalk"},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":5,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
   </script>
 
-  <meta property="og:type" content="article">
-<meta property="og:title" content="Pytorch新特性解读">
-<meta property="og:url" content="http://example.com/2025/04/05/Pytorch%E6%96%B0%E7%89%B9%E6%80%A7%E8%A7%A3%E8%AF%BB/index.html">
+  <meta name="description" content="VS Code Debugger1-exec set scheduler-locking step    # 冻结其他线程    MLIR Debug Practice12345678910111213141516171819202122232425262728293031323334353637383940414243444546474849505152535455565758Legalizin">
+<meta property="og:type" content="article">
+<meta property="og:title" content="MLIR debug tips">
+<meta property="og:url" content="http://example.com/2025/04/20/MLIR-debug-tips/index.html">
 <meta property="og:site_name" content="Leon&#39;s Blog">
+<meta property="og:description" content="VS Code Debugger1-exec set scheduler-locking step    # 冻结其他线程    MLIR Debug Practice12345678910111213141516171819202122232425262728293031323334353637383940414243444546474849505152535455565758Legalizin">
 <meta property="og:locale" content="zh_CN">
-<meta property="og:image" content="http://example.com/images/image-20250405105059068.png">
-<meta property="article:published_time" content="2025-04-05T02:37:18.000Z">
-<meta property="article:modified_time" content="2025-04-05T02:51:04.214Z">
+<meta property="article:published_time" content="2025-04-20T14:33:30.000Z">
+<meta property="article:modified_time" content="2025-04-20T16:51:58.932Z">
 <meta property="article:author" content="Leon Dou">
-<meta property="article:tag" content="机器学习编译器">
-<meta property="article:tag" content="pytorch技术">
-<meta property="article:tag" content="静态图捕捉和编译">
+<meta property="article:tag" content="mlir">
+<meta property="article:tag" content="vscode debug">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:image" content="http://example.com/images/image-20250405105059068.png">
 
-<link rel="canonical" href="http://example.com/2025/04/05/Pytorch%E6%96%B0%E7%89%B9%E6%80%A7%E8%A7%A3%E8%AF%BB/">
+<link rel="canonical" href="http://example.com/2025/04/20/MLIR-debug-tips/">
 
 
 <script id="page-configurations">
@@ -48,7 +47,7 @@
   };
 </script>
 
-  <title>Pytorch新特性解读 | Leon's Blog</title>
+  <title>MLIR debug tips | Leon's Blog</title>
   
 
 
@@ -196,7 +195,7 @@
   
   
   <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
-    <link itemprop="mainEntityOfPage" href="http://example.com/2025/04/05/Pytorch%E6%96%B0%E7%89%B9%E6%80%A7%E8%A7%A3%E8%AF%BB/">
+    <link itemprop="mainEntityOfPage" href="http://example.com/2025/04/20/MLIR-debug-tips/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
       <meta itemprop="image" content="/images/avatar.gif">
@@ -209,7 +208,7 @@
     </span>
       <header class="post-header">
         <h1 class="post-title" itemprop="name headline">
-          Pytorch新特性解读
+          MLIR debug tips
         </h1>
 
         <div class="post-meta">
@@ -218,10 +217,16 @@
                 <i class="far fa-calendar"></i>
               </span>
               <span class="post-meta-item-text">发表于</span>
-              
 
-              <time title="创建时间：2025-04-05 10:37:18 / 修改时间：10:51:04" itemprop="dateCreated datePublished" datetime="2025-04-05T10:37:18+08:00">2025-04-05</time>
+              <time title="创建时间：2025-04-20 22:33:30" itemprop="dateCreated datePublished" datetime="2025-04-20T22:33:30+08:00">2025-04-20</time>
             </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2025-04-21 00:51:58" itemprop="dateModified" datetime="2025-04-21T00:51:58+08:00">2025-04-21</time>
+              </span>
             <span class="post-meta-item">
               <span class="post-meta-item-icon">
                 <i class="far fa-folder"></i>
@@ -232,11 +237,11 @@
                 </span>
                   ，
                 <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/%E7%BC%96%E8%AF%91%E6%8A%80%E6%9C%AF/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0%E7%BC%96%E8%AF%91/" itemprop="url" rel="index"><span itemprop="name">机器学习编译</span></a>
+                  <a href="/categories/%E7%BC%96%E8%AF%91%E6%8A%80%E6%9C%AF/mlir/" itemprop="url" rel="index"><span itemprop="name">mlir</span></a>
                 </span>
                   ，
                 <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/%E7%BC%96%E8%AF%91%E6%8A%80%E6%9C%AF/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0%E7%BC%96%E8%AF%91/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0%E7%B3%BB%E7%BB%9F/" itemprop="url" rel="index"><span itemprop="name">机器学习系统</span></a>
+                  <a href="/categories/%E7%BC%96%E8%AF%91%E6%8A%80%E6%9C%AF/mlir/debug/" itemprop="url" rel="index"><span itemprop="name">debug</span></a>
                 </span>
             </span>
 
@@ -253,14 +258,14 @@
                 <i class="far fa-file-word"></i>
               </span>
                 <span class="post-meta-item-text">本文字数：</span>
-              <span>102</span>
+              <span>3k</span>
             </span>
             <span class="post-meta-item" title="阅读时长">
               <span class="post-meta-item-icon">
                 <i class="far fa-clock"></i>
               </span>
                 <span class="post-meta-item-text">阅读时长 &asymp;</span>
-              <span>1 分钟</span>
+              <span>3 分钟</span>
             </span>
 
         </div>
@@ -272,12 +277,19 @@
     <div class="post-body" itemprop="articleBody">
 
       
-        <p><img src="/images/image-20250405105059068.png" alt="image-20250405105059068"></p>
-<span id="more"></span>
+        <h2 id="VS-Code-Debugger"><a href="#VS-Code-Debugger" class="headerlink" title="VS Code Debugger"></a><font color = brown>VS Code Debugger</font></h2><figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">-exec set scheduler-locking step    # 冻结其他线程</span><br></pre></td></tr></table></figure>
 
-<blockquote>
-<p>在pytorch2中，pytorch增加了许多新的特性，其中最重要的是<code>torchdynamo</code>和<code>torchinductor</code>。本篇博客结合pytorch2在asplos的paper，解读新特性背后的编译技术。</p>
-</blockquote>
+
+
+<h2 id="MLIR-Debug-Practice"><a href="#MLIR-Debug-Practice" class="headerlink" title="MLIR Debug Practice"></a><font color = brown>MLIR Debug Practice</font></h2><figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br></pre></td><td class="code"><pre><span class="line">Legalizing operation : &#x27;vector.transfer_read&#x27;(0x62c0434198a0) &#123;</span><br><span class="line"><span class="meta prompt_">  %</span><span class="language-bash">6 = <span class="string">&quot;vector.transfer_read&quot;</span>(%0, %arg3, %5) &#123;operand_segment_sizes = dense&lt;[1, 1, 1, 0]&gt; : vector&lt;4xi32&gt;, permutation_map = affine_map&lt;(d0) -&gt; (d0)&gt;&#125; : (memref&lt;32xf32&gt;, index, f32) -&gt; vector&lt;8xf32&gt;</span></span><br><span class="line"></span><br><span class="line">  * Fold &#123;</span><br><span class="line">  &#125; -&gt; FAILURE : unable to fold</span><br><span class="line"></span><br><span class="line">  * Pattern : &#x27;vector.transfer_read -&gt; ()&#x27; &#123;</span><br><span class="line">    ** Insert  : &#x27;arith.constant&#x27;(0x62c0433289e0)</span><br><span class="line">    ** Insert  : &#x27;arith.constant&#x27;(0x62c04332a260)</span><br><span class="line">    ** Insert  : &#x27;arith.subi&#x27;(0x62c0432f4b50)</span><br><span class="line">    ** Insert  : &#x27;vector.create_mask&#x27;(0x62c043329e30)</span><br><span class="line"></span><br><span class="line">    //===-------------------------------------------===//</span><br><span class="line">    Legalizing operation : &#x27;vector.transfer_read&#x27;(0x62c0434198a0) &#123;</span><br><span class="line">      // -----// IR Dump After AffineScalarReplacement //----- //</span><br><span class="line"><span class="meta prompt_">%</span><span class="language-bash">10 = <span class="string">&quot;vector.transfer_read&quot;</span>(%0, %arg3, %5, %9) &#123;in_bounds = [<span class="literal">true</span>], operand_segment_sizes = dense&lt;1&gt; : vector&lt;4xi32&gt;, permutation_map = affine_map&lt;(d0) -&gt; (d0)&gt;&#125; : (memref&lt;32xf32&gt;, index, f32, vector&lt;8xi1&gt;) -&gt; vector&lt;8xf32&gt;</span></span><br><span class="line"></span><br><span class="line">      * Fold &#123;</span><br><span class="line">      &#125; -&gt; FAILURE : unable to fold</span><br><span class="line"></span><br><span class="line">      * Pattern : &#x27;vector.transfer_read -&gt; ()&#x27; &#123;</span><br><span class="line">      &#125; -&gt; FAILURE : pattern was already applied</span><br><span class="line"></span><br><span class="line">      * Pattern : &#x27;vector.transfer_read -&gt; ()&#x27; &#123;</span><br><span class="line">        ** Insert  : &#x27;vector.splat&#x27;(0x62c04332a5b0)</span><br><span class="line">        ** Insert  : &#x27;vector.maskedload&#x27;(0x62c04329aad0)</span><br><span class="line">        ** Replace : &#x27;vector.transfer_read&#x27;(0x62c0434198a0)</span><br><span class="line"></span><br><span class="line">        //===-------------------------------------------===//</span><br><span class="line">        Legalizing operation : &#x27;vector.splat&#x27;(0x62c04332a5b0) &#123;</span><br><span class="line">          %10 = &quot;vector.splat&quot;(%5) : (f32) -&gt; vector&lt;8xf32&gt;</span><br><span class="line"></span><br><span class="line">          * Fold &#123;</span><br><span class="line">            ** Insert  : &#x27;arith.constant&#x27;(0x62c043420680)</span><br><span class="line">            ** Replace : &#x27;vector.splat&#x27;(0x62c04332a5b0)</span><br><span class="line"></span><br><span class="line">            //===-------------------------------------------===//</span><br><span class="line">            Legalizing operation : &#x27;arith.constant&#x27;(0x62c043420680) &#123;</span><br><span class="line">              %10 = &quot;arith.constant&quot;() &#123;value = dense&lt;0.000000e+00&gt; : vector&lt;8xf32&gt;&#125; : () -&gt; vector&lt;8xf32&gt;</span><br><span class="line"></span><br><span class="line">              * Fold &#123;</span><br><span class="line">              &#125; -&gt; FAILURE : unable to fold</span><br><span class="line">            &#125; -&gt; FAILURE : no matched legalization pattern</span><br><span class="line">            //===-------------------------------------------===//</span><br><span class="line">          &#125; -&gt; FAILURE : failed to legalize generated constant &#x27;arith.constant&#x27;</span><br><span class="line">        &#125; -&gt; FAILURE : no matched legalization pattern</span><br><span class="line">        //===-------------------------------------------===//</span><br><span class="line">      &#125; -&gt; FAILURE : failed to legalize generated operation &#x27;vector.splat&#x27;(0x000062C04332A5B0)</span><br><span class="line">    &#125; -&gt; FAILURE : pattern failed to match</span><br><span class="line">  &#125; -&gt; FAILURE : no matched legalization pattern</span><br><span class="line">  //===-------------------------------------------===//</span><br><span class="line">&#125; -&gt; FAILURE : failed to legalize operation updated in-place &#x27;vector.transfer_read&#x27;</span><br><span class="line">&#125; -&gt; FAILURE : pattern failed to match</span><br><span class="line"></span><br><span class="line">* Pattern : &#x27;vector.transfer_read -&gt; ()&#x27; &#123;</span><br><span class="line">&#125; -&gt; FAILURE : pattern failed to match</span><br><span class="line">&#125; -&gt; FAILURE : no matched legalization pattern</span><br><span class="line">//===-------------------------------------------===//</span><br></pre></td></tr></table></figure>
+
+
+
+
+
+<h2 id="参考资料"><a href="#参考资料" class="headerlink" title="参考资料"></a><font color = brown>参考资料</font></h2><ol>
+<li><a target="_blank" rel="noopener" href="https://vscode.js.cn/docs/debugtest/debugging">vscode debug文档</a></li>
+</ol>
 
     </div>
 
@@ -287,9 +299,8 @@
 
       <footer class="post-footer">
           <div class="post-tags">
-              <a href="/tags/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0%E7%BC%96%E8%AF%91%E5%99%A8/" rel="tag"># 机器学习编译器</a>
-              <a href="/tags/pytorch%E6%8A%80%E6%9C%AF/" rel="tag"># pytorch技术</a>
-              <a href="/tags/%E9%9D%99%E6%80%81%E5%9B%BE%E6%8D%95%E6%8D%89%E5%92%8C%E7%BC%96%E8%AF%91/" rel="tag"># 静态图捕捉和编译</a>
+              <a href="/tags/mlir/" rel="tag"># mlir</a>
+              <a href="/tags/vscode-debug/" rel="tag"># vscode debug</a>
           </div>
 
         
@@ -298,13 +309,10 @@
         
     <div class="post-nav">
       <div class="post-nav-item">
-    <a href="/2025/04/01/BladeDISC%E5%88%9D%E6%8E%A2/" rel="prev" title="BladeDISC初探">
-      <i class="fa fa-chevron-left"></i> BladeDISC初探
+    <a href="/2025/04/16/AI%E7%BC%96%E8%AF%91%E5%99%A8%E5%90%8E%E7%AB%AF-%E8%BF%90%E8%A1%8C%E6%97%B6/" rel="prev" title="AI编译器后端&运行时">
+      <i class="fa fa-chevron-left"></i> AI编译器后端&运行时
     </a></div>
-      <div class="post-nav-item">
-    <a href="/2025/04/08/Transform-Dialect-tutorial1/" rel="next" title="Transform Dialect tutorial1">
-      Transform Dialect tutorial1 <i class="fa fa-chevron-right"></i>
-    </a></div>
+      <div class="post-nav-item"></div>
     </div>
       </footer>
     
@@ -364,6 +372,7 @@
 
       <!--noindex-->
       <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#VS-Code-Debugger"><span class="nav-number">1.</span> <span class="nav-text">VS Code Debugger</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#MLIR-Debug-Practice"><span class="nav-number">2.</span> <span class="nav-text">MLIR Debug Practice</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%8F%82%E8%80%83%E8%B5%84%E6%96%99"><span class="nav-number">3.</span> <span class="nav-text">参考资料</span></a></li></ol></div>
       </div>
       <!--/noindex-->
 
@@ -589,7 +598,7 @@ NexT.utils.loadComments(document.querySelector('#gitalk-container'), () => {
       repo        : 'micropuma.github.io',
       owner       : 'micropuma',
       admin       : ['micropuma'],
-      id          : 'f053f7d58459c09839dc19b2f9417999',
+      id          : 'b2db7cfad22897b13c2a460773d7c39a',
         language: 'zh-CN',
       distractionFreeMode: true
     });
