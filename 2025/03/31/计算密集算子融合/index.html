@@ -283,6 +283,7 @@
       
         <p><img src="/images/image-20250331211738664.png" alt="image-20250331211738664"></p>
 <span id="more"></span>
+
 <blockquote>
 <p>机器学习中算子可以分为<strong>计算密集算子</strong>和<strong>访存密集算子</strong>，之前的博客已经讲解了<strong>访存密集算子融合技术</strong>，本文重点解读计算密集算子融合，即针对gemm等算子的计算优化。本文主要结合BladeDISC和Rammer等文章加以解读</p>
 </blockquote>
@@ -342,11 +343,11 @@
     L --> N
     M --> N
     N --> O[优化后的卷积操作]
-
+    
     P[量化卷积操作 QuantizedDynamicConvOp] --> C
     Q[GPU/CUDA环境] --> D
     R[CPU环境] --> D
-
+    
     style A fill:#f9d,stroke:#333
     style P fill:#f9d,stroke:#333
     style B fill:#bbf,stroke:#333
@@ -507,7 +508,7 @@
       <i class="fa fa-chart-area"></i>
     </span>
       <span class="post-meta-item-text">站点总字数：</span>
-    <span title="站点总字数">66k</span>
+    <span title="站点总字数">67k</span>
     <span class="post-meta-divider">|</span>
     <span class="post-meta-item-icon">
       <i class="fa fa-coffee"></i>
