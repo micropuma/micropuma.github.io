@@ -1,78 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <search>
   <entry>
-    <title>BladeDISC初探</title>
-    <url>/2025/04/01/BladeDISC%E5%88%9D%E6%8E%A2/</url>
-    <content><![CDATA[<p><img src="/images/image-20250401195537142.png" alt="image-20250401195537142"></p>
-<span id="more"></span>
-
-<blockquote>
-<p>在大模型训练推理场景中，一个十分大的瓶颈是动态shape问题。比如nlp领域，处理的句子长短不一，tensor的shape是动态变化的，到runtime才能确定。这给机器学习编译器带来很大的困扰，以XLA为首的sota编译器均是静态shape的，在性能上会有一定损失。BladeDISC是阿里提出的针对动态shape的机器学习编译器，并且经过大量实验和实际生产检验。本文重点关注BladeDISC的构建，pytorch使用方式以及基础架构解读。后续文章会讲解优化流程和论文解读。</p>
-</blockquote>
-<h2 id="源码构建"><a href="#源码构建" class="headerlink" title="源码构建"></a><font color = brown>源码构建</font></h2><h4 id="Build-from-source"><a href="#Build-from-source" class="headerlink" title="Build from source"></a>Build from source</h4><ul>
-<li><p>下载<a href="https://hub.docker.com/r/bladedisc/bladedisc/tags?page=1&name=devel">BladeDisc</a>镜像</p>
-<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">docker pull bladedisc/bladedisc:latest-devel-cu118</span><br></pre></td></tr></table></figure>
-
-<ul>
-<li>使用cu118版本</li>
-</ul>
-</li>
-<li><p>运行该镜像</p>
-<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">docker run --gpus all -it -v $PWD:/disc bladedisc/bladedisc:latest-devel-cu118 bash</span><br></pre></td></tr></table></figure>
-</li>
-<li><p>修改一下<code>pytorch_blade/scripts/build_pytorch_blade.sh</code>里面的<code>TORCH_BLADE_CI_BUILD_TORCH_VERSION</code>。修改为存在的<code>requirements.txt</code>即可。</p>
-<blockquote>
-<p>构建过程中，onnx由于带宽等问题，可能会报error，添加-i <a href="https://pypi.tuna.tsinghua.edu.cn/simple%E6%8C%87%E5%AE%9Apypi%E9%95%9C%E5%83%8F%E5%8D%B3%E5%8F%AF%E3%80%82">https://pypi.tuna.tsinghua.edu.cn/simple指定pypi镜像即可。</a></p>
-</blockquote>
-</li>
-<li><p>pytorch版本构建</p>
-<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">cd pytorch_blade &amp;&amp; bash ./scripts/build_pytorch_blade.sh</span><br><span class="line">python setup.py bdist_wheel</span><br><span class="line">pip install ./pytorch_blade/dist/torch_blade-0.2.0+2.0.1.cu118-cp38-cp38-linux_x86_64.whl</span><br></pre></td></tr></table></figure></li>
-</ul>
-<h3 id="错误处理"><a href="#错误处理" class="headerlink" title="错误处理"></a><font color = green>错误处理</font></h3><p>如果报错没有安全git，在docker中用：</p>
-<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">git config --global --add safe.directory /disc</span><br></pre></td></tr></table></figure>
-
-<h4 id="quick-install"><a href="#quick-install" class="headerlink" title="quick install"></a>quick install</h4><p>参考<a href="https://github.com/alibaba/BladeDISC/blob/main/docs/install_with_docker.md">docker install</a></p>
-<h2 id="Pytorch部署BERT模型"><a href="#Pytorch部署BERT模型" class="headerlink" title="Pytorch部署BERT模型"></a><font color = brown>Pytorch部署BERT模型</font></h2><h3 id="Hugging-Face模型下载"><a href="#Hugging-Face模型下载" class="headerlink" title="Hugging Face模型下载"></a><font color = green>Hugging Face模型下载</font></h3><ul>
-<li><p>手动下载模型（适合服务器联网不稳定的情况使用）</p>
-<p>找到<a href="https://huggingface.co/nlptown/bert-base-multilingual-uncased-sentiment/tree/main">Bert sentiment inference 模型</a>，主要手动下载如下几个文件：</p>
-<p><img src="/images/image-20250306203839463.png" alt="image-20250306203839463"></p>
-<p>在python代码中使用离线下载的模型：</p>
-<figure class="highlight python"><table><tr><td class="code"><pre><span class="line">model_path = <span class="string">&quot;./model&quot;</span></span><br><span class="line">tokenizer = AutoTokenizer.from_pretrained(model_path)</span><br><span class="line">model = AutoModelForSequenceClassification.from_pretrained(model_path).cuda().<span class="built_in">eval</span>()</span><br></pre></td></tr></table></figure>
-</li>
-<li><p>直接通过transformers 包下载，该下载方式通过huggingface对应模型网页的<code>use this model</code>获取</p>
-<figure class="highlight python"><table><tr><td class="code"><pre><span class="line"><span class="comment"># Load model directly</span></span><br><span class="line"><span class="keyword">from</span> transformers <span class="keyword">import</span> AutoTokenizer, AutoModelForSequenceClassification</span><br><span class="line"></span><br><span class="line">tokenizer = AutoTokenizer.from_pretrained(<span class="string">&quot;nlptown/bert-base-multilingual-uncased-sentiment&quot;</span>)</span><br><span class="line">model = AutoModelForSequenceClassification.from_pretrained(<span class="string">&quot;nlptown/bert-base-multilingual-uncased-sentiment&quot;</span>)</span><br></pre></td></tr></table></figure>
-
-<p>确保环境有transformers包即可</p>
-</li>
-<li><p>通过<code>huggingface-cli</code>下载</p>
-<figure class="highlight python"><table><tr><td class="code"><pre><span class="line">huggingface-cli download nlptown/bert-base-multilingual-uncased-sentiment</span><br></pre></td></tr></table></figure></li>
-</ul>
-<h3 id="做BERT-Inference的testbench"><a href="#做BERT-Inference的testbench" class="headerlink" title="做BERT Inference的testbench"></a><font color = green>做BERT Inference的testbench</font></h3><p>我的测试codes如下：</p>
-<figure class="highlight python"><table><tr><td class="code"><pre><span class="line"><span class="keyword">import</span> torch</span><br><span class="line"><span class="keyword">import</span> torch_blade</span><br><span class="line"><span class="keyword">import</span> time</span><br><span class="line"></span><br><span class="line"><span class="keyword">from</span> transformers <span class="keyword">import</span> (</span><br><span class="line">    pipeline,</span><br><span class="line">    AutoTokenizer,</span><br><span class="line">    AutoModelForSequenceClassification,</span><br><span class="line">    TextClassificationPipeline,</span><br><span class="line">)</span><br><span class="line"></span><br><span class="line"><span class="comment">############################################# download model from huggingface #############################################</span></span><br><span class="line">model_path = <span class="string">&quot;./model&quot;</span></span><br><span class="line"></span><br><span class="line">tokenizer = AutoTokenizer.from_pretrained(model_path)</span><br><span class="line"></span><br><span class="line">model = AutoModelForSequenceClassification.from_pretrained(model_path).cuda().<span class="built_in">eval</span>()</span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">plain_tokenizer</span>(<span class="params">inputs_str, return_tensors</span>):</span><br><span class="line">    inputs = tokenizer(inputs_str, return_tensors=return_tensors, padding=<span class="literal">True</span>)</span><br><span class="line">    inputs = &#123;key: value.cuda() <span class="keyword">for</span> key, value <span class="keyword">in</span> inputs.items()&#125;</span><br><span class="line">    </span><br><span class="line">    <span class="comment"># torch_blade.optimize 不支持 None 作为输入</span></span><br><span class="line">    <span class="keyword">if</span> <span class="string">&quot;token_type_ids&quot;</span> <span class="keyword">in</span> inputs <span class="keyword">and</span> inputs[<span class="string">&quot;token_type_ids&quot;</span>] <span class="keyword">is</span> <span class="literal">None</span>:</span><br><span class="line">        <span class="keyword">del</span> inputs[<span class="string">&quot;token_type_ids&quot;</span>]</span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> (inputs[<span class="string">&#x27;input_ids&#x27;</span>], inputs[<span class="string">&#x27;attention_mask&#x27;</span>], inputs.get(<span class="string">&#x27;token_type_ids&#x27;</span>, <span class="literal">None</span>))</span><br><span class="line"></span><br><span class="line"><span class="keyword">class</span> <span class="title class_">PlainTextClassificationPipeline</span>(<span class="title class_ inherited__">TextClassificationPipeline</span>):</span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">_forward</span>(<span class="params">self, model_inputs</span>):</span><br><span class="line">        <span class="keyword">return</span> <span class="variable language_">self</span>.model(*model_inputs)</span><br><span class="line"></span><br><span class="line">classifier = pipeline(</span><br><span class="line">    <span class="string">&#x27;sentiment-analysis&#x27;</span>,</span><br><span class="line">    model=model,</span><br><span class="line">    tokenizer=plain_tokenizer,</span><br><span class="line">    pipeline_class=PlainTextClassificationPipeline,</span><br><span class="line">    device=<span class="number">0</span></span><br><span class="line">)</span><br><span class="line"></span><br><span class="line">input_strs = [</span><br><span class="line">    <span class="string">&quot;We are very happy to show you the story.&quot;</span>,</span><br><span class="line">    <span class="string">&quot;We hope you don&#x27;t hate it.&quot;</span></span><br><span class="line">]</span><br><span class="line"></span><br><span class="line">results = classifier(input_strs)</span><br><span class="line"></span><br><span class="line"><span class="keyword">for</span> inp_str, result <span class="keyword">in</span> <span class="built_in">zip</span>(input_strs, results):</span><br><span class="line">    <span class="built_in">print</span>(inp_str)</span><br><span class="line">    <span class="built_in">print</span>(<span class="string">f&quot; label: <span class="subst">&#123;result[<span class="string">&#x27;label&#x27;</span>]&#125;</span>, with a score: <span class="subst">&#123;<span class="built_in">round</span>(result[<span class="string">&#x27;score&#x27;</span>], <span class="number">4</span>)&#125;</span>&quot;</span>)</span><br><span class="line"></span><br><span class="line"><span class="comment">############################################# Use BladeDISC for optimization #############################################</span></span><br><span class="line">inputs_str = <span class="string">&quot;Hey, the cat is cute.&quot;</span></span><br><span class="line">inputs = plain_tokenizer(inputs_str, return_tensors=<span class="string">&quot;pt&quot;</span>)</span><br><span class="line"></span><br><span class="line">torch_config = torch_blade.config.Config()</span><br><span class="line">torch_config.enable_mlir_amp = <span class="literal">False</span>  <span class="comment"># disable mix-precision</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># Ensure inputs are properly formatted for optimization</span></span><br><span class="line">model_inputs = <span class="built_in">tuple</span>(i <span class="keyword">for</span> i <span class="keyword">in</span> inputs <span class="keyword">if</span> i <span class="keyword">is</span> <span class="keyword">not</span> <span class="literal">None</span>)</span><br><span class="line"></span><br><span class="line"><span class="keyword">with</span> torch.no_grad(), torch_config:</span><br><span class="line">    optimized_ts = torch_blade.optimize(model, allow_tracing=<span class="literal">True</span>, model_inputs=model_inputs)</span><br><span class="line"></span><br><span class="line"><span class="comment"># Move optimized model to CUDA</span></span><br><span class="line">optimized_ts = optimized_ts.cuda()</span><br><span class="line"></span><br><span class="line"><span class="comment"># Save the optimized TorchScript model</span></span><br><span class="line">torch.jit.save(optimized_ts, <span class="string">&quot;opt.disc.pt&quot;</span>)</span><br><span class="line"></span><br><span class="line"><span class="comment">############################################# testbench #############################################</span></span><br><span class="line"><span class="meta">@torch.no_grad()</span></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">benchmark</span>(<span class="params">model, inputs, num_iters=<span class="number">1000</span></span>):</span><br><span class="line">    <span class="keyword">for</span> _ <span class="keyword">in</span> <span class="built_in">range</span>(<span class="number">10</span>):</span><br><span class="line">        model(*inputs)</span><br><span class="line">    torch.cuda.synchronize()</span><br><span class="line"></span><br><span class="line">    start = time.time()</span><br><span class="line">    <span class="keyword">for</span> _ <span class="keyword">in</span> <span class="built_in">range</span>(num_iters):</span><br><span class="line">        model(*inputs)</span><br><span class="line">    torch.cuda.synchronize()</span><br><span class="line">    end = time.time()</span><br><span class="line">    <span class="keyword">return</span> (end - start) / num_iters * <span class="number">1000.0</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">bench_and_report</span>(<span class="params">input_strs</span>):</span><br><span class="line">    inputs = plain_tokenizer(input_strs, return_tensors=<span class="string">&quot;pt&quot;</span>)</span><br><span class="line">    model_inputs = <span class="built_in">tuple</span>(i <span class="keyword">for</span> i <span class="keyword">in</span> inputs <span class="keyword">if</span> i <span class="keyword">is</span> <span class="keyword">not</span> <span class="literal">None</span>)</span><br><span class="line"></span><br><span class="line">    avg_latency_baseline = benchmark(model, model_inputs)</span><br><span class="line">    avg_latency_bladedisc = benchmark(optimized_ts, model_inputs)</span><br><span class="line"></span><br><span class="line">    <span class="built_in">print</span>(<span class="string">f&quot;Seqlen: <span class="subst">&#123;[<span class="built_in">len</span>(s) <span class="keyword">for</span> s <span class="keyword">in</span> input_strs]&#125;</span>&quot;</span>)</span><br><span class="line">    <span class="built_in">print</span>(<span class="string">f&quot;Baseline: <span class="subst">&#123;avg_latency_baseline:<span class="number">.4</span>f&#125;</span> ms&quot;</span>)</span><br><span class="line">    <span class="built_in">print</span>(<span class="string">f&quot;BladeDISC: <span class="subst">&#123;avg_latency_bladedisc:<span class="number">.4</span>f&#125;</span> ms&quot;</span>)</span><br><span class="line">    <span class="built_in">print</span>(<span class="string">f&quot;BladeDISC speedup: <span class="subst">&#123;avg_latency_baseline / avg_latency_bladedisc:<span class="number">.4</span>f&#125;</span>&quot;</span>)</span><br><span class="line"></span><br><span class="line">input_strs = [</span><br><span class="line">    <span class="string">&quot;We are very happy to show you the story.&quot;</span>,</span><br><span class="line">    <span class="string">&quot;We hope you don&#x27;t hate it.&quot;</span></span><br><span class="line">]</span><br><span class="line"></span><br><span class="line">bench_and_report(input_strs)</span><br></pre></td></tr></table></figure>
-
-<p>上述codes中，BladeDISC的核心如下：</p>
-<figure class="highlight python"><table><tr><td class="code"><pre><span class="line"><span class="keyword">with</span> torch.no_grad(), torch_config:</span><br><span class="line">    optimized_ts = torch_blade.optimize(model, allow_tracing=<span class="literal">True</span>, model_inputs=model_inputs)</span><br></pre></td></tr></table></figure>
-
-<p>通过编译手段，生成优化后的pytorch script，注意：<strong>目前pytorch仅仅支持inference，尚不支持train</strong>。对于<code>HuggingFace</code>模型的pipeline有更深层兴趣的，参考<a href="https://huggingface.co/docs/transformers/quicktour">HuggingFace quick tour</a>。</p>
-<h3 id="Pytorch-WorkFlow"><a href="#Pytorch-WorkFlow" class="headerlink" title="Pytorch WorkFlow"></a><font color = green>Pytorch WorkFlow</font></h3><p><img src="/images/image-20250311211223452.png" alt="image-20250311211223452"></p>
-<p><img src="/images/image-20250311220823276.png" alt="image-20250311220823276"></p>
-<p>参考<a href="https://github.com/alibaba/BladeDISC/blob/main/docs/developers/bladedisc_torch_overview.md">Torch-Blade教程</a>即可。</p>
-<h2 id="参考资料"><a href="#参考资料" class="headerlink" title="参考资料"></a><font color = brown>参考资料</font></h2><ol>
-<li><a href="https://github.com/alibaba/BladeDISC">BladeDisc github</a></li>
-</ol>
-]]></content>
-      <categories>
-        <category>编译技术</category>
-        <category>机器学习编译</category>
-        <category>动态shape</category>
-      </categories>
-      <tags>
-        <tag>机器学习编译器</tag>
-        <tag>mlir</tag>
-        <tag>动态shape</tag>
-      </tags>
-  </entry>
-  <entry>
     <title>AI编译器后端&amp;运行时</title>
     <url>/2025/04/16/AI%E7%BC%96%E8%AF%91%E5%99%A8%E5%90%8E%E7%AB%AF-%E8%BF%90%E8%A1%8C%E6%97%B6/</url>
     <content><![CDATA[<p><img src="/images/image-20250420234716898.png" alt="image-20250420234716898"></p>
@@ -90,7 +18,44 @@
 <li>运行时系统层：运行时系统设计一般均有一个虚拟机VM用以支持调度和快速部署（IREE架构的VM和Relay VM）。其输入是编译层生成的可在硬件上执行的任务序列，<strong>如果考虑跨硬件部署，则需要考虑使用函数类型擦除技术统一接口</strong>。然后，VM将任务序列转换成硬件设备api和host端代码，最终分别生成可执行。</li>
 </ul>
 <p>后续会详细解读每一层的流程，以及可参考文献。</p>
-<h3 id="编译系统"><a href="#编译系统" class="headerlink" title="编译系统"></a><font color = green>编译系统</font></h3><h3 id="运行时系统"><a href="#运行时系统" class="headerlink" title="运行时系统"></a><font color = green>运行时系统</font></h3><blockquote>
+<h3 id="编译系统"><a href="#编译系统" class="headerlink" title="编译系统"></a><font color = green>编译系统</font></h3><h3 id="运行时系统"><a href="#运行时系统" class="headerlink" title="运行时系统"></a><font color = green>运行时系统</font></h3><p>这一章节关于运行时系统的描述，主要参考<a href="https://www.lei.chat/posts/single-node-ml-runtime-foundation/">Lei chat blog</a>，本章的描述均基于单节点来讨论，服务器等多节点暂不涉及。</p>
+<p>首先，我们需要明确，什么是机器学习系统的runtime system。runtime system的主要工作有两点：</p>
+<ul>
+<li>管理资源（内存资源等）</li>
+<li>调度执行</li>
+</ul>
+<p>根据实际语义，runtime亦有不同。多卡分布式训练场景下，runtime负责将训练任务分配调度到数据中心的不同节点。单节点上，runtime负责派发张量计算到特定的加速器。<strong>本章节关注单节点runtime系统，其一般运行在CPU上来管理资源并调度机器学习任务负载到一个或多个加速器上。</strong></p>
+<h4 id="运行时抽象"><a href="#运行时抽象" class="headerlink" title="运行时抽象"></a>运行时抽象</h4><p>运行时系统给用户提供了三个抽象：</p>
+<ul>
+<li><p>主机设备分离</p>
+<blockquote>
+<p>摘自博客的解释：</p>
+<p><img src="/images/image-20250421103410716.png" alt="image-20250421103410716"></p>
+<p><img src="/images/image-20250421103520060.png" alt="image-20250421103520060"></p>
+</blockquote>
+</li>
+<li><p>虚拟机抽象</p>
+<p>这一部分是我们理解整个runtime的重点，具体的实际例子可以参考<a href="https://github.com/iree-org/iree">IREE </a>和<a href="https://zhuanlan.zhihu.com/p/504066888">tvm runtime</a>设计细节。针对机器学习系统以及我们的cpu加速器协同架构，我们会有如下insights：</p>
+<ul>
+<li>首先我们观察主机设备架构，会发现相比设备端，主机端的系统架构是比较统一的（ARM64， x86_64和RISC-V）。</li>
+<li>观察机器学习的任务，发现机器学习任务一般是<a href="https://llvm.org/doxygen/classllvm_1_1LoopNest.html">完美循环</a>（定义见llvm官方文档）。因此<strong>访存方面用逻辑偏移即可，而非物理指针</strong>。</li>
+<li>机器学习模型部署在端侧，因此轻量化也是一大考量。</li>
+</ul>
+<p>基于上述insights，主流ai编译器均定义一套主机端虚拟指令集和虚拟机来实现调度。计算密集任务放在加速器上，存储资源追踪管理以及维度形状计算等逻辑（适合cpu端计算的逻辑）放在虚拟机上。如下图所示是IREE的虚拟机架构图：</p>
+<p><img src="/images/image-20250421105323107.png" alt="image-20250421105323107"></p>
+<p>上述虚拟机设计，还有一大好处，那就是可以很自然的完成从mlir系统到虚拟机指令ISA的编译转换。因此整个调度控制流程可以自然地通过编译器来控制，进一步提供可优化点。</p>
+</li>
+<li><p>HAL硬件抽象层</p>
+<p>针对边缘&#x2F;客户端设备的多样化硬件生态，最佳实践是基于现代图形&#x2F;计算API（如Vulkan、DirectX 12、Metal）构建硬件抽象层（HAL）。这些API提供低开销、跨平台支持、显式控制等优势，能统一管理不同厂商的GPU&#x2F;加速器（如NVIDIA&#x2F;AMD&#x2F;Apple）。虽然这些API直接使用复杂（如代码冗长），但通过编译器自动生成调用逻辑，可绕过开发难度，同时保留底层控制权。这种设计既能满足高性能需求（通过低层级优化），又能覆盖多平台&#x2F;硬件的兼容性（如Windows&#x2F;iOS&#x2F;Android），为碎片化设备提供统一且高效的计算支持。如下是iree的HAL，VM架构图。</p>
+<p><img src="/images/image-20250421110831028.png" alt="image-20250421110831028"></p>
+</li>
+</ul>
+<p>上述是runtime system的三个抽象，而实际生产中，runtime系统也要充分考虑性能问题：</p>
+<blockquote>
+<p>在GPU资源管理与同步中，核心挑战在于平衡计算吞吐量与系统整体效率。由于GPU内存性能常落后于算力提升，单纯优化单内核代码（如矩阵乘法）难以发挥理论峰值，需避免运行时因频繁创建&#x2F;销毁资源（如缓冲区、同步对象）或跨组件数据拷贝&#x2F;强制等待导致的性能损耗。为此，可借鉴图形应用（如游戏引擎）的成熟实践：<strong>预分配资源池</strong>减少动态开销、<strong>预录异步命令链</strong>最大化GPU并行度、<strong>细粒度同步</strong>基于资源生命周期。这些策略可通过编译器自动化实现（如依赖分析与指令提升）。IREE运行时采用<strong>异步优先</strong>设计，支持跨组件无缝传递缓冲区与同步原语，利用操作系统底层机制（如Linux的dma_fence）避免硬性边界，既保障ML模型的高效执行，又能嵌入复杂应用（如图像处理管线）而不成为性能瓶颈，兼顾性能与系统协同。</p>
+</blockquote>
+<p>上述关于运行时系统的描述，是比较普遍的，下面结合Open MLsys一书，详细解读不同运行时系统的分类。</p>
+<blockquote>
 <p>经过算子选择与内存分配之后，计算任务可以通过运行时完成计算的调度与在硬件上的执行。根据是否将算子编译为计算图，计算的调度可以分为单算子调度与计算图调度两种方式，例如在MindSpore中分别提供了PyNative模式和Graph模式。而根据硬件提供的能力差异，计算图的执行方式又可以分为逐算子下发执行的交互式执行以及将整个计算图或者部分子图一次性下发到硬件的下沉式执行两种模式。                                                                                                                                                                      —- 《Open Mlysy》</p>
 </blockquote>
 <h4 id="单算子调度"><a href="#单算子调度" class="headerlink" title="单算子调度"></a>单算子调度</h4><p>一行行算子line by line的交由python运行时执行，好处是方便debug和看到即时效果，坏处是只能顺序执行，丧失很多并行性，同时也无法支持编译优化。</p>
@@ -216,8 +181,9 @@
 <h3 id="XLA编译器后端-Runtime"><a href="#XLA编译器后端-Runtime" class="headerlink" title="XLA编译器后端&amp;Runtime"></a><font color = green>XLA编译器后端&amp;Runtime</font></h3><p>重点参考<a href="https://zhuanlan.zhihu.com/p/651036523">XLA编译器机制博客</a>。</p>
 <h3 id="BladeDISC后端架构-Runtime"><a href="#BladeDISC后端架构-Runtime" class="headerlink" title="BladeDISC后端架构&amp;Runtime"></a><font color = green>BladeDISC后端架构&amp;Runtime</font></h3><h2 id="TPU-MLIR系统代码解读"><a href="#TPU-MLIR系统代码解读" class="headerlink" title="TPU-MLIR系统代码解读"></a><font color = brown>TPU-MLIR系统代码解读</font></h2><h2 id="References"><a href="#References" class="headerlink" title="References"></a><font color = brown>References</font></h2><ol>
 <li><a href="https://www.iteye.com/blog/rednaxelafx-492667">虚拟机技术解读</a></li>
-<li><a href="">TVM runtime系统讲解</a></li>
+<li><a href="https://zhuanlan.zhihu.com/p/504066888">TVM runtime系统讲解</a></li>
 <li><a href="https://abdelfattah-class.github.io/ece5545/">Cornell: Machine learning hardware and system课程</a></li>
+<li><a href="https://drive.google.com/file/d/1ikgOdZxnMz1ExqwrAiuTY9exbe3yMWbB/view">IREE运行时系统设计</a></li>
 </ol>
 ]]></content>
       <categories>
@@ -304,6 +270,78 @@
       </tags>
   </entry>
   <entry>
+    <title>BladeDISC初探</title>
+    <url>/2025/04/01/BladeDISC%E5%88%9D%E6%8E%A2/</url>
+    <content><![CDATA[<p><img src="/images/image-20250401195537142.png" alt="image-20250401195537142"></p>
+<span id="more"></span>
+
+<blockquote>
+<p>在大模型训练推理场景中，一个十分大的瓶颈是动态shape问题。比如nlp领域，处理的句子长短不一，tensor的shape是动态变化的，到runtime才能确定。这给机器学习编译器带来很大的困扰，以XLA为首的sota编译器均是静态shape的，在性能上会有一定损失。BladeDISC是阿里提出的针对动态shape的机器学习编译器，并且经过大量实验和实际生产检验。本文重点关注BladeDISC的构建，pytorch使用方式以及基础架构解读。后续文章会讲解优化流程和论文解读。</p>
+</blockquote>
+<h2 id="源码构建"><a href="#源码构建" class="headerlink" title="源码构建"></a><font color = brown>源码构建</font></h2><h4 id="Build-from-source"><a href="#Build-from-source" class="headerlink" title="Build from source"></a>Build from source</h4><ul>
+<li><p>下载<a href="https://hub.docker.com/r/bladedisc/bladedisc/tags?page=1&name=devel">BladeDisc</a>镜像</p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">docker pull bladedisc/bladedisc:latest-devel-cu118</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>使用cu118版本</li>
+</ul>
+</li>
+<li><p>运行该镜像</p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">docker run --gpus all -it -v $PWD:/disc bladedisc/bladedisc:latest-devel-cu118 bash</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>修改一下<code>pytorch_blade/scripts/build_pytorch_blade.sh</code>里面的<code>TORCH_BLADE_CI_BUILD_TORCH_VERSION</code>。修改为存在的<code>requirements.txt</code>即可。</p>
+<blockquote>
+<p>构建过程中，onnx由于带宽等问题，可能会报error，添加-i <a href="https://pypi.tuna.tsinghua.edu.cn/simple%E6%8C%87%E5%AE%9Apypi%E9%95%9C%E5%83%8F%E5%8D%B3%E5%8F%AF%E3%80%82">https://pypi.tuna.tsinghua.edu.cn/simple指定pypi镜像即可。</a></p>
+</blockquote>
+</li>
+<li><p>pytorch版本构建</p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">cd pytorch_blade &amp;&amp; bash ./scripts/build_pytorch_blade.sh</span><br><span class="line">python setup.py bdist_wheel</span><br><span class="line">pip install ./pytorch_blade/dist/torch_blade-0.2.0+2.0.1.cu118-cp38-cp38-linux_x86_64.whl</span><br></pre></td></tr></table></figure></li>
+</ul>
+<h3 id="错误处理"><a href="#错误处理" class="headerlink" title="错误处理"></a><font color = green>错误处理</font></h3><p>如果报错没有安全git，在docker中用：</p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">git config --global --add safe.directory /disc</span><br></pre></td></tr></table></figure>
+
+<h4 id="quick-install"><a href="#quick-install" class="headerlink" title="quick install"></a>quick install</h4><p>参考<a href="https://github.com/alibaba/BladeDISC/blob/main/docs/install_with_docker.md">docker install</a></p>
+<h2 id="Pytorch部署BERT模型"><a href="#Pytorch部署BERT模型" class="headerlink" title="Pytorch部署BERT模型"></a><font color = brown>Pytorch部署BERT模型</font></h2><h3 id="Hugging-Face模型下载"><a href="#Hugging-Face模型下载" class="headerlink" title="Hugging Face模型下载"></a><font color = green>Hugging Face模型下载</font></h3><ul>
+<li><p>手动下载模型（适合服务器联网不稳定的情况使用）</p>
+<p>找到<a href="https://huggingface.co/nlptown/bert-base-multilingual-uncased-sentiment/tree/main">Bert sentiment inference 模型</a>，主要手动下载如下几个文件：</p>
+<p><img src="/images/image-20250306203839463.png" alt="image-20250306203839463"></p>
+<p>在python代码中使用离线下载的模型：</p>
+<figure class="highlight python"><table><tr><td class="code"><pre><span class="line">model_path = <span class="string">&quot;./model&quot;</span></span><br><span class="line">tokenizer = AutoTokenizer.from_pretrained(model_path)</span><br><span class="line">model = AutoModelForSequenceClassification.from_pretrained(model_path).cuda().<span class="built_in">eval</span>()</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>直接通过transformers 包下载，该下载方式通过huggingface对应模型网页的<code>use this model</code>获取</p>
+<figure class="highlight python"><table><tr><td class="code"><pre><span class="line"><span class="comment"># Load model directly</span></span><br><span class="line"><span class="keyword">from</span> transformers <span class="keyword">import</span> AutoTokenizer, AutoModelForSequenceClassification</span><br><span class="line"></span><br><span class="line">tokenizer = AutoTokenizer.from_pretrained(<span class="string">&quot;nlptown/bert-base-multilingual-uncased-sentiment&quot;</span>)</span><br><span class="line">model = AutoModelForSequenceClassification.from_pretrained(<span class="string">&quot;nlptown/bert-base-multilingual-uncased-sentiment&quot;</span>)</span><br></pre></td></tr></table></figure>
+
+<p>确保环境有transformers包即可</p>
+</li>
+<li><p>通过<code>huggingface-cli</code>下载</p>
+<figure class="highlight python"><table><tr><td class="code"><pre><span class="line">huggingface-cli download nlptown/bert-base-multilingual-uncased-sentiment</span><br></pre></td></tr></table></figure></li>
+</ul>
+<h3 id="做BERT-Inference的testbench"><a href="#做BERT-Inference的testbench" class="headerlink" title="做BERT Inference的testbench"></a><font color = green>做BERT Inference的testbench</font></h3><p>我的测试codes如下：</p>
+<figure class="highlight python"><table><tr><td class="code"><pre><span class="line"><span class="keyword">import</span> torch</span><br><span class="line"><span class="keyword">import</span> torch_blade</span><br><span class="line"><span class="keyword">import</span> time</span><br><span class="line"></span><br><span class="line"><span class="keyword">from</span> transformers <span class="keyword">import</span> (</span><br><span class="line">    pipeline,</span><br><span class="line">    AutoTokenizer,</span><br><span class="line">    AutoModelForSequenceClassification,</span><br><span class="line">    TextClassificationPipeline,</span><br><span class="line">)</span><br><span class="line"></span><br><span class="line"><span class="comment">############################################# download model from huggingface #############################################</span></span><br><span class="line">model_path = <span class="string">&quot;./model&quot;</span></span><br><span class="line"></span><br><span class="line">tokenizer = AutoTokenizer.from_pretrained(model_path)</span><br><span class="line"></span><br><span class="line">model = AutoModelForSequenceClassification.from_pretrained(model_path).cuda().<span class="built_in">eval</span>()</span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">plain_tokenizer</span>(<span class="params">inputs_str, return_tensors</span>):</span><br><span class="line">    inputs = tokenizer(inputs_str, return_tensors=return_tensors, padding=<span class="literal">True</span>)</span><br><span class="line">    inputs = &#123;key: value.cuda() <span class="keyword">for</span> key, value <span class="keyword">in</span> inputs.items()&#125;</span><br><span class="line">    </span><br><span class="line">    <span class="comment"># torch_blade.optimize 不支持 None 作为输入</span></span><br><span class="line">    <span class="keyword">if</span> <span class="string">&quot;token_type_ids&quot;</span> <span class="keyword">in</span> inputs <span class="keyword">and</span> inputs[<span class="string">&quot;token_type_ids&quot;</span>] <span class="keyword">is</span> <span class="literal">None</span>:</span><br><span class="line">        <span class="keyword">del</span> inputs[<span class="string">&quot;token_type_ids&quot;</span>]</span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> (inputs[<span class="string">&#x27;input_ids&#x27;</span>], inputs[<span class="string">&#x27;attention_mask&#x27;</span>], inputs.get(<span class="string">&#x27;token_type_ids&#x27;</span>, <span class="literal">None</span>))</span><br><span class="line"></span><br><span class="line"><span class="keyword">class</span> <span class="title class_">PlainTextClassificationPipeline</span>(<span class="title class_ inherited__">TextClassificationPipeline</span>):</span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">_forward</span>(<span class="params">self, model_inputs</span>):</span><br><span class="line">        <span class="keyword">return</span> <span class="variable language_">self</span>.model(*model_inputs)</span><br><span class="line"></span><br><span class="line">classifier = pipeline(</span><br><span class="line">    <span class="string">&#x27;sentiment-analysis&#x27;</span>,</span><br><span class="line">    model=model,</span><br><span class="line">    tokenizer=plain_tokenizer,</span><br><span class="line">    pipeline_class=PlainTextClassificationPipeline,</span><br><span class="line">    device=<span class="number">0</span></span><br><span class="line">)</span><br><span class="line"></span><br><span class="line">input_strs = [</span><br><span class="line">    <span class="string">&quot;We are very happy to show you the story.&quot;</span>,</span><br><span class="line">    <span class="string">&quot;We hope you don&#x27;t hate it.&quot;</span></span><br><span class="line">]</span><br><span class="line"></span><br><span class="line">results = classifier(input_strs)</span><br><span class="line"></span><br><span class="line"><span class="keyword">for</span> inp_str, result <span class="keyword">in</span> <span class="built_in">zip</span>(input_strs, results):</span><br><span class="line">    <span class="built_in">print</span>(inp_str)</span><br><span class="line">    <span class="built_in">print</span>(<span class="string">f&quot; label: <span class="subst">&#123;result[<span class="string">&#x27;label&#x27;</span>]&#125;</span>, with a score: <span class="subst">&#123;<span class="built_in">round</span>(result[<span class="string">&#x27;score&#x27;</span>], <span class="number">4</span>)&#125;</span>&quot;</span>)</span><br><span class="line"></span><br><span class="line"><span class="comment">############################################# Use BladeDISC for optimization #############################################</span></span><br><span class="line">inputs_str = <span class="string">&quot;Hey, the cat is cute.&quot;</span></span><br><span class="line">inputs = plain_tokenizer(inputs_str, return_tensors=<span class="string">&quot;pt&quot;</span>)</span><br><span class="line"></span><br><span class="line">torch_config = torch_blade.config.Config()</span><br><span class="line">torch_config.enable_mlir_amp = <span class="literal">False</span>  <span class="comment"># disable mix-precision</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># Ensure inputs are properly formatted for optimization</span></span><br><span class="line">model_inputs = <span class="built_in">tuple</span>(i <span class="keyword">for</span> i <span class="keyword">in</span> inputs <span class="keyword">if</span> i <span class="keyword">is</span> <span class="keyword">not</span> <span class="literal">None</span>)</span><br><span class="line"></span><br><span class="line"><span class="keyword">with</span> torch.no_grad(), torch_config:</span><br><span class="line">    optimized_ts = torch_blade.optimize(model, allow_tracing=<span class="literal">True</span>, model_inputs=model_inputs)</span><br><span class="line"></span><br><span class="line"><span class="comment"># Move optimized model to CUDA</span></span><br><span class="line">optimized_ts = optimized_ts.cuda()</span><br><span class="line"></span><br><span class="line"><span class="comment"># Save the optimized TorchScript model</span></span><br><span class="line">torch.jit.save(optimized_ts, <span class="string">&quot;opt.disc.pt&quot;</span>)</span><br><span class="line"></span><br><span class="line"><span class="comment">############################################# testbench #############################################</span></span><br><span class="line"><span class="meta">@torch.no_grad()</span></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">benchmark</span>(<span class="params">model, inputs, num_iters=<span class="number">1000</span></span>):</span><br><span class="line">    <span class="keyword">for</span> _ <span class="keyword">in</span> <span class="built_in">range</span>(<span class="number">10</span>):</span><br><span class="line">        model(*inputs)</span><br><span class="line">    torch.cuda.synchronize()</span><br><span class="line"></span><br><span class="line">    start = time.time()</span><br><span class="line">    <span class="keyword">for</span> _ <span class="keyword">in</span> <span class="built_in">range</span>(num_iters):</span><br><span class="line">        model(*inputs)</span><br><span class="line">    torch.cuda.synchronize()</span><br><span class="line">    end = time.time()</span><br><span class="line">    <span class="keyword">return</span> (end - start) / num_iters * <span class="number">1000.0</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">bench_and_report</span>(<span class="params">input_strs</span>):</span><br><span class="line">    inputs = plain_tokenizer(input_strs, return_tensors=<span class="string">&quot;pt&quot;</span>)</span><br><span class="line">    model_inputs = <span class="built_in">tuple</span>(i <span class="keyword">for</span> i <span class="keyword">in</span> inputs <span class="keyword">if</span> i <span class="keyword">is</span> <span class="keyword">not</span> <span class="literal">None</span>)</span><br><span class="line"></span><br><span class="line">    avg_latency_baseline = benchmark(model, model_inputs)</span><br><span class="line">    avg_latency_bladedisc = benchmark(optimized_ts, model_inputs)</span><br><span class="line"></span><br><span class="line">    <span class="built_in">print</span>(<span class="string">f&quot;Seqlen: <span class="subst">&#123;[<span class="built_in">len</span>(s) <span class="keyword">for</span> s <span class="keyword">in</span> input_strs]&#125;</span>&quot;</span>)</span><br><span class="line">    <span class="built_in">print</span>(<span class="string">f&quot;Baseline: <span class="subst">&#123;avg_latency_baseline:<span class="number">.4</span>f&#125;</span> ms&quot;</span>)</span><br><span class="line">    <span class="built_in">print</span>(<span class="string">f&quot;BladeDISC: <span class="subst">&#123;avg_latency_bladedisc:<span class="number">.4</span>f&#125;</span> ms&quot;</span>)</span><br><span class="line">    <span class="built_in">print</span>(<span class="string">f&quot;BladeDISC speedup: <span class="subst">&#123;avg_latency_baseline / avg_latency_bladedisc:<span class="number">.4</span>f&#125;</span>&quot;</span>)</span><br><span class="line"></span><br><span class="line">input_strs = [</span><br><span class="line">    <span class="string">&quot;We are very happy to show you the story.&quot;</span>,</span><br><span class="line">    <span class="string">&quot;We hope you don&#x27;t hate it.&quot;</span></span><br><span class="line">]</span><br><span class="line"></span><br><span class="line">bench_and_report(input_strs)</span><br></pre></td></tr></table></figure>
+
+<p>上述codes中，BladeDISC的核心如下：</p>
+<figure class="highlight python"><table><tr><td class="code"><pre><span class="line"><span class="keyword">with</span> torch.no_grad(), torch_config:</span><br><span class="line">    optimized_ts = torch_blade.optimize(model, allow_tracing=<span class="literal">True</span>, model_inputs=model_inputs)</span><br></pre></td></tr></table></figure>
+
+<p>通过编译手段，生成优化后的pytorch script，注意：<strong>目前pytorch仅仅支持inference，尚不支持train</strong>。对于<code>HuggingFace</code>模型的pipeline有更深层兴趣的，参考<a href="https://huggingface.co/docs/transformers/quicktour">HuggingFace quick tour</a>。</p>
+<h3 id="Pytorch-WorkFlow"><a href="#Pytorch-WorkFlow" class="headerlink" title="Pytorch WorkFlow"></a><font color = green>Pytorch WorkFlow</font></h3><p><img src="/images/image-20250311211223452.png" alt="image-20250311211223452"></p>
+<p><img src="/images/image-20250311220823276.png" alt="image-20250311220823276"></p>
+<p>参考<a href="https://github.com/alibaba/BladeDISC/blob/main/docs/developers/bladedisc_torch_overview.md">Torch-Blade教程</a>即可。</p>
+<h2 id="参考资料"><a href="#参考资料" class="headerlink" title="参考资料"></a><font color = brown>参考资料</font></h2><ol>
+<li><a href="https://github.com/alibaba/BladeDISC">BladeDisc github</a></li>
+</ol>
+]]></content>
+      <categories>
+        <category>编译技术</category>
+        <category>机器学习编译</category>
+        <category>动态shape</category>
+      </categories>
+      <tags>
+        <tag>机器学习编译器</tag>
+        <tag>mlir</tag>
+        <tag>动态shape</tag>
+      </tags>
+  </entry>
+  <entry>
     <title>MLIR Basic: DDR framework</title>
     <url>/2025/04/12/MLIR-Basic-DDR-framework/</url>
     <content><![CDATA[]]></content>
@@ -312,6 +350,27 @@
     <title>MLIR Basic: ODS framework</title>
     <url>/2025/04/12/MLIR-Basic-ODS-framework/</url>
     <content><![CDATA[]]></content>
+  </entry>
+  <entry>
+    <title>Pytorch新特性解读</title>
+    <url>/2025/04/05/Pytorch%E6%96%B0%E7%89%B9%E6%80%A7%E8%A7%A3%E8%AF%BB/</url>
+    <content><![CDATA[<p><img src="/images/image-20250405105059068.png" alt="image-20250405105059068"></p>
+<span id="more"></span>
+
+<blockquote>
+<p>在pytorch2中，pytorch增加了许多新的特性，其中最重要的是<code>torchdynamo</code>和<code>torchinductor</code>。本篇博客结合pytorch2在asplos的paper，解读新特性背后的编译技术。</p>
+</blockquote>
+]]></content>
+      <categories>
+        <category>编译技术</category>
+        <category>机器学习编译</category>
+        <category>机器学习系统</category>
+      </categories>
+      <tags>
+        <tag>机器学习编译器</tag>
+        <tag>pytorch技术</tag>
+        <tag>静态图捕捉和编译</tag>
+      </tags>
   </entry>
   <entry>
     <title>MLIR debug tips</title>
@@ -338,27 +397,6 @@
       <tags>
         <tag>mlir</tag>
         <tag>vscode debug</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>Pytorch新特性解读</title>
-    <url>/2025/04/05/Pytorch%E6%96%B0%E7%89%B9%E6%80%A7%E8%A7%A3%E8%AF%BB/</url>
-    <content><![CDATA[<p><img src="/images/image-20250405105059068.png" alt="image-20250405105059068"></p>
-<span id="more"></span>
-
-<blockquote>
-<p>在pytorch2中，pytorch增加了许多新的特性，其中最重要的是<code>torchdynamo</code>和<code>torchinductor</code>。本篇博客结合pytorch2在asplos的paper，解读新特性背后的编译技术。</p>
-</blockquote>
-]]></content>
-      <categories>
-        <category>编译技术</category>
-        <category>机器学习编译</category>
-        <category>机器学习系统</category>
-      </categories>
-      <tags>
-        <tag>机器学习编译器</tag>
-        <tag>pytorch技术</tag>
-        <tag>静态图捕捉和编译</tag>
       </tags>
   </entry>
   <entry>
@@ -561,6 +599,98 @@
       </tags>
   </entry>
   <entry>
+    <title>计算密集算子融合</title>
+    <url>/2025/03/31/%E8%AE%A1%E7%AE%97%E5%AF%86%E9%9B%86%E7%AE%97%E5%AD%90%E8%9E%8D%E5%90%88/</url>
+    <content><![CDATA[<p><img src="/images/image-20250331211738664.png" alt="image-20250331211738664"></p>
+<span id="more"></span>
+
+<blockquote>
+<p>机器学习中算子可以分为<strong>计算密集算子</strong>和<strong>访存密集算子</strong>，之前的博客已经讲解了<strong>访存密集算子融合技术</strong>，本文重点解读计算密集算子融合，即针对gemm等算子的计算优化。本文主要结合BladeDISC和Rammer等文章加以解读</p>
+</blockquote>
+<h2 id="BladeDISC的计算密集算子融合"><a href="#BladeDISC的计算密集算子融合" class="headerlink" title="BladeDISC的计算密集算子融合"></a><font color = brown>BladeDISC的计算密集算子融合</font></h2><h3 id="计算密集算子融合pipeline-overview"><a href="#计算密集算子融合pipeline-overview" class="headerlink" title="计算密集算子融合pipeline overview"></a><font color = green>计算密集算子融合pipeline overview</font></h3><p>在<code>BladeDISC</code>项目的pipeline中，涉及计算密集算子融合有三处：</p>
+<h4 id="针对简单的mhlo-dot算子做融合"><a href="#针对简单的mhlo-dot算子做融合" class="headerlink" title="针对简单的mhlo_dot算子做融合"></a>针对简单的mhlo_dot算子做融合</h4><p><img src="/images/image-20250403152318767.png" alt="image-20250403152318767"></p>
+<p>具体流程图如下：</p>
+<pre class="mermaid">flowchart TD
+    A[开始: DiscDotMergePass] --> B[执行共享操作数合并]
+    B --> C[执行批量合并]
+    C --> D{合并成功?}
+    D -->|是| E[结束]
+    D -->|否| F[标记失败]
+
+    subgraph 共享操作数合并流程
+        B1[遍历所有基本块] --> B2[初始化ShareOperandMap]
+        B2 --> B3[遍历block中的DotGeneralOp]
+        B3 --> B4[提取共享操作数和维度信息]
+        B4 --> B5[构建聚类映射]
+        B5 --> B6[检测循环依赖]
+        B6 --> B7[尝试合并聚类]
+        B7 --> B8[应用合并操作]
+        B8 --> B9[清理原始操作]
+    end
+
+    subgraph 批量合并流程
+        C1[形状分析] --> C2[构建MergingShapeMap]
+        C2 --> C3[检测可合并聚类]
+        C3 --> C4[维度扩展操作]
+        C4 --> C5[创建批量concat]
+        C5 --> C6[生成批量dot]
+        C6 --> C7[切片替换原始操作]
+        C7 --> C8[清理原始操作]
+    end
+
+    B -->|核心操作| B1
+    C -->|核心操作| C1
+    B9 -->|清理后| C
+    C8 --> D</pre>
+
+<h4 id="混合精度优化"><a href="#混合精度优化" class="headerlink" title="混合精度优化"></a>混合精度优化</h4><p><img src="/images/image-20250402205232495.png" alt="image-20250402205232495"></p>
+<h4 id="针对GEMM做layout优化"><a href="#针对GEMM做layout优化" class="headerlink" title="针对GEMM做layout优化"></a>针对GEMM做layout优化</h4><p><img src="/images/image-20250402205308725.png" alt="image-20250402205308725"></p>
+<p>具体流程图如下：</p>
+<pre class="mermaid">graph TD
+    A[原始卷积操作 mhlo::ConvolutionOp] --> B[转换为 DynamicConvOp]
+    B --> C[提取卷积参数]
+    C --> D[推断预期布局]
+    D --> E{当前布局符合预期?}
+    E -->|是| F[保持原布局]
+    E -->|否| G[插入转置操作调整布局]
+    G --> H[输入布局调整]
+    G --> I[滤波器布局调整]
+    G --> J[输出布局调整]
+    H --> K[更新输入布局]
+    I --> L[更新滤波器布局]
+    J --> M[更新输出布局]
+    K --> N[更新卷积属性]
+    L --> N
+    M --> N
+    N --> O[优化后的卷积操作]
+    
+    P[量化卷积操作 QuantizedDynamicConvOp] --> C
+    Q[GPU/CUDA环境] --> D
+    R[CPU环境] --> D
+    
+    style A fill:#f9d,stroke:#333
+    style P fill:#f9d,stroke:#333
+    style B fill:#bbf,stroke:#333
+    style C fill:#cfc,stroke:#333
+    style D fill:#cfc,stroke:#333
+    style E fill:#ffd,stroke:#333
+    style G fill:#fcc,stroke:#333
+    style N fill:#cfc,stroke:#333
+    style O fill:#9f9,stroke:#333</pre>
+
+]]></content>
+      <categories>
+        <category>编译技术</category>
+        <category>机器学习编译</category>
+        <category>计算优化</category>
+      </categories>
+      <tags>
+        <tag>机器学习编译器</tag>
+        <tag>mlir</tag>
+        <tag>算子融合技术</tag>
+      </tags>
+  </entry>
+  <entry>
     <title>tpu-mlir源码解读</title>
     <url>/2025/04/11/tpu-mlir%E6%BA%90%E7%A0%81%E8%A7%A3%E8%AF%BB/</url>
     <content><![CDATA[<p><img src="/images/image-20250411150531193.png" alt="image-20250411150531193"></p>
@@ -667,98 +797,6 @@
         <tag>机器学习编译器</tag>
         <tag>mlir</tag>
         <tag>异构计算系统</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>计算密集算子融合</title>
-    <url>/2025/03/31/%E8%AE%A1%E7%AE%97%E5%AF%86%E9%9B%86%E7%AE%97%E5%AD%90%E8%9E%8D%E5%90%88/</url>
-    <content><![CDATA[<p><img src="/images/image-20250331211738664.png" alt="image-20250331211738664"></p>
-<span id="more"></span>
-
-<blockquote>
-<p>机器学习中算子可以分为<strong>计算密集算子</strong>和<strong>访存密集算子</strong>，之前的博客已经讲解了<strong>访存密集算子融合技术</strong>，本文重点解读计算密集算子融合，即针对gemm等算子的计算优化。本文主要结合BladeDISC和Rammer等文章加以解读</p>
-</blockquote>
-<h2 id="BladeDISC的计算密集算子融合"><a href="#BladeDISC的计算密集算子融合" class="headerlink" title="BladeDISC的计算密集算子融合"></a><font color = brown>BladeDISC的计算密集算子融合</font></h2><h3 id="计算密集算子融合pipeline-overview"><a href="#计算密集算子融合pipeline-overview" class="headerlink" title="计算密集算子融合pipeline overview"></a><font color = green>计算密集算子融合pipeline overview</font></h3><p>在<code>BladeDISC</code>项目的pipeline中，涉及计算密集算子融合有三处：</p>
-<h4 id="针对简单的mhlo-dot算子做融合"><a href="#针对简单的mhlo-dot算子做融合" class="headerlink" title="针对简单的mhlo_dot算子做融合"></a>针对简单的mhlo_dot算子做融合</h4><p><img src="/images/image-20250403152318767.png" alt="image-20250403152318767"></p>
-<p>具体流程图如下：</p>
-<pre class="mermaid">flowchart TD
-    A[开始: DiscDotMergePass] --> B[执行共享操作数合并]
-    B --> C[执行批量合并]
-    C --> D{合并成功?}
-    D -->|是| E[结束]
-    D -->|否| F[标记失败]
-
-    subgraph 共享操作数合并流程
-        B1[遍历所有基本块] --> B2[初始化ShareOperandMap]
-        B2 --> B3[遍历block中的DotGeneralOp]
-        B3 --> B4[提取共享操作数和维度信息]
-        B4 --> B5[构建聚类映射]
-        B5 --> B6[检测循环依赖]
-        B6 --> B7[尝试合并聚类]
-        B7 --> B8[应用合并操作]
-        B8 --> B9[清理原始操作]
-    end
-
-    subgraph 批量合并流程
-        C1[形状分析] --> C2[构建MergingShapeMap]
-        C2 --> C3[检测可合并聚类]
-        C3 --> C4[维度扩展操作]
-        C4 --> C5[创建批量concat]
-        C5 --> C6[生成批量dot]
-        C6 --> C7[切片替换原始操作]
-        C7 --> C8[清理原始操作]
-    end
-
-    B -->|核心操作| B1
-    C -->|核心操作| C1
-    B9 -->|清理后| C
-    C8 --> D</pre>
-
-<h4 id="混合精度优化"><a href="#混合精度优化" class="headerlink" title="混合精度优化"></a>混合精度优化</h4><p><img src="/images/image-20250402205232495.png" alt="image-20250402205232495"></p>
-<h4 id="针对GEMM做layout优化"><a href="#针对GEMM做layout优化" class="headerlink" title="针对GEMM做layout优化"></a>针对GEMM做layout优化</h4><p><img src="/images/image-20250402205308725.png" alt="image-20250402205308725"></p>
-<p>具体流程图如下：</p>
-<pre class="mermaid">graph TD
-    A[原始卷积操作 mhlo::ConvolutionOp] --> B[转换为 DynamicConvOp]
-    B --> C[提取卷积参数]
-    C --> D[推断预期布局]
-    D --> E{当前布局符合预期?}
-    E -->|是| F[保持原布局]
-    E -->|否| G[插入转置操作调整布局]
-    G --> H[输入布局调整]
-    G --> I[滤波器布局调整]
-    G --> J[输出布局调整]
-    H --> K[更新输入布局]
-    I --> L[更新滤波器布局]
-    J --> M[更新输出布局]
-    K --> N[更新卷积属性]
-    L --> N
-    M --> N
-    N --> O[优化后的卷积操作]
-    
-    P[量化卷积操作 QuantizedDynamicConvOp] --> C
-    Q[GPU/CUDA环境] --> D
-    R[CPU环境] --> D
-    
-    style A fill:#f9d,stroke:#333
-    style P fill:#f9d,stroke:#333
-    style B fill:#bbf,stroke:#333
-    style C fill:#cfc,stroke:#333
-    style D fill:#cfc,stroke:#333
-    style E fill:#ffd,stroke:#333
-    style G fill:#fcc,stroke:#333
-    style N fill:#cfc,stroke:#333
-    style O fill:#9f9,stroke:#333</pre>
-
-]]></content>
-      <categories>
-        <category>编译技术</category>
-        <category>机器学习编译</category>
-        <category>计算优化</category>
-      </categories>
-      <tags>
-        <tag>机器学习编译器</tag>
-        <tag>mlir</tag>
-        <tag>算子融合技术</tag>
       </tags>
   </entry>
   <entry>

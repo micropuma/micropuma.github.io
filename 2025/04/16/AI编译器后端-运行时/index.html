@@ -27,6 +27,10 @@
 <meta property="og:locale" content="zh_CN">
 <meta property="og:image" content="http://example.com/images/image-20250420234716898.png">
 <meta property="og:image" content="http://example.com/images/image-20250418172339205.png">
+<meta property="og:image" content="http://example.com/images/image-20250421103410716.png">
+<meta property="og:image" content="http://example.com/images/image-20250421103520060.png">
+<meta property="og:image" content="http://example.com/images/image-20250421105323107.png">
+<meta property="og:image" content="http://example.com/images/image-20250421110831028.png">
 <meta property="og:image" content="http://example.com/images/image-20250418182641748.png">
 <meta property="og:image" content="http://example.com/images/image-20250418183157655.png">
 <meta property="og:image" content="http://example.com/images/image-20250418185356799.png">
@@ -40,7 +44,7 @@
 <meta property="og:image" content="http://example.com/images/image-20250416230058925.png">
 <meta property="og:image" content="http://example.com/images/image-20250416231046705.png">
 <meta property="article:published_time" content="2025-04-16T09:52:16.000Z">
-<meta property="article:modified_time" content="2025-04-20T15:47:24.876Z">
+<meta property="article:modified_time" content="2025-04-21T03:20:30.580Z">
 <meta property="article:author" content="Leon Dou">
 <meta property="article:tag" content="机器学习编译器">
 <meta property="article:tag" content="后端">
@@ -239,7 +243,7 @@
                   <i class="far fa-calendar-check"></i>
                 </span>
                 <span class="post-meta-item-text">更新于</span>
-                <time title="修改时间：2025-04-20 23:47:24" itemprop="dateModified" datetime="2025-04-20T23:47:24+08:00">2025-04-20</time>
+                <time title="修改时间：2025-04-21 11:20:30" itemprop="dateModified" datetime="2025-04-21T11:20:30+08:00">2025-04-21</time>
               </span>
             <span class="post-meta-item">
               <span class="post-meta-item-icon">
@@ -276,14 +280,14 @@
                 <i class="far fa-file-word"></i>
               </span>
                 <span class="post-meta-item-text">本文字数：</span>
-              <span>4.3k</span>
+              <span>5.8k</span>
             </span>
             <span class="post-meta-item" title="阅读时长">
               <span class="post-meta-item-icon">
                 <i class="far fa-clock"></i>
               </span>
                 <span class="post-meta-item-text">阅读时长 &asymp;</span>
-              <span>4 分钟</span>
+              <span>5 分钟</span>
             </span>
 
         </div>
@@ -310,7 +314,44 @@
 <li>运行时系统层：运行时系统设计一般均有一个虚拟机VM用以支持调度和快速部署（IREE架构的VM和Relay VM）。其输入是编译层生成的可在硬件上执行的任务序列，<strong>如果考虑跨硬件部署，则需要考虑使用函数类型擦除技术统一接口</strong>。然后，VM将任务序列转换成硬件设备api和host端代码，最终分别生成可执行。</li>
 </ul>
 <p>后续会详细解读每一层的流程，以及可参考文献。</p>
-<h3 id="编译系统"><a href="#编译系统" class="headerlink" title="编译系统"></a><font color = green>编译系统</font></h3><h3 id="运行时系统"><a href="#运行时系统" class="headerlink" title="运行时系统"></a><font color = green>运行时系统</font></h3><blockquote>
+<h3 id="编译系统"><a href="#编译系统" class="headerlink" title="编译系统"></a><font color = green>编译系统</font></h3><h3 id="运行时系统"><a href="#运行时系统" class="headerlink" title="运行时系统"></a><font color = green>运行时系统</font></h3><p>这一章节关于运行时系统的描述，主要参考<a target="_blank" rel="noopener" href="https://www.lei.chat/posts/single-node-ml-runtime-foundation/">Lei chat blog</a>，本章的描述均基于单节点来讨论，服务器等多节点暂不涉及。</p>
+<p>首先，我们需要明确，什么是机器学习系统的runtime system。runtime system的主要工作有两点：</p>
+<ul>
+<li>管理资源（内存资源等）</li>
+<li>调度执行</li>
+</ul>
+<p>根据实际语义，runtime亦有不同。多卡分布式训练场景下，runtime负责将训练任务分配调度到数据中心的不同节点。单节点上，runtime负责派发张量计算到特定的加速器。<strong>本章节关注单节点runtime系统，其一般运行在CPU上来管理资源并调度机器学习任务负载到一个或多个加速器上。</strong></p>
+<h4 id="运行时抽象"><a href="#运行时抽象" class="headerlink" title="运行时抽象"></a>运行时抽象</h4><p>运行时系统给用户提供了三个抽象：</p>
+<ul>
+<li><p>主机设备分离</p>
+<blockquote>
+<p>摘自博客的解释：</p>
+<p><img src="/images/image-20250421103410716.png" alt="image-20250421103410716"></p>
+<p><img src="/images/image-20250421103520060.png" alt="image-20250421103520060"></p>
+</blockquote>
+</li>
+<li><p>虚拟机抽象</p>
+<p>这一部分是我们理解整个runtime的重点，具体的实际例子可以参考<a target="_blank" rel="noopener" href="https://github.com/iree-org/iree">IREE </a>和<a target="_blank" rel="noopener" href="https://zhuanlan.zhihu.com/p/504066888">tvm runtime</a>设计细节。针对机器学习系统以及我们的cpu加速器协同架构，我们会有如下insights：</p>
+<ul>
+<li>首先我们观察主机设备架构，会发现相比设备端，主机端的系统架构是比较统一的（ARM64， x86_64和RISC-V）。</li>
+<li>观察机器学习的任务，发现机器学习任务一般是<a target="_blank" rel="noopener" href="https://llvm.org/doxygen/classllvm_1_1LoopNest.html">完美循环</a>（定义见llvm官方文档）。因此<strong>访存方面用逻辑偏移即可，而非物理指针</strong>。</li>
+<li>机器学习模型部署在端侧，因此轻量化也是一大考量。</li>
+</ul>
+<p>基于上述insights，主流ai编译器均定义一套主机端虚拟指令集和虚拟机来实现调度。计算密集任务放在加速器上，存储资源追踪管理以及维度形状计算等逻辑（适合cpu端计算的逻辑）放在虚拟机上。如下图所示是IREE的虚拟机架构图：</p>
+<p><img src="/images/image-20250421105323107.png" alt="image-20250421105323107"></p>
+<p>上述虚拟机设计，还有一大好处，那就是可以很自然的完成从mlir系统到虚拟机指令ISA的编译转换。因此整个调度控制流程可以自然地通过编译器来控制，进一步提供可优化点。</p>
+</li>
+<li><p>HAL硬件抽象层</p>
+<p>针对边缘&#x2F;客户端设备的多样化硬件生态，最佳实践是基于现代图形&#x2F;计算API（如Vulkan、DirectX 12、Metal）构建硬件抽象层（HAL）。这些API提供低开销、跨平台支持、显式控制等优势，能统一管理不同厂商的GPU&#x2F;加速器（如NVIDIA&#x2F;AMD&#x2F;Apple）。虽然这些API直接使用复杂（如代码冗长），但通过编译器自动生成调用逻辑，可绕过开发难度，同时保留底层控制权。这种设计既能满足高性能需求（通过低层级优化），又能覆盖多平台&#x2F;硬件的兼容性（如Windows&#x2F;iOS&#x2F;Android），为碎片化设备提供统一且高效的计算支持。如下是iree的HAL，VM架构图。</p>
+<p><img src="/images/image-20250421110831028.png" alt="image-20250421110831028"></p>
+</li>
+</ul>
+<p>上述是runtime system的三个抽象，而实际生产中，runtime系统也要充分考虑性能问题：</p>
+<blockquote>
+<p>在GPU资源管理与同步中，核心挑战在于平衡计算吞吐量与系统整体效率。由于GPU内存性能常落后于算力提升，单纯优化单内核代码（如矩阵乘法）难以发挥理论峰值，需避免运行时因频繁创建&#x2F;销毁资源（如缓冲区、同步对象）或跨组件数据拷贝&#x2F;强制等待导致的性能损耗。为此，可借鉴图形应用（如游戏引擎）的成熟实践：<strong>预分配资源池</strong>减少动态开销、<strong>预录异步命令链</strong>最大化GPU并行度、<strong>细粒度同步</strong>基于资源生命周期。这些策略可通过编译器自动化实现（如依赖分析与指令提升）。IREE运行时采用<strong>异步优先</strong>设计，支持跨组件无缝传递缓冲区与同步原语，利用操作系统底层机制（如Linux的dma_fence）避免硬性边界，既保障ML模型的高效执行，又能嵌入复杂应用（如图像处理管线）而不成为性能瓶颈，兼顾性能与系统协同。</p>
+</blockquote>
+<p>上述关于运行时系统的描述，是比较普遍的，下面结合Open MLsys一书，详细解读不同运行时系统的分类。</p>
+<blockquote>
 <p>经过算子选择与内存分配之后，计算任务可以通过运行时完成计算的调度与在硬件上的执行。根据是否将算子编译为计算图，计算的调度可以分为单算子调度与计算图调度两种方式，例如在MindSpore中分别提供了PyNative模式和Graph模式。而根据硬件提供的能力差异，计算图的执行方式又可以分为逐算子下发执行的交互式执行以及将整个计算图或者部分子图一次性下发到硬件的下沉式执行两种模式。                                                                                                                                                                      —- 《Open Mlysy》</p>
 </blockquote>
 <h4 id="单算子调度"><a href="#单算子调度" class="headerlink" title="单算子调度"></a>单算子调度</h4><p>一行行算子line by line的交由python运行时执行，好处是方便debug和看到即时效果，坏处是只能顺序执行，丧失很多并行性，同时也无法支持编译优化。</p>
@@ -436,8 +477,9 @@
 <h3 id="XLA编译器后端-Runtime"><a href="#XLA编译器后端-Runtime" class="headerlink" title="XLA编译器后端&amp;Runtime"></a><font color = green>XLA编译器后端&amp;Runtime</font></h3><p>重点参考<a target="_blank" rel="noopener" href="https://zhuanlan.zhihu.com/p/651036523">XLA编译器机制博客</a>。</p>
 <h3 id="BladeDISC后端架构-Runtime"><a href="#BladeDISC后端架构-Runtime" class="headerlink" title="BladeDISC后端架构&amp;Runtime"></a><font color = green>BladeDISC后端架构&amp;Runtime</font></h3><h2 id="TPU-MLIR系统代码解读"><a href="#TPU-MLIR系统代码解读" class="headerlink" title="TPU-MLIR系统代码解读"></a><font color = brown>TPU-MLIR系统代码解读</font></h2><h2 id="References"><a href="#References" class="headerlink" title="References"></a><font color = brown>References</font></h2><ol>
 <li><a target="_blank" rel="noopener" href="https://www.iteye.com/blog/rednaxelafx-492667">虚拟机技术解读</a></li>
-<li><a href="">TVM runtime系统讲解</a></li>
+<li><a target="_blank" rel="noopener" href="https://zhuanlan.zhihu.com/p/504066888">TVM runtime系统讲解</a></li>
 <li><a target="_blank" rel="noopener" href="https://abdelfattah-class.github.io/ece5545/">Cornell: Machine learning hardware and system课程</a></li>
+<li><a target="_blank" rel="noopener" href="https://drive.google.com/file/d/1ikgOdZxnMz1ExqwrAiuTY9exbe3yMWbB/view">IREE运行时系统设计</a></li>
 </ol>
 
     </div>
@@ -525,7 +567,7 @@
 
       <!--noindex-->
       <div class="post-toc-wrap sidebar-panel">
-          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#AI%E7%BC%96%E8%AF%91%E5%99%A8%E5%90%8E%E7%AB%AF%E5%92%8C%E8%BF%90%E8%A1%8C%E6%97%B6%E6%9E%B6%E6%9E%84"><span class="nav-number">1.</span> <span class="nav-text">AI编译器后端和运行时架构</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E7%BC%96%E8%AF%91%E7%B3%BB%E7%BB%9F"><span class="nav-number">1.1.</span> <span class="nav-text">编译系统</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E8%BF%90%E8%A1%8C%E6%97%B6%E7%B3%BB%E7%BB%9F"><span class="nav-number">1.2.</span> <span class="nav-text">运行时系统</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#%E5%8D%95%E7%AE%97%E5%AD%90%E8%B0%83%E5%BA%A6"><span class="nav-number">1.2.1.</span> <span class="nav-text">单算子调度</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E8%AE%A1%E7%AE%97%E5%9B%BE%E8%B0%83%E5%BA%A6"><span class="nav-number">1.2.2.</span> <span class="nav-text">计算图调度</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E7%AE%97%E5%AD%90%E4%BA%A4%E4%BA%92%E6%89%A7%E8%A1%8C"><span class="nav-number">1.2.3.</span> <span class="nav-text">算子交互执行</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E4%B8%8B%E6%B2%89%E5%BC%8F%E6%89%A7%E8%A1%8C"><span class="nav-number">1.2.4.</span> <span class="nav-text">下沉式执行</span></a></li></ol></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E8%AE%A1%E7%AE%97%E5%9B%BE%E7%BC%96%E8%AF%91%E5%99%A8"><span class="nav-number">2.</span> <span class="nav-text">计算图编译器</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%85%B8%E5%9E%8B%E7%BC%96%E8%AF%91%E5%99%A8%E8%A7%A3%E8%AF%BB"><span class="nav-number">3.</span> <span class="nav-text">典型编译器解读</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#TVM-%E5%90%8E%E7%AB%AF%E6%9E%B6%E6%9E%84-Runtime"><span class="nav-number">3.1.</span> <span class="nav-text">TVM 后端架构&amp;Runtime</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#%E8%BF%90%E8%A1%8C%E6%97%B6%E6%A1%86%E6%9E%B6%E5%9B%BE"><span class="nav-number">3.1.1.</span> <span class="nav-text">运行时框架图</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#XLA%E7%BC%96%E8%AF%91%E5%99%A8%E5%90%8E%E7%AB%AF-Runtime"><span class="nav-number">3.2.</span> <span class="nav-text">XLA编译器后端&amp;Runtime</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#BladeDISC%E5%90%8E%E7%AB%AF%E6%9E%B6%E6%9E%84-Runtime"><span class="nav-number">3.3.</span> <span class="nav-text">BladeDISC后端架构&amp;Runtime</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#TPU-MLIR%E7%B3%BB%E7%BB%9F%E4%BB%A3%E7%A0%81%E8%A7%A3%E8%AF%BB"><span class="nav-number">4.</span> <span class="nav-text">TPU-MLIR系统代码解读</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#References"><span class="nav-number">5.</span> <span class="nav-text">References</span></a></li></ol></div>
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#AI%E7%BC%96%E8%AF%91%E5%99%A8%E5%90%8E%E7%AB%AF%E5%92%8C%E8%BF%90%E8%A1%8C%E6%97%B6%E6%9E%B6%E6%9E%84"><span class="nav-number">1.</span> <span class="nav-text">AI编译器后端和运行时架构</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E7%BC%96%E8%AF%91%E7%B3%BB%E7%BB%9F"><span class="nav-number">1.1.</span> <span class="nav-text">编译系统</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E8%BF%90%E8%A1%8C%E6%97%B6%E7%B3%BB%E7%BB%9F"><span class="nav-number">1.2.</span> <span class="nav-text">运行时系统</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#%E8%BF%90%E8%A1%8C%E6%97%B6%E6%8A%BD%E8%B1%A1"><span class="nav-number">1.2.1.</span> <span class="nav-text">运行时抽象</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E5%8D%95%E7%AE%97%E5%AD%90%E8%B0%83%E5%BA%A6"><span class="nav-number">1.2.2.</span> <span class="nav-text">单算子调度</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E8%AE%A1%E7%AE%97%E5%9B%BE%E8%B0%83%E5%BA%A6"><span class="nav-number">1.2.3.</span> <span class="nav-text">计算图调度</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E7%AE%97%E5%AD%90%E4%BA%A4%E4%BA%92%E6%89%A7%E8%A1%8C"><span class="nav-number">1.2.4.</span> <span class="nav-text">算子交互执行</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E4%B8%8B%E6%B2%89%E5%BC%8F%E6%89%A7%E8%A1%8C"><span class="nav-number">1.2.5.</span> <span class="nav-text">下沉式执行</span></a></li></ol></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E8%AE%A1%E7%AE%97%E5%9B%BE%E7%BC%96%E8%AF%91%E5%99%A8"><span class="nav-number">2.</span> <span class="nav-text">计算图编译器</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%85%B8%E5%9E%8B%E7%BC%96%E8%AF%91%E5%99%A8%E8%A7%A3%E8%AF%BB"><span class="nav-number">3.</span> <span class="nav-text">典型编译器解读</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#TVM-%E5%90%8E%E7%AB%AF%E6%9E%B6%E6%9E%84-Runtime"><span class="nav-number">3.1.</span> <span class="nav-text">TVM 后端架构&amp;Runtime</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#%E8%BF%90%E8%A1%8C%E6%97%B6%E6%A1%86%E6%9E%B6%E5%9B%BE"><span class="nav-number">3.1.1.</span> <span class="nav-text">运行时框架图</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#XLA%E7%BC%96%E8%AF%91%E5%99%A8%E5%90%8E%E7%AB%AF-Runtime"><span class="nav-number">3.2.</span> <span class="nav-text">XLA编译器后端&amp;Runtime</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#BladeDISC%E5%90%8E%E7%AB%AF%E6%9E%B6%E6%9E%84-Runtime"><span class="nav-number">3.3.</span> <span class="nav-text">BladeDISC后端架构&amp;Runtime</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#TPU-MLIR%E7%B3%BB%E7%BB%9F%E4%BB%A3%E7%A0%81%E8%A7%A3%E8%AF%BB"><span class="nav-number">4.</span> <span class="nav-text">TPU-MLIR系统代码解读</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#References"><span class="nav-number">5.</span> <span class="nav-text">References</span></a></li></ol></div>
       </div>
       <!--/noindex-->
 
@@ -589,13 +631,13 @@
       <i class="fa fa-chart-area"></i>
     </span>
       <span class="post-meta-item-text">站点总字数：</span>
-    <span title="站点总字数">70k</span>
+    <span title="站点总字数">72k</span>
     <span class="post-meta-divider">|</span>
     <span class="post-meta-item-icon">
       <i class="fa fa-coffee"></i>
     </span>
       <span class="post-meta-item-text">站点阅读时长 &asymp;</span>
-    <span title="站点阅读时长">1:04</span>
+    <span title="站点阅读时长">1:05</span>
 </div>
   <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://pisces.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Pisces</a> 强力驱动
   </div>
