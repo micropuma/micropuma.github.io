@@ -1,0 +1,706 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 7.3.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"example.com","root":"/","scheme":"Pisces","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":true,"show_result":true,"style":"mac"},"back2top":{"enable":true,"sidebar":false,"scrollpercent":true},"bookmark":{"enable":true,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":"gitalk","storage":true,"lazyload":false,"nav":null,"activeClass":"gitalk"},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":5,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta property="og:type" content="article">
+<meta property="og:title" content="MLIR basics: deepdive part1">
+<meta property="og:url" content="http://example.com/2025/04/22/MLIR-basics-deepdive-part1/index.html">
+<meta property="og:site_name" content="Leon&#39;s Blog">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://example.com/images/image-20250422105012239.png">
+<meta property="og:image" content="http://example.com/images/image-20250422105310560.png">
+<meta property="og:image" content="http://example.com/images/image-20250422130653462.png">
+<meta property="og:image" content="http://example.com/images/image-20250422131035118.png">
+<meta property="og:image" content="http://example.com/images/image-20250422131140983.png">
+<meta property="og:image" content="http://example.com/images/image-20250422133350287.png">
+<meta property="og:image" content="http://example.com/images/image-20250422133953920.png">
+<meta property="og:image" content="http://example.com/images/image-20250422134301210.png">
+<meta property="og:image" content="http://example.com/images/image-20250422134727315.png">
+<meta property="og:image" content="http://example.com/images/image-20250422134946924.png">
+<meta property="og:image" content="http://example.com/images/image-20250422135114847.png">
+<meta property="og:image" content="http://example.com/images/image-20250422141744357.png">
+<meta property="og:image" content="http://example.com/images/image-20250422140535380.png">
+<meta property="og:image" content="http://example.com/images/image-20250422140614518.png">
+<meta property="og:image" content="http://example.com/images/image-20250422141259704.png">
+<meta property="article:published_time" content="2025-04-22T02:49:13.000Z">
+<meta property="article:modified_time" content="2025-04-22T06:42:16.439Z">
+<meta property="article:author" content="Leon Dou">
+<meta property="article:tag" content="mlir">
+<meta property="article:tag" content="basics">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://example.com/images/image-20250422105012239.png">
+
+<link rel="canonical" href="http://example.com/2025/04/22/MLIR-basics-deepdive-part1/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>MLIR basics: deepdive part1 | Leon's Blog</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">Leon's Blog</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">分享一点有趣的技术</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocapitalize="off"
+           placeholder="搜索..." spellcheck="false"
+           type="search" class="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result">
+  <div id="no-result">
+    <i class="fa fa-spinner fa-pulse fa-5x fa-fw"></i>
+  </div>
+</div>
+
+    </div>
+  </div>
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+  <div class="reading-progress-bar"></div>
+  <a role="button" class="book-mark-link book-mark-link-fixed"></a>
+
+  <a href="https://github.com/micropuma" class="github-corner" title="Follow me on GitHub" aria-label="Follow me on GitHub" rel="noopener" target="_blank"><svg width="80" height="80" viewBox="0 0 250 250" aria-hidden="true"><path d="M0,0 L115,115 L130,115 L142,142 L250,250 L250,0 Z"></path><path d="M128.3,109.0 C113.8,99.7 119.0,89.6 119.0,89.6 C122.0,82.7 120.5,78.6 120.5,78.6 C119.2,72.0 123.4,76.3 123.4,76.3 C127.3,80.9 125.5,87.3 125.5,87.3 C122.9,97.6 130.6,101.9 134.4,103.2" fill="currentColor" style="transform-origin: 130px 106px;" class="octo-arm"></path><path d="M115.0,115.0 C114.9,115.1 118.7,116.5 119.8,115.4 L133.7,101.6 C136.9,99.2 139.9,98.4 142.2,98.6 C133.8,88.0 127.5,74.4 143.8,58.0 C148.5,53.4 154.0,51.2 159.7,51.0 C160.3,49.4 163.2,43.6 171.4,40.1 C171.4,40.1 176.1,42.5 178.8,56.2 C183.1,58.6 187.2,61.8 190.9,65.4 C194.5,69.0 197.7,73.2 200.1,77.6 C213.8,80.2 216.3,84.9 216.3,84.9 C212.7,93.1 206.9,96.0 205.4,96.6 C205.1,102.4 203.0,107.8 198.3,112.5 C181.9,128.9 168.3,122.5 157.7,114.1 C157.9,116.9 156.7,120.9 152.7,124.9 L141.0,136.5 C139.8,137.7 141.6,141.9 141.8,141.8 Z" fill="currentColor" class="octo-body"></path></svg></a>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://example.com/2025/04/22/MLIR-basics-deepdive-part1/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="Leon Dou">
+      <meta itemprop="description" content="关注领域：体系结构，编译技术">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Leon's Blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          MLIR basics: deepdive part1
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+              
+
+              <time title="创建时间：2025-04-22 10:49:13 / 修改时间：14:42:16" itemprop="dateCreated datePublished" datetime="2025-04-22T10:49:13+08:00">2025-04-22</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/%E7%BC%96%E8%AF%91%E6%8A%80%E6%9C%AF/" itemprop="url" rel="index"><span itemprop="name">编译技术</span></a>
+                </span>
+                  ，
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/%E7%BC%96%E8%AF%91%E6%8A%80%E6%9C%AF/mlir/" itemprop="url" rel="index"><span itemprop="name">mlir</span></a>
+                </span>
+                  ，
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/%E7%BC%96%E8%AF%91%E6%8A%80%E6%9C%AF/mlir/basics/" itemprop="url" rel="index"><span itemprop="name">basics</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span><br>
+            <span class="post-meta-item" title="本文字数">
+              <span class="post-meta-item-icon">
+                <i class="far fa-file-word"></i>
+              </span>
+                <span class="post-meta-item-text">本文字数：</span>
+              <span>6.9k</span>
+            </span>
+            <span class="post-meta-item" title="阅读时长">
+              <span class="post-meta-item-icon">
+                <i class="far fa-clock"></i>
+              </span>
+                <span class="post-meta-item-text">阅读时长 &asymp;</span>
+              <span>6 分钟</span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p><img src="/images/image-20250422105012239.png" alt="image-20250422105012239"></p>
+<span id="more"></span>
+
+<blockquote>
+<p>本篇文章主要基于mlir的<a target="_blank" rel="noopener" href="https://www.youtube.com/watch?v=7ofnlCFzlqg">公开talk</a>，深入理解一下mlir中的operation，attributes以及properties机制的底层实现。本文先着重解读operation的底层实现机制。</p>
+</blockquote>
+<h2 id="MLIR-Operation-Intro"><a href="#MLIR-Operation-Intro" class="headerlink" title="MLIR Operation Intro"></a><font color = brown>MLIR Operation Intro</font></h2><p><img src="/images/image-20250422105310560.png" alt="image-20250422105310560"></p>
+<p>上图来源<a target="_blank" rel="noopener" href="https://www.youtube.com/watch?v=Y4SvqTtOIDk">mlir tutorial</a>。mlir operation是MLIR系统中最基本的可执行单元，其涵盖多种不同的抽象层级的计算（按照硬件相关性分类，可以分为硬件相关和硬件无关。抽象层级上，也有诸如vector operation和memref operation）。上图已经涵盖了operation op的每个细节，详情可参考<a target="_blank" rel="noopener" href="https://mlir.llvm.org/doxygen/classmlir_1_1Operation.html#details">mlir operation docs</a>。</p>
+<p>具体的使用细节，可以参考<a target="_blank" rel="noopener" href="https://harmonyhu.com/2021/08/17/mlir/#mliroperation">HarmonyHu MLIR技术细节整理</a>。</p>
+<p><code>mlir::Operation</code>是通用定义，包含通用的接口和属性；<code>MulOp</code>、<code>TransposeOp</code>、<code>ConstantOp</code>等等是特定定义，包含特定的属性。前者可以通过<code>llvm::dyn_cast</code>（动态）或<code>llvm::cast</code>（静态）转换成后者；后者通过<code>getOperation()</code>转换成前者。</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="type">void</span> <span class="title">processConstantOp</span><span class="params">(mlir::Operation *operation)</span> </span>&#123;</span><br><span class="line">  ConstantOp op = llvm::<span class="built_in">dyn_cast</span>&lt;ConstantOp&gt;(operation);</span><br><span class="line"></span><br><span class="line">  <span class="comment">// This operation is not an instance of `ConstantOp`.</span></span><br><span class="line">  <span class="keyword">if</span> (!op)</span><br><span class="line">    <span class="keyword">return</span>;</span><br><span class="line"></span><br><span class="line">  <span class="comment">// Get the internal operation instance wrapped by the smart pointer.</span></span><br><span class="line">  mlir::Operation *internalOperation = op.<span class="built_in">getOperation</span>();</span><br><span class="line">  <span class="built_in">assert</span>(internalOperation == operation &amp;&amp;</span><br><span class="line">         <span class="string">&quot;these operation instances are the same&quot;</span>);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>特定Op可以直接访问属性；<code>mlir::Operation</code>无法直接访问特定Op的属性，但可以类似如下间接访问，如下：</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// getAttrOfType</span></span><br><span class="line">IntegerAttr opsetAttr = op-&gt;<span class="built_in">getAttrOfType</span>&lt;::mlir::Attribute&gt;(<span class="string">&quot;onnx_opset&quot;</span>).<span class="built_in">dyn_cast_or_null</span>&lt;IntegerAttr&gt;();</span><br><span class="line"><span class="keyword">if</span> (opsetAttr)</span><br><span class="line">  opset = opsetAttr.<span class="built_in">getValue</span>().<span class="built_in">getSExtValue</span>();</span><br><span class="line"><span class="comment">// getAttr</span></span><br><span class="line">mlir::Type targetType = op-&gt;<span class="built_in">getAttr</span>(<span class="string">&quot;to&quot;</span>).<span class="built_in">cast</span>&lt;::mlir::TypeAttr&gt;().<span class="built_in">getValue</span>();</span><br></pre></td></tr></table></figure>
+
+<p>operation的具体使用方面，提供了如下接口：</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br></pre></td><td class="code"><pre><span class="line"><span class="function">OperationName <span class="title">getName</span><span class="params">()</span> </span>&#123; <span class="keyword">return</span> name; &#125;</span><br><span class="line"><span class="comment">/// Remove this operation from its parent block and delete it.</span></span><br><span class="line"><span class="function"><span class="type">void</span> <span class="title">erase</span><span class="params">()</span></span>;</span><br><span class="line"><span class="comment">/// Remove the operation from its parent block, but don&#x27;t delete it.</span></span><br><span class="line"><span class="function"><span class="type">void</span> <span class="title">remove</span><span class="params">()</span></span>;</span><br><span class="line"><span class="comment">/// Returns the operation block that contains this operation.</span></span><br><span class="line"><span class="function">Block *<span class="title">getBlock</span><span class="params">()</span> </span>&#123; <span class="keyword">return</span> block; &#125;</span><br><span class="line"><span class="comment">/// Return the context this operation is associated with.</span></span><br><span class="line"><span class="function">MLIRContext *<span class="title">getContext</span><span class="params">()</span></span>;</span><br><span class="line"><span class="comment">/// Returns the closest surrounding operation that contains this operation</span></span><br><span class="line"><span class="comment">/// or nullptr if this is a top-level operation.</span></span><br><span class="line"><span class="function">Operation *<span class="title">getParentOp</span><span class="params">()</span> </span>&#123; <span class="keyword">return</span> block ? block-&gt;<span class="built_in">getParentOp</span>() : <span class="literal">nullptr</span>; &#125;</span><br><span class="line"><span class="comment">/// Return the closest surrounding parent operation that is of type &#x27;OpTy&#x27;.</span></span><br><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> OpTy&gt; <span class="function">OpTy <span class="title">getParentOfType</span><span class="params">()</span></span>;</span><br><span class="line"><span class="function"><span class="type">void</span> <span class="title">dump</span><span class="params">()</span></span>;</span><br><span class="line"><span class="function"><span class="type">unsigned</span> <span class="title">getNumOperands</span><span class="params">()</span></span>;</span><br><span class="line"><span class="function">Value <span class="title">getOperand</span><span class="params">(<span class="type">unsigned</span> idx)</span> </span>&#123; <span class="keyword">return</span> <span class="built_in">getOpOperand</span>(idx).<span class="built_in">get</span>(); &#125;</span><br><span class="line"><span class="function"><span class="type">void</span> <span class="title">setOperand</span><span class="params">(<span class="type">unsigned</span> idx, Value value)</span></span>;</span><br><span class="line"><span class="function"><span class="type">unsigned</span> <span class="title">getNumResults</span><span class="params">()</span></span>;</span><br><span class="line"><span class="comment">/// Get the &#x27;idx&#x27;th result of this operation.</span></span><br><span class="line"><span class="function">OpResult <span class="title">getResult</span><span class="params">(<span class="type">unsigned</span> idx)</span> </span>&#123; <span class="keyword">return</span> <span class="built_in">OpResult</span>(<span class="keyword">this</span>, idx); &#125;</span><br><span class="line"><span class="function"><span class="type">void</span> <span class="title">replaceAllUsesWith</span><span class="params">(Operation *op)</span></span>;</span><br><span class="line"><span class="function"><span class="type">void</span> <span class="title">moveBefore</span><span class="params">(Operation *existingOp)</span></span>;</span><br><span class="line"><span class="function"><span class="type">void</span> <span class="title">moveBefore</span><span class="params">(Block *block, llvm::iplist&lt;Operation&gt;::iterator iterator)</span></span>;</span><br><span class="line"><span class="function"><span class="type">void</span> <span class="title">moveAfter</span><span class="params">(Operation *existingOp)</span></span>;</span><br><span class="line"><span class="function"><span class="type">void</span> <span class="title">moveAfter</span><span class="params">(Block *block, llvm::iplist&lt;Operation&gt;::iterator iterator)</span></span>;</span><br></pre></td></tr></table></figure>
+
+
+
+<h2 id="MLIR-Operation-Internal"><a href="#MLIR-Operation-Internal" class="headerlink" title="MLIR Operation Internal"></a><font color = brown>MLIR Operation Internal</font></h2><p>前一章节主要介绍<code>mlir operation</code>以及其使用细节，而这一章则深入挖掘operation的底层实现存储。本章主要参考<a target="_blank" rel="noopener" href="https://www.youtube.com/watch?v=7ofnlCFzlqg">mlir properties talk</a>。</p>
+<p>首先我们先来看一下mlir的官方doc中，对于operation的底层细节的一些描述：</p>
+<blockquote>
+<p>An <a target="_blank" rel="noopener" href="https://mlir.llvm.org/doxygen/classmlir_1_1Operation.html">Operation</a> defines zero or more SSA <code>Value</code> that we refer to as the <a target="_blank" rel="noopener" href="https://mlir.llvm.org/doxygen/classmlir_1_1Operation.html">Operation</a> results. This array of <a target="_blank" rel="noopener" href="https://mlir.llvm.org/doxygen/classmlir_1_1Value.html">Value</a> is actually stored in memory before the <a target="_blank" rel="noopener" href="https://mlir.llvm.org/doxygen/classmlir_1_1Operation.html">Operation</a> itself in reverse order. That is for an <a target="_blank" rel="noopener" href="https://mlir.llvm.org/doxygen/classmlir_1_1Operation.html">Operation</a> with 3 results we allocate the following memory layout:</p>
+<p>[Result2, Result1, Result0, <a target="_blank" rel="noopener" href="https://mlir.llvm.org/doxygen/classmlir_1_1Operation.html">Operation</a>] ^ this is where <code>Operation*</code> pointer points to.</p>
+<p>A consequence of this is that this class must be heap allocated, which is handled by the various <code>create</code> methods. Each result contains:</p>
+<ul>
+<li>one pointer to the first use (see <code>OpOperand</code>)</li>
+<li>the type of the SSA <a target="_blank" rel="noopener" href="https://mlir.llvm.org/doxygen/classmlir_1_1Value.html">Value</a> this result defines.</li>
+<li>the index for this result in the array. The results are defined as subclass of <code>ValueImpl</code>, and more precisely as the only two subclasses of <code>OpResultImpl</code>: <code>InlineOpResult</code> and <code>OutOfLineOpResult</code>. The former is used for the first 5 results and the latter for the subsequent ones. They differ in how they store their index: the first 5 results only need 3 bits and thus are packed with the <a target="_blank" rel="noopener" href="https://mlir.llvm.org/doxygen/classmlir_1_1Type.html">Type</a> pointer, while the subsequent one have an extra <code>unsigned</code> value and thus need more space.</li>
+</ul>
+<p>An <a target="_blank" rel="noopener" href="https://mlir.llvm.org/doxygen/classmlir_1_1Operation.html">Operation</a> also has zero or more operands: these are uses of SSA <a target="_blank" rel="noopener" href="https://mlir.llvm.org/doxygen/classmlir_1_1Value.html">Value</a>, which can be the results of other operations or <a target="_blank" rel="noopener" href="https://mlir.llvm.org/doxygen/classmlir_1_1Block.html">Block</a> arguments. Each of these uses is an instance of <code>OpOperand</code>. This optional array is initially tail allocated with the operation class itself, but can be dynamically moved out-of-line in a dynamic allocation as needed.</p>
+<p>An <a target="_blank" rel="noopener" href="https://mlir.llvm.org/doxygen/classmlir_1_1Operation.html">Operation</a> may contain optionally one or multiple Regions, stored in a tail allocated array. Each <code>Region</code> is a list of Blocks. Each <code>Block</code> is itself a list of Operations. This structure is effectively forming a tree.</p>
+<p>Some operations like branches also refer to other <a target="_blank" rel="noopener" href="https://mlir.llvm.org/doxygen/classmlir_1_1Block.html">Block</a>, in which case they would have an array of <code>BlockOperand</code>.</p>
+<p>An <a target="_blank" rel="noopener" href="https://mlir.llvm.org/doxygen/classmlir_1_1Operation.html">Operation</a> may contain optionally a “Properties” object: this is a pre-defined C++ object with a fixed size. This object is owned by the operation and deleted with the operation. It can be converted to an <a target="_blank" rel="noopener" href="https://mlir.llvm.org/doxygen/classmlir_1_1Attribute.html">Attribute</a> on demand, or loaded from an <a target="_blank" rel="noopener" href="https://mlir.llvm.org/doxygen/classmlir_1_1Attribute.html">Attribute</a>.</p>
+<p>Finally an <a target="_blank" rel="noopener" href="https://mlir.llvm.org/doxygen/classmlir_1_1Operation.html">Operation</a> also contain an optional <code>DictionaryAttr</code>, a <a target="_blank" rel="noopener" href="https://mlir.llvm.org/doxygen/classmlir_1_1Location.html">Location</a>, and a pointer to its parent <a target="_blank" rel="noopener" href="https://mlir.llvm.org/doxygen/classmlir_1_1Block.html">Block</a> (if any).</p>
+</blockquote>
+<p>总结一下，mlir operation的底层细节中，比较有趣的点：</p>
+<ul>
+<li>操作的结果是以逆序存储在operation之前，并且前5个result和之后可能的result存储大小不一样，这个机制类似llvm的llvm::SmallVector实现。</li>
+<li>operand是尾部存储的方式存储在operation之后，旨在提供可扩展和可修改性（<strong>operand本质是对SSA value的引用，在mlir中经常会有修改引用的情况，比如replaceAllUsesWith()</strong>），同时也支持动态存储在别处。</li>
+<li>一个operation会有多个region，也是尾部存储方式存储。</li>
+</ul>
+<p>针对这些有趣的点，我们后续主要挖掘operation类的具体实现，以及operation前存储和tailing存储等技术细节。</p>
+<h3 id="Operation类的定义"><a href="#Operation类的定义" class="headerlink" title="Operation类的定义"></a><font color = green>Operation类的定义</font></h3><p><img src="/images/image-20250422130653462.png" alt="image-20250422130653462"></p>
+<p>如图所示是<code>/include/mlir/ir/operation.h</code>文件，截取的是operation类的定义，继承自<code>ilist_node_with_parent</code>和<code>TrailingObjects</code>。</p>
+<h4 id="ilist-node-with-parent"><a href="#ilist-node-with-parent" class="headerlink" title="ilist_node_with_parent"></a>ilist_node_with_parent</h4><p>参考<a target="_blank" rel="noopener" href="https://llvm.org/doxygen/classllvm_1_1ilist__node__with__parent-members.html">llvm member list文档</a>，其定义如下：</p>
+<p><img src="/images/image-20250422131035118.png" alt="image-20250422131035118"></p>
+<p>是一个双向链表，允许operation获取其prev节点和next节点，分别有如下api调用：</p>
+<p><img src="/images/image-20250422131140983.png" alt="image-20250422131140983"></p>
+<blockquote>
+<p>这个链表属于侵入式链表，和朴素的std::list有区别，具体参见<a target="_blank" rel="noopener" href="https://www.boost.org/doc/libs/1_79_0/doc/html/intrusive/intrusive_vs_nontrusive.html">Boost侵入式链表文档</a>。这一块比较复杂，后续再学。</p>
+</blockquote>
+<h4 id="Trailing-Objects"><a href="#Trailing-Objects" class="headerlink" title="Trailing Objects"></a>Trailing Objects</h4><p>Trailing Objects的原理十分简单，如下是c++中的解释：</p>
+<blockquote>
+<p>是一个在 C++ 中的术语，指的是一个对象，它紧跟在一个类的末尾，并且其大小是动态的或不固定的。通常，尾部对象用于在类内部存储一些额外的数据，这些数据的大小在编译时是不确定的，可能根据运行时的条件或对象的使用来决定。</p>
+</blockquote>
+<p>在<code>llvm/include/support/TrailingObjects.h</code>头文件中，有对于这个类的详细定义。注释中给出一个如何定义trailing object类的例子。</p>
+<p><code>类的定义</code></p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 定义VarLenghObj，该对象有固定的int和可变的double数组</span></span><br><span class="line"><span class="keyword">class</span> <span class="title class_">VarLengthObj</span> : <span class="keyword">private</span> TrailingObjects&lt;VarLengthObj, <span class="type">int</span>, <span class="type">double</span>&gt; &#123;</span><br><span class="line">  <span class="keyword">friend</span> TrailingObjects; <span class="comment">// 允许模板访问私有方法</span></span><br><span class="line">  <span class="type">unsigned</span> NumInts, NumDoubles;</span><br><span class="line">  </span><br><span class="line">  <span class="function"><span class="type">size_t</span> <span class="title">numTrailingObjects</span><span class="params">(OverloadToken&lt;<span class="type">int</span>&gt;)</span> <span class="type">const</span> </span>&#123; <span class="keyword">return</span> NumInts; &#125;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<p>注意这里有一个关键点，double是尾元素，因此其长度是可变的，所以没有numTrailingObjects方法实现。</p>
+<p><code>内存分配</code></p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">size_t</span> Size = VarLengthObj::<span class="built_in">totalSizeToAlloc</span>&lt;<span class="type">int</span>, <span class="type">double</span>&gt;(NumInts, NumDoubles);</span><br><span class="line"><span class="type">void</span> *Mem = <span class="keyword">operator</span> <span class="built_in">new</span>(Size);</span><br><span class="line"><span class="keyword">auto</span> *Obj = <span class="built_in">new</span> (Mem) <span class="built_in">VarLengthObj</span>();</span><br></pre></td></tr></table></figure>
+
+<p><code>访问数据</code></p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">int</span> *Ints = Obj-&gt;<span class="built_in">getTrailingObjects</span>&lt;<span class="type">int</span>&gt;();    <span class="comment">// 访问 int 数组</span></span><br><span class="line"><span class="type">double</span> *Doubles = Obj-&gt;<span class="built_in">getTrailingObjects</span>&lt;<span class="type">double</span>&gt;(); <span class="comment">// 访问 double 数组</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="Operation类的实现"><a href="#Operation类的实现" class="headerlink" title="Operation类的实现"></a><font color = green>Operation类的实现</font></h3><p><img src="/images/image-20250422133350287.png" alt="image-20250422133350287"></p>
+<p>这张图解释了operation的实际存储，具体如下：</p>
+<ul>
+<li>前16bytes是前序节点和后继节点，注意前序节点是ilist_node_base类型加一个int，用来表示哨兵。</li>
+<li>后续是block指针等信息，同时还有region，results等个数。</li>
+</ul>
+<p>上述的trailing objects中，只有OpOperand是编译时不确定可变的，其他均可通过operation这64bytes信息中的num值来推导实际存储位置，如下图所示：</p>
+<p><img src="/images/image-20250422133953920.png" alt="image-20250422133953920"></p>
+<p>该图展示了operation的getRegion()方法的底层实现原理。而唯一特殊的点就是OpOperand，是tail-allocated或是和operation存储分离的。该OpOperand的定位通过64bytes中的OperandStorage来辅助：</p>
+<p><img src="/images/image-20250422134301210.png" alt="image-20250422134301210"></p>
+<p>该OperandStorage中存储OpOperand指针，以及总共有多少operands。添加operands，这种模式也十分容易动态扩展。</p>
+<p>解读完OpOperand，region等信息后，operation还剩一个关键信息：result。</p>
+<p><img src="/images/image-20250422134727315.png" alt="image-20250422134727315"></p>
+<p>result的特殊性是其存储在operation存储体的前面，没有放在trailing objects中。其设计思路参考SmallVector设计，分为OutOfLineOpResult和InlineOpResult，对于少量result情况（&lt;&#x3D;6）可以有效压缩空间。其主要思路是用3bits表示有限的index索引，而超过3bits范围，则使用int表示索引范围，使得前六个result占用16bytes，其余为24个bytes。</p>
+<img src="/images/image-20250422134946924.png" alt="image-20250422134946924" style="zoom:67%;" />
+
+<p>从operation中获取指定的result，其实现如下，逻辑是比较清晰简单的：</p>
+<img src="/images/image-20250422135114847.png" alt="image-20250422135114847" style="zoom:67%;" />
+
+<p>同时也支持从result获取operation这样的操作。逻辑和上图基本一致。</p>
+<p>如下图是一张很好的operation结构总结图：</p>
+<p><img src="/images/image-20250422141744357.png" alt="image-20250422141744357"></p>
+<p>来源于<a target="_blank" rel="noopener" href="https://llvm.org/devmtg/2024-04/slides/Keynote/Amini-Niu-HowSlowIsMLIR.pdf">How Slow is MLIR talk</a>。</p>
+<h2 id="Debug实战"><a href="#Debug实战" class="headerlink" title="Debug实战"></a><font color = brown>Debug实战</font></h2><p>mlir的debug tips参考[debug博客](<a target="_blank" rel="noopener" href="https://micropuma.github.io/2025/04/20/MLIR-debug-tips/">MLIR debug tips | Leon’s Blog</a>)。首先打断点打在如图所示：</p>
+<p><img src="/images/image-20250422140535380.png" alt="image-20250422140535380"></p>
+<p>我们重点关注func::FuncOp的实现。</p>
+<p><img src="/images/image-20250422140614518.png" alt="image-20250422140614518"></p>
+<p>可以看到，OpState是指向operation实体的指针，其余均是OpTrait萃取或是interface接口，不属于本章节内容。</p>
+<p><img src="/images/image-20250422141259704.png" alt="image-20250422141259704"></p>
+<p>可以看到，OpState是符合前几章讲解的底层实现。</p>
+<p>至此，解读完mlir的operation的底层实现，下一章节会重点解读mlir的attributes机制的底层实现。</p>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/mlir/" rel="tag"># mlir</a>
+              <a href="/tags/basics/" rel="tag"># basics</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2025/04/20/MLIR-debug-tips/" rel="prev" title="MLIR debug tips">
+      <i class="fa fa-chevron-left"></i> MLIR debug tips
+    </a></div>
+      <div class="post-nav-item"></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+    <div class="comments" id="gitalk-container"></div>
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#MLIR-Operation-Intro"><span class="nav-number">1.</span> <span class="nav-text">MLIR Operation Intro</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#MLIR-Operation-Internal"><span class="nav-number">2.</span> <span class="nav-text">MLIR Operation Internal</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#Operation%E7%B1%BB%E7%9A%84%E5%AE%9A%E4%B9%89"><span class="nav-number">2.1.</span> <span class="nav-text">Operation类的定义</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#ilist-node-with-parent"><span class="nav-number">2.1.1.</span> <span class="nav-text">ilist_node_with_parent</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#Trailing-Objects"><span class="nav-number">2.1.2.</span> <span class="nav-text">Trailing Objects</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Operation%E7%B1%BB%E7%9A%84%E5%AE%9E%E7%8E%B0"><span class="nav-number">2.2.</span> <span class="nav-text">Operation类的实现</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Debug%E5%AE%9E%E6%88%98"><span class="nav-number">3.</span> <span class="nav-text">Debug实战</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">Leon Dou</p>
+  <div class="site-description" itemprop="description">关注领域：体系结构，编译技术</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">13</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">15</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">12</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2025</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Leon Dou</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-area"></i>
+    </span>
+      <span class="post-meta-item-text">站点总字数：</span>
+    <span title="站点总字数">79k</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+      <span class="post-meta-item-text">站点阅读时长 &asymp;</span>
+    <span title="站点阅读时长">1:11</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://pisces.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Pisces</a> 强力驱动
+  </div>
+
+        
+<div class="busuanzi-count">
+  <script data-pjax async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/pjax/pjax.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+<script src="/js/bookmark.js"></script>
+
+  <script>
+var pjax = new Pjax({
+  selectors: [
+    'head title',
+    '#page-configurations',
+    '.content-wrap',
+    '.post-toc-wrap',
+    '.languages',
+    '#pjax'
+  ],
+  switches: {
+    '.post-toc-wrap': Pjax.switches.innerHTML
+  },
+  analytics: false,
+  cacheBust: false,
+  scrollTo : !CONFIG.bookmark.enable
+});
+
+window.addEventListener('pjax:success', () => {
+  document.querySelectorAll('script[data-pjax], script#page-configurations, #pjax script').forEach(element => {
+    var code = element.text || element.textContent || element.innerHTML || '';
+    var parent = element.parentNode;
+    parent.removeChild(element);
+    var script = document.createElement('script');
+    if (element.id) {
+      script.id = element.id;
+    }
+    if (element.className) {
+      script.className = element.className;
+    }
+    if (element.type) {
+      script.type = element.type;
+    }
+    if (element.src) {
+      script.src = element.src;
+      // Force synchronous loading of peripheral JS.
+      script.async = false;
+    }
+    if (element.dataset.pjax !== undefined) {
+      script.dataset.pjax = '';
+    }
+    if (code !== '') {
+      script.appendChild(document.createTextNode(code));
+    }
+    parent.appendChild(script);
+  });
+  NexT.boot.refresh();
+  // Define Motion Sequence & Bootstrap Motion.
+  if (CONFIG.motion.enable) {
+    NexT.motion.integrator
+      .init()
+      .add(NexT.motion.middleWares.subMenu)
+      .add(NexT.motion.middleWares.postList)
+      .bootstrap();
+  }
+  NexT.utils.updateSidebarPosition();
+});
+</script>
+
+
+
+
+  
+
+
+
+
+  
+<script src="/js/local-search.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+    <div id="pjax">
+  
+
+  
+
+  
+
+<link rel="stylesheet" href="//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.min.css">
+
+<script>
+NexT.utils.loadComments(document.querySelector('#gitalk-container'), () => {
+  NexT.utils.getScript('//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.min.js', () => {
+    var gitalk = new Gitalk({
+      clientID    : 'Ov23liFsw1lTgh0R8s8H',
+      clientSecret: '1f947cb0d107ba1ffbcad8c25688c075224fff36',
+      repo        : 'micropuma.github.io',
+      owner       : 'micropuma',
+      admin       : ['micropuma'],
+      id          : 'c229450c26dde841d62ad7eef17d8911',
+        language: 'zh-CN',
+      distractionFreeMode: true
+    });
+    gitalk.render('gitalk-container');
+  }, window.Gitalk);
+});
+</script>
+
+    </div>
+</body>
+</html>
