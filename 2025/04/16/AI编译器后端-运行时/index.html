@@ -43,8 +43,15 @@
 <meta property="og:image" content="http://example.com/images/image-20250419143546984.png">
 <meta property="og:image" content="http://example.com/images/image-20250416230058925.png">
 <meta property="og:image" content="http://example.com/images/image-20250416231046705.png">
+<meta property="og:image" content="http://example.com/images/image-20250427220408720.png">
+<meta property="og:image" content="http://example.com/images/image-20250427212344275.png">
+<meta property="og:image" content="http://example.com/images/image-20250427214740408.png">
+<meta property="og:image" content="http://example.com/images/image-20250427215219613.png">
+<meta property="og:image" content="http://example.com/images/image-20250427220909637.png">
+<meta property="og:image" content="http://example.com/images/image-20250427221352121.png">
+<meta property="og:image" content="http://example.com/images/image-20250427221149589.png">
 <meta property="article:published_time" content="2025-04-16T09:52:16.000Z">
-<meta property="article:modified_time" content="2025-04-26T08:15:39.608Z">
+<meta property="article:modified_time" content="2025-04-27T14:14:32.822Z">
 <meta property="article:author" content="Leon Dou">
 <meta property="article:tag" content="机器学习编译器">
 <meta property="article:tag" content="后端">
@@ -243,7 +250,7 @@
                   <i class="far fa-calendar-check"></i>
                 </span>
                 <span class="post-meta-item-text">更新于</span>
-                <time title="修改时间：2025-04-26 16:15:39" itemprop="dateModified" datetime="2025-04-26T16:15:39+08:00">2025-04-26</time>
+                <time title="修改时间：2025-04-27 22:14:32" itemprop="dateModified" datetime="2025-04-27T22:14:32+08:00">2025-04-27</time>
               </span>
             <span class="post-meta-item">
               <span class="post-meta-item-icon">
@@ -280,14 +287,14 @@
                 <i class="far fa-file-word"></i>
               </span>
                 <span class="post-meta-item-text">本文字数：</span>
-              <span>5.8k</span>
+              <span>7k</span>
             </span>
             <span class="post-meta-item" title="阅读时长">
               <span class="post-meta-item-icon">
                 <i class="far fa-clock"></i>
               </span>
                 <span class="post-meta-item-text">阅读时长 &asymp;</span>
-              <span>5 分钟</span>
+              <span>6 分钟</span>
             </span>
 
         </div>
@@ -476,7 +483,53 @@
 <img src="/images/image-20250416231046705.png" alt="image-20250416231046705" style="zoom: 67%;" />
 
 <h3 id="IREE-runtime设计"><a href="#IREE-runtime设计" class="headerlink" title="IREE runtime设计"></a><font color = green>IREE runtime设计</font></h3><p>这部分内容主要参考<a target="_blank" rel="noopener" href="https://drive.google.com/file/d/1ikgOdZxnMz1ExqwrAiuTY9exbe3yMWbB/view">IREE runtime 设计slides</a>。</p>
-<h3 id="BladeDISC后端架构-Runtime"><a href="#BladeDISC后端架构-Runtime" class="headerlink" title="BladeDISC后端架构&amp;Runtime"></a><font color = green>BladeDISC后端架构&amp;Runtime</font></h3><h2 id="TPU-MLIR系统代码解读"><a href="#TPU-MLIR系统代码解读" class="headerlink" title="TPU-MLIR系统代码解读"></a><font color = brown>TPU-MLIR系统代码解读</font></h2><h2 id="References"><a href="#References" class="headerlink" title="References"></a><font color = brown>References</font></h2><ol>
+<h3 id="BladeDISC后端架构-Runtime"><a href="#BladeDISC后端架构-Runtime" class="headerlink" title="BladeDISC后端架构&amp;Runtime"></a><font color = green>BladeDISC后端架构&amp;Runtime</font></h3><h4 id="BladeDISC的key-feature"><a href="#BladeDISC的key-feature" class="headerlink" title="BladeDISC的key feature"></a>BladeDISC的key feature</h4><blockquote>
+<p><img src="/images/image-20250427220408720.png" alt="image-20250427220408720"></p>
+</blockquote>
+<p>BladeDISC项目在编译后端和runtime上，有许多巧思（动态shape引发的编译和运行时协作代码生成）。具体地参考<a target="_blank" rel="noopener" href="https://dl.acm.org/doi/10.1145/3617327">BladeDISC papaer</a>和<a target="_blank" rel="noopener" href="https://github.com/alibaba/BladeDISC">BladeDISC github project</a>，以及<a target="_blank" rel="noopener" href="https://bladedisc.oss-cn-hangzhou.aliyuncs.com/docs/bladedisc-intro-for-intel.pdf">BladeDISC内部分享</a>。</p>
+<h4 id="后端代码生成"><a href="#后端代码生成" class="headerlink" title="后端代码生成"></a>后端代码生成</h4><blockquote>
+<p>BladeDISC是tensorflow的backend来使用，因此其代码生成是针对融合后的算子做代码生成即可。运行时可以依赖于tensorflow的runtime调度器，launch 代码生成的kernel。</p>
+</blockquote>
+<p>在后端代码生成过程中，由于动态shape问题，主要有如下考虑：</p>
+<ul>
+<li><p>针对存储密集子图，考虑指令重排和重叠来减少存储overhead。由于shape是动态的，传统的unroll操作可以抵消动态shape的部分影响。</p>
+</li>
+<li><p>针对存储密集子图，<strong>多代码生成</strong>和<strong>运行时预测机制</strong>，来确保针对特定shape选择到最合适的生成代码。</p>
+<p><img src="/images/image-20250427212344275.png" alt="image-20250427212344275"></p>
+<p>如上图所示，CPU端在做GPU kernel launch的时候，由于需要运行时speculation，所以会有一定延迟（microsecond），该时间GPU kernel可以overlap掉。多代码生成会考虑如下三个因素：</p>
+<ol>
+<li>向量化版本 or 非向量化版本</li>
+<li>隐藏broadcast删除 or 不删除</li>
+<li>针对行归约操作，one block one row（行少列多，高并行，低tail latency） 或是 one warp one row（行多列少，低调度开销，高吞吐）的选择</li>
+</ol>
+</li>
+<li><p>针对计算密集子图，有如下insight：</p>
+<blockquote>
+<p>计算密集操作后续一般紧跟elementwise操作，称elementwise为epilog。计算密集算子计算量相对更大，内存获取也更多，因此针对这种组合，主要针对计算密集做代码生成策略选择，epilog沿用即可。</p>
+</blockquote>
+<p>计算密集算子的<strong>bottleneck</strong>是动态shape下，不同shape的算子编写性能区别很大，因此编译时做面向不同类型shape多代码生成，运行时预测选择。其流程如图所示：</p>
+<p><img src="/images/image-20250427214740408.png" alt="image-20250427214740408"></p>
+</li>
+</ul>
+<p>​	可以看到，BladeDISC基于CUTLASS构建数据集，训练一个决策树模型，运行时决策出选用哪个生成代码。</p>
+<h4 id="Runtime设计：RAL"><a href="#Runtime设计：RAL" class="headerlink" title="Runtime设计：RAL"></a>Runtime设计：RAL</h4><p><img src="/images/image-20250427215219613.png" alt="image-20250427215219613"></p>
+<p>上图是RAL的完整设计，有如下特点：</p>
+<ul>
+<li>有别于其他AI编译器（TVM和IREE），BladeDISC通过整体代码生成（张量计算生成device代码，运行调度生成主机host代码），减少虚拟机的解释执行开销，同时也增加了编译和运行时协同优化可能。</li>
+<li>前端，tensorflow和pytorch都有对应的IO来接入。后端，每个设备都有抽象，能够支持内存管理，任务调度同步等api。</li>
+<li>不论是主机端还是设备端，最后都依靠llvm来生成对应架构的二进制文件。</li>
+</ul>
+<p>根据阿里PAI团队的slides做进一步理解：</p>
+<blockquote>
+<p><img src="/images/image-20250427220909637.png" alt="image-20250427220909637"></p>
+</blockquote>
+<blockquote>
+<p><img src="/images/image-20250427221352121.png" alt="image-20250427221352121"></p>
+</blockquote>
+<p>上述slides阐述了如何对于编译生成的.exe做runtime，后续会结合代码进一步挖掘。</p>
+<h4 id="整体流程"><a href="#整体流程" class="headerlink" title="整体流程"></a>整体流程</h4><p><img src="/images/image-20250427221149589.png" alt="image-20250427221149589"></p>
+<p>可以清晰看到，分为独立模式和插件模式（深度集成Tensorflow和pytorch框架）。</p>
+<h2 id="References"><a href="#References" class="headerlink" title="References"></a><font color = brown>References</font></h2><ol>
 <li><a target="_blank" rel="noopener" href="https://www.iteye.com/blog/rednaxelafx-492667">虚拟机技术解读</a></li>
 <li><a target="_blank" rel="noopener" href="https://zhuanlan.zhihu.com/p/504066888">TVM runtime系统讲解</a></li>
 <li><a target="_blank" rel="noopener" href="https://abdelfattah-class.github.io/ece5545/">Cornell: Machine learning hardware and system课程</a></li>
@@ -568,7 +621,7 @@
 
       <!--noindex-->
       <div class="post-toc-wrap sidebar-panel">
-          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#AI%E7%BC%96%E8%AF%91%E5%99%A8%E5%90%8E%E7%AB%AF%E5%92%8C%E8%BF%90%E8%A1%8C%E6%97%B6%E6%9E%B6%E6%9E%84"><span class="nav-number">1.</span> <span class="nav-text">AI编译器后端和运行时架构</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E7%BC%96%E8%AF%91%E7%B3%BB%E7%BB%9F"><span class="nav-number">1.1.</span> <span class="nav-text">编译系统</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E8%BF%90%E8%A1%8C%E6%97%B6%E7%B3%BB%E7%BB%9F"><span class="nav-number">1.2.</span> <span class="nav-text">运行时系统</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#%E8%BF%90%E8%A1%8C%E6%97%B6%E6%8A%BD%E8%B1%A1"><span class="nav-number">1.2.1.</span> <span class="nav-text">运行时抽象</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E5%8D%95%E7%AE%97%E5%AD%90%E8%B0%83%E5%BA%A6"><span class="nav-number">1.2.2.</span> <span class="nav-text">单算子调度</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E8%AE%A1%E7%AE%97%E5%9B%BE%E8%B0%83%E5%BA%A6"><span class="nav-number">1.2.3.</span> <span class="nav-text">计算图调度</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E7%AE%97%E5%AD%90%E4%BA%A4%E4%BA%92%E6%89%A7%E8%A1%8C"><span class="nav-number">1.2.4.</span> <span class="nav-text">算子交互执行</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E4%B8%8B%E6%B2%89%E5%BC%8F%E6%89%A7%E8%A1%8C"><span class="nav-number">1.2.5.</span> <span class="nav-text">下沉式执行</span></a></li></ol></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E8%AE%A1%E7%AE%97%E5%9B%BE%E7%BC%96%E8%AF%91%E5%99%A8"><span class="nav-number">2.</span> <span class="nav-text">计算图编译器</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%85%B8%E5%9E%8B%E7%BC%96%E8%AF%91%E5%99%A8%E8%A7%A3%E8%AF%BB"><span class="nav-number">3.</span> <span class="nav-text">典型编译器解读</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#TVM-%E5%90%8E%E7%AB%AF%E6%9E%B6%E6%9E%84-Runtime"><span class="nav-number">3.1.</span> <span class="nav-text">TVM 后端架构&amp;Runtime</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#%E8%BF%90%E8%A1%8C%E6%97%B6%E6%A1%86%E6%9E%B6%E5%9B%BE"><span class="nav-number">3.1.1.</span> <span class="nav-text">运行时框架图</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#IREE-runtime%E8%AE%BE%E8%AE%A1"><span class="nav-number">3.2.</span> <span class="nav-text">IREE runtime设计</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#BladeDISC%E5%90%8E%E7%AB%AF%E6%9E%B6%E6%9E%84-Runtime"><span class="nav-number">3.3.</span> <span class="nav-text">BladeDISC后端架构&amp;Runtime</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#TPU-MLIR%E7%B3%BB%E7%BB%9F%E4%BB%A3%E7%A0%81%E8%A7%A3%E8%AF%BB"><span class="nav-number">4.</span> <span class="nav-text">TPU-MLIR系统代码解读</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#References"><span class="nav-number">5.</span> <span class="nav-text">References</span></a></li></ol></div>
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#AI%E7%BC%96%E8%AF%91%E5%99%A8%E5%90%8E%E7%AB%AF%E5%92%8C%E8%BF%90%E8%A1%8C%E6%97%B6%E6%9E%B6%E6%9E%84"><span class="nav-number">1.</span> <span class="nav-text">AI编译器后端和运行时架构</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E7%BC%96%E8%AF%91%E7%B3%BB%E7%BB%9F"><span class="nav-number">1.1.</span> <span class="nav-text">编译系统</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E8%BF%90%E8%A1%8C%E6%97%B6%E7%B3%BB%E7%BB%9F"><span class="nav-number">1.2.</span> <span class="nav-text">运行时系统</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#%E8%BF%90%E8%A1%8C%E6%97%B6%E6%8A%BD%E8%B1%A1"><span class="nav-number">1.2.1.</span> <span class="nav-text">运行时抽象</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E5%8D%95%E7%AE%97%E5%AD%90%E8%B0%83%E5%BA%A6"><span class="nav-number">1.2.2.</span> <span class="nav-text">单算子调度</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E8%AE%A1%E7%AE%97%E5%9B%BE%E8%B0%83%E5%BA%A6"><span class="nav-number">1.2.3.</span> <span class="nav-text">计算图调度</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E7%AE%97%E5%AD%90%E4%BA%A4%E4%BA%92%E6%89%A7%E8%A1%8C"><span class="nav-number">1.2.4.</span> <span class="nav-text">算子交互执行</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E4%B8%8B%E6%B2%89%E5%BC%8F%E6%89%A7%E8%A1%8C"><span class="nav-number">1.2.5.</span> <span class="nav-text">下沉式执行</span></a></li></ol></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E8%AE%A1%E7%AE%97%E5%9B%BE%E7%BC%96%E8%AF%91%E5%99%A8"><span class="nav-number">2.</span> <span class="nav-text">计算图编译器</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%85%B8%E5%9E%8B%E7%BC%96%E8%AF%91%E5%99%A8%E8%A7%A3%E8%AF%BB"><span class="nav-number">3.</span> <span class="nav-text">典型编译器解读</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#TVM-%E5%90%8E%E7%AB%AF%E6%9E%B6%E6%9E%84-Runtime"><span class="nav-number">3.1.</span> <span class="nav-text">TVM 后端架构&amp;Runtime</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#%E8%BF%90%E8%A1%8C%E6%97%B6%E6%A1%86%E6%9E%B6%E5%9B%BE"><span class="nav-number">3.1.1.</span> <span class="nav-text">运行时框架图</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#IREE-runtime%E8%AE%BE%E8%AE%A1"><span class="nav-number">3.2.</span> <span class="nav-text">IREE runtime设计</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#BladeDISC%E5%90%8E%E7%AB%AF%E6%9E%B6%E6%9E%84-Runtime"><span class="nav-number">3.3.</span> <span class="nav-text">BladeDISC后端架构&amp;Runtime</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#BladeDISC%E7%9A%84key-feature"><span class="nav-number">3.3.1.</span> <span class="nav-text">BladeDISC的key feature</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E5%90%8E%E7%AB%AF%E4%BB%A3%E7%A0%81%E7%94%9F%E6%88%90"><span class="nav-number">3.3.2.</span> <span class="nav-text">后端代码生成</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#Runtime%E8%AE%BE%E8%AE%A1%EF%BC%9ARAL"><span class="nav-number">3.3.3.</span> <span class="nav-text">Runtime设计：RAL</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E6%95%B4%E4%BD%93%E6%B5%81%E7%A8%8B"><span class="nav-number">3.3.4.</span> <span class="nav-text">整体流程</span></a></li></ol></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#References"><span class="nav-number">4.</span> <span class="nav-text">References</span></a></li></ol></div>
       </div>
       <!--/noindex-->
 
@@ -632,13 +685,13 @@
       <i class="fa fa-chart-area"></i>
     </span>
       <span class="post-meta-item-text">站点总字数：</span>
-    <span title="站点总字数">82k</span>
+    <span title="站点总字数">83k</span>
     <span class="post-meta-divider">|</span>
     <span class="post-meta-item-icon">
       <i class="fa fa-coffee"></i>
     </span>
       <span class="post-meta-item-text">站点阅读时长 &asymp;</span>
-    <span title="站点阅读时长">1:14</span>
+    <span title="站点阅读时长">1:15</span>
 </div>
   <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://pisces.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Pisces</a> 强力驱动
   </div>
