@@ -1,0 +1,680 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 7.3.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"example.com","root":"/","scheme":"Pisces","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":true,"show_result":true,"style":"mac"},"back2top":{"enable":true,"sidebar":false,"scrollpercent":true},"bookmark":{"enable":true,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":"gitalk","storage":true,"lazyload":false,"nav":null,"activeClass":"gitalk"},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":5,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta property="og:type" content="article">
+<meta property="og:title" content="BladeDISC: RAL overview">
+<meta property="og:url" content="http://example.com/2025/04/29/BladeDISC-RAL-overview/index.html">
+<meta property="og:site_name" content="Leon&#39;s Blog">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://example.com/images/image-20250429153010114.png">
+<meta property="og:image" content="http://example.com/images/image-20250429154132773.png">
+<meta property="og:image" content="http://example.com/images/image-20250429153010114.png">
+<meta property="article:published_time" content="2025-04-29T03:03:13.000Z">
+<meta property="article:modified_time" content="2025-04-29T12:55:36.305Z">
+<meta property="article:author" content="Leon Dou">
+<meta property="article:tag" content="机器学习编译器">
+<meta property="article:tag" content="mlir">
+<meta property="article:tag" content="动态shape">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://example.com/images/image-20250429153010114.png">
+
+<link rel="canonical" href="http://example.com/2025/04/29/BladeDISC-RAL-overview/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>BladeDISC: RAL overview | Leon's Blog</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">Leon's Blog</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">分享一点有趣的技术</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocapitalize="off"
+           placeholder="搜索..." spellcheck="false"
+           type="search" class="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result">
+  <div id="no-result">
+    <i class="fa fa-spinner fa-pulse fa-5x fa-fw"></i>
+  </div>
+</div>
+
+    </div>
+  </div>
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+  <div class="reading-progress-bar"></div>
+  <a role="button" class="book-mark-link book-mark-link-fixed"></a>
+
+  <a href="https://github.com/micropuma" class="github-corner" title="Follow me on GitHub" aria-label="Follow me on GitHub" rel="noopener" target="_blank"><svg width="80" height="80" viewBox="0 0 250 250" aria-hidden="true"><path d="M0,0 L115,115 L130,115 L142,142 L250,250 L250,0 Z"></path><path d="M128.3,109.0 C113.8,99.7 119.0,89.6 119.0,89.6 C122.0,82.7 120.5,78.6 120.5,78.6 C119.2,72.0 123.4,76.3 123.4,76.3 C127.3,80.9 125.5,87.3 125.5,87.3 C122.9,97.6 130.6,101.9 134.4,103.2" fill="currentColor" style="transform-origin: 130px 106px;" class="octo-arm"></path><path d="M115.0,115.0 C114.9,115.1 118.7,116.5 119.8,115.4 L133.7,101.6 C136.9,99.2 139.9,98.4 142.2,98.6 C133.8,88.0 127.5,74.4 143.8,58.0 C148.5,53.4 154.0,51.2 159.7,51.0 C160.3,49.4 163.2,43.6 171.4,40.1 C171.4,40.1 176.1,42.5 178.8,56.2 C183.1,58.6 187.2,61.8 190.9,65.4 C194.5,69.0 197.7,73.2 200.1,77.6 C213.8,80.2 216.3,84.9 216.3,84.9 C212.7,93.1 206.9,96.0 205.4,96.6 C205.1,102.4 203.0,107.8 198.3,112.5 C181.9,128.9 168.3,122.5 157.7,114.1 C157.9,116.9 156.7,120.9 152.7,124.9 L141.0,136.5 C139.8,137.7 141.6,141.9 141.8,141.8 Z" fill="currentColor" class="octo-body"></path></svg></a>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://example.com/2025/04/29/BladeDISC-RAL-overview/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="Leon Dou">
+      <meta itemprop="description" content="关注领域：体系结构，编译技术">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Leon's Blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          BladeDISC: RAL overview
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+              
+
+              <time title="创建时间：2025-04-29 11:03:13 / 修改时间：20:55:36" itemprop="dateCreated datePublished" datetime="2025-04-29T11:03:13+08:00">2025-04-29</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/%E7%BC%96%E8%AF%91%E6%8A%80%E6%9C%AF/" itemprop="url" rel="index"><span itemprop="name">编译技术</span></a>
+                </span>
+                  ，
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/%E7%BC%96%E8%AF%91%E6%8A%80%E6%9C%AF/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0%E7%BC%96%E8%AF%91/" itemprop="url" rel="index"><span itemprop="name">机器学习编译</span></a>
+                </span>
+                  ，
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/%E7%BC%96%E8%AF%91%E6%8A%80%E6%9C%AF/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0%E7%BC%96%E8%AF%91/%E5%8A%A8%E6%80%81shape/" itemprop="url" rel="index"><span itemprop="name">动态shape</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span><br>
+            <span class="post-meta-item" title="本文字数">
+              <span class="post-meta-item-icon">
+                <i class="far fa-file-word"></i>
+              </span>
+                <span class="post-meta-item-text">本文字数：</span>
+              <span>4.8k</span>
+            </span>
+            <span class="post-meta-item" title="阅读时长">
+              <span class="post-meta-item-icon">
+                <i class="far fa-clock"></i>
+              </span>
+                <span class="post-meta-item-text">阅读时长 &asymp;</span>
+              <span>4 分钟</span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p><img src="/images/image-20250429153010114.png" alt="image-20250429153010114"></p>
+<span id="more"></span>
+<blockquote>
+<p>在先前的关于编译器后端&amp;运行时博客中，简单介绍了各种成熟的机器学习编译器的runtime system。本文结合<a target="_blank" rel="noopener" href="https://github.com/alibaba/BladeDISC/blob/main/docs/developers/runtime_abstraction_layer.md">BladeDISC RAL文档</a>详细解读一下BladeDISC的runtime设计。由于BladeDISC一般作为python/tensorflow的pulgin使用，所以其一部分runtime依托现成机器学习框架的runtime，本文也会简单补充一下pytorch的runtime系统。</p>
+</blockquote>
+<h2 id="BladeDISC-RAL"><a href="#BladeDISC-RAL" class="headerlink" title="BladeDISC RAL"></a><font color = borwn>BladeDISC RAL</font></h2><h3 id="RAL原理"><a href="#RAL原理" class="headerlink" title="RAL原理"></a><font color = green>RAL原理</font></h3><p>在开始深入BladeDISC的具体源码实现之前，我们先要讲明Compiler，Runtime之间的中间界面：硬件抽象层（RAL）。</p>
+<p><img src="/images/image-20250429154132773.png" alt="image-20250429154132773" style="zoom:50%;" /></p>
+<p>如上图所示是各个部分的层级关系。对于RAL，BladeDISC编译器是如下解释的：</p>
+<blockquote>
+<p>Runtime Abstraction Layer (RAL) 是 BladeDISC 编译器的核心组件，旨在连接编译器与多样化的运行时环境，解决跨平台兼容性和资源管理问题。RAL 的核心功能体现在两个方面：首先，它通过抽象统一的接口屏蔽不同运行时环境（如 TensorFlow、PyTorch 或独立二进制）的底层差异，使编译器只需针对 RAL 生成代码，而无需为每个平台单独适配。这种设计不仅简化了编译器的开发逻辑，还支持“一次编译，多处运行”，降低了用户在不同框架间迁移的成本。其次，RAL 通过上下文对象（Context）集中管理有状态资源（如 GPU 内核、内存等），采用懒初始化（Lazy Initialization）策略优化性能。例如，GPU 内核的加载仅在首次使用时触发，后续调用直接复用，避免了重复初始化的开销。通过将资源状态（如“内核是否已加载”）隐藏在上下文背后，RAL 对外提供初始化无关的接口（如 <code>launch_kernel</code>），使得编译器生成的代码无需关注资源初始化细节，只需调用简单接口即可完成任务。</p>
+</blockquote>
+<h3 id="BladeDISC-RAL总体设计"><a href="#BladeDISC-RAL总体设计" class="headerlink" title="BladeDISC RAL总体设计"></a><font color = green>BladeDISC RAL总体设计</font></h3><p>这一块主要参考<a target="_blank" rel="noopener" href="https://github.com/alibaba/BladeDISC/blob/main/docs/developers/runtime_abstraction_layer.md">BladeDISC RAL设计文档</a>。在设计文档中，从编译器角度和运行时角度两个角度来讲解RAL的设计理念。我个人的浅薄理解，从编译角度主要是解读如何将编译出的binary code，封装成Runtime API，而运行时角度则是如何调度运行封装好的Runtime API，从这两个角度均能体现RAL的设计的价值。</p>
+<h4 id="从compiler角度"><a href="#从compiler角度" class="headerlink" title="从compiler角度"></a>从compiler角度</h4><p>RAL 在编译器侧通过一系列转换流程（Transformation Passes）将代码适配到 RAL 运行时环境，其核心设计围绕上下文注入、输入输出绑定和统一类型擦除的ABI展开。</p>
+<ul>
+<li><p>上下文注入</p>
+<p>将状态操作（如 GPU 内核加载、内存分配）与编译器逻辑解耦。具体实现方式上：</p>
+<ol>
+<li><p>自定义MLIR方言：通过 MLIR 框架定义 <code>disc_ral</code> 方言，引入 <code>disc_ral.RalExecutionContextType</code> 类型表示运行时上下文（Context）。该类型在 LLVM IR 中转换为指针类型，隐藏底层资源状态。</p>
+</li>
+<li><p>入口函数重写：译器入口函数（如 <code>main</code>）的首个参数强制注入 Context 对象，所有 RAL API 调用均以 Context 为第一个参数。例如：</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 转换前：普通函数参数</span></span><br><span class="line">func @<span class="built_in">main</span>(%arg0 : memref&lt;?x?xf32&gt;, %arg1 : memref&lt;?x?xf32&gt;) -&gt; memref&lt;?x?xf32&gt;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 转换后：首参数注入 Context</span></span><br><span class="line">func @<span class="built_in">main</span>(!disc_ral.context %ctx) &#123;</span><br><span class="line">  %arg0 = disc_ral.<span class="built_in">recv_input</span>(%ctx, <span class="number">0</span>)  <span class="comment">// 通过 Context 获取输入</span></span><br><span class="line">  ...</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+</li>
+</ol>
+<blockquote>
+<p> 这种设计使得编译器无需感知资源状态（如“内核是否已加载”），专注优化逻辑（如算子融合、内存分配优化）。</p>
+</blockquote>
+</li>
+<li><p>输入输出绑定</p>
+<p>标准化编译模块与宿主环境（如 TensorFlow/PyTorch）的数据交互接口。具体实现方式上：</p>
+<ol>
+<li><p>动态输入输出接收：入口函数的输入/输出不再直接传递内存对象，而是通过 <code>disc_ral.recv_input</code> 和 <code>disc_ral.send_output</code> API 从 Context 中按需获取或发送。例如：</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 原始 IR：显式传递内存引用</span></span><br><span class="line">func @<span class="built_in">main</span>(%arg0 : memref&lt;?x?xf32&gt;, %arg1 : memref&lt;?x?xf32&gt;) -&gt; memref&lt;?x?xf32&gt;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 转换后：通过 Context 动态绑定</span></span><br><span class="line">func @<span class="built_in">main</span>(!disc_ral.context %ctx) &#123;</span><br><span class="line">  %arg0 = disc_ral.<span class="built_in">recv_input</span>(%ctx, <span class="number">0</span>)  <span class="comment">// 接收第 0 号输入</span></span><br><span class="line">  %ret = <span class="built_in">alloc</span>(...)</span><br><span class="line">  disc_ral.<span class="built_in">send_output</span>(%ctx, <span class="number">0</span>, %ret)   <span class="comment">// 发送第 0 号输出</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<blockquote>
+<p>这种动态输入输出绑定的好处是：</p>
+<ul>
+<li>允许部分输入未就绪时提前执行部分计算（如流水线并行），或提前发送部分输出，减少端到端延迟（<strong>runtime调度层面可以做一定的优化过程</strong>）。</li>
+</ul>
+</blockquote>
+</li>
+</ol>
+</li>
+<li><p>类型擦除call function api</p>
+<p>跨语言（C/C++/Python）兼容调用 RAL 函数，同时保持 ABI 稳定。具体实现方式如下：</p>
+<ol>
+<li><p>类型擦除接口，负责将所有 RAL 函数在编译后统一转换为 C 语言风格的泛型接口 <code>ral_api_call</code>，通过 <code>api_name</code> 动态分发。例如：</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// C++ 原函数</span></span><br><span class="line"><span class="function"><span class="type">void</span> <span class="title">gemm</span><span class="params">(RalContext*, gpu_stream_handle*, MemRef&lt;<span class="type">float</span>,<span class="number">2</span>&gt; lhs, ...)</span></span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 统一类型擦除接口</span></span><br><span class="line"><span class="function"><span class="type">void</span> <span class="title">ral_api_call</span><span class="params">(<span class="type">void</span>* ctx, <span class="type">const</span> <span class="type">char</span>* api_name, <span class="type">void</span>** args)</span></span>;</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>统一函数签名编码，<code>api_name</code> 按规则生成唯一标识，包含设备类型（如 CPU/GPU）、输入输出类型编码等。例如：</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">api_name = <span class="string">&quot;ral_gemm___cpu___float_2_float_2_float_2___bool_bool&quot;</span></span><br></pre></td></tr></table></figure>
+</li>
+<li><p>自动注册机制，通过宏 <code>TAO_RAL_API</code> 将模板化的 C++ 函数注册为类型擦除接口，例如：</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 注册 float 类型的 GEMM 到 CPU</span></span><br><span class="line"><span class="built_in">TAO_RAL_API</span>(<span class="string">&quot;ral_gemm&quot;</span>, <span class="string">&quot;cpu&quot;</span>, gemm&lt;<span class="type">float</span>&gt;)</span><br><span class="line"><span class="comment">// 注册 half 类型的 GEMM 到 GPU</span></span><br><span class="line"><span class="built_in">TAO_RAL_API</span>(<span class="string">&quot;ral_gemm&quot;</span>, <span class="string">&quot;gpu&quot;</span>, gemm&lt;half&gt;)</span><br></pre></td></tr></table></figure>
+</li>
+</ol>
+<blockquote>
+<p>这套类型擦除机制，允许开发者可直接使用 C++ 接口，编译器自动处理跨语言调用细节，避免手动维护类型转换代码。</p>
+</blockquote>
+</li>
+</ul>
+<h4 id="从runtime角度"><a href="#从runtime角度" class="headerlink" title="从runtime角度"></a>从runtime角度</h4><p><img src="/images/image-20250429153010114.png" alt="image-20250429153010114"></p>
+<p>上述流程图很好地概括了runtime系统的架构。具体地可以分为三个方面来解读：</p>
+<p>Runtime Abstraction Layer（RAL）在运行时通过三层机制实现与宿主环境（如TensorFlow、PyTorch）的高效交互，平衡跨平台兼容性与性能优化。</p>
+<ul>
+<li><p><strong>面向不同宿主平台（TensorFlow/PyTorch）的定制化适配层</strong></p>
+<p>处理输入输出绑定和元数据同步。例如，TensorFlow通过其特有的<code>Tensor</code>对象与RAL内存结构交互，而PyTorch需适配<code>torch.Tensor</code>的传输逻辑。这种差异化实现确保了数据在宿主环境与RAL间的高效传递，同时复用宿主原生的设备资源访问方式（如直接操作CUDA流），避免冗余数据拷贝或格式转换，最小化跨环境调用的性能损耗。</p>
+</li>
+<li><p><strong>面向不同底层硬件的设备驱动API</strong></p>
+<p>涵盖内存管理、任务启动和同步操作。由于不同宿主环境对设备的抽象差异显著（如TensorFlow使用<code>DeviceContext</code>管理GPU，而PyTorch依赖<code>c10::Stream</code>），RAL需为同一设备在不同环境中实现独立的驱动接口。例如，GPU内存分配在TensorFlow中通过<code>GPUDevice::Allocate</code>完成，而在PyTorch中则需调用<code>CUDACachingAllocator</code>，RAL通过封装统一的<code>ral_malloc</code>接口隐藏这些差异，使编译器生成的代码无需感知底层环境细节。</p>
+</li>
+<li><p><strong>跨平台共享的自定义内核</strong>（如第三方库加速的矩阵乘法或排序算法）。</p>
+<p>这些内核直接调用RAL驱动API访问设备资源，天然兼容不同宿主环境。例如，基于cuBLAS实现的GPU矩阵乘法内核通过<code>ral_gpu_memcpy</code>和<code>ral_gpu_stream_sync</code>操作内存与计算流，无论部署到TensorFlow还是PyTorch均无需修改代码。</p>
+</li>
+</ul>
+<p>通过上述三个层次的职责划分，可以看出整个BladeDISC的底层runtime设计，其实是大量依赖于成熟的pytorch和tensorflow的运行时系统的，BladeDISC做的事情是设计实现RAL层，高效完成跨宿主（指tensorflow/pytorch系统）适配。</p>
+<blockquote>
+<p>一些个人体会：</p>
+<p>这种分层设计（宿主适配层-设备驱动层-内核层）使得开发者只需维护单一版本的核心逻辑，显著降低多框架支持成本，同时通过复用宿主原生接口和懒初始化策略（如首次调用时加载GPU内核），确保运行时性能接近原生框架水平。此外，新增宿主环境（如ONNX Runtime）时，仅需扩展适配层与驱动层，无需改动上层内核，为BladeDISC的跨平台部署提供了高度可扩展的技术基础。</p>
+</blockquote>
+<p>上述三个核心组件讲完之后，来介绍一下BladeDISC的运行时管理组件：</p>
+<p><strong>RAL Context 与 Execution Context 的架构解析</strong></p>
+<p>RAL Context 是 BladeDISC 运行时的核心管理单元，其设计紧密关联<strong>宿主适配层、设备驱动层和内核层</strong>，通过分层抽象实现跨平台兼容与高效执行。针对不同宿主环境（如 TensorFlow、PyTorch 或独立二进制），RAL 提供差异化的 Context 实现。例如，TensorFlow Context 直接操作 <code>tf::Tensor</code> 和 GPU 设备句柄，而 PyTorch Context 适配 <code>torch::Tensor</code> 及 <code>c10::Stream</code>，二者均通过宿主适配层的 I/O 绑定接口完成数据转换，确保输入输出与宿主环境原生数据结构无缝对接。Context 的生命周期与编译后的二进制模块一致，负责全局资源管理（如 GPU 内核预加载、内存池初始化），其内部封装设备驱动层的多环境实现（如内存分配在 TensorFlow 中调用 <code>GPUDevice::Allocate</code>，在 PyTorch 中则使用 <code>CUDACachingAllocator</code>），使得编译器生成的代码无需感知底层差异。</p>
+<p>RAL Execution Context 作为 Context 的轻量化派生实例，专为单次执行设计，负责运行时动态状态的簿记管理。每次调用编译后的二进制时，从 Context 创建独立的 Execution Context，记录此次执行的临时资源（如输入张量指针、异步计算流标识符）。例如，在 TensorFlow 多线程场景中，多个线程可并发创建各自的 Execution Context，共享 Context 的全局资源（如预加载的 GPU 内核），但独立维护执行状态（如当前 CUDA Stream），避免资源竞争。Execution Context 的生命周期仅限于单次调用，执行结束后立即释放临时状态，从而减少内存占用并支持高并发。这一机制通过设备驱动层的环境适配接口（如 <code>ral_gpu_stream_sync</code>）确保内核执行与宿主环境的原生异步模型兼容，例如 PyTorch 的 JIT 执行通过 Execution Context 传递 <code>c10::cuda::CUDAStream</code>，使自定义内核可直接利用框架管理的计算流。</p>
+<h2 id="PyTorch运行时系统"><a href="#PyTorch运行时系统" class="headerlink" title="PyTorch运行时系统"></a><font color = brown>PyTorch运行时系统</font></h2><p>重点参考<a target="_blank" rel="noopener" href="https://zhuanlan.zhihu.com/p/633169168">Pytorch CUDA runtime</a>。</p>
+<h2 id="BladeDISC-RAL源码解读"><a href="#BladeDISC-RAL源码解读" class="headerlink" title="BladeDISC RAL源码解读"></a><font color = brown>BladeDISC RAL源码解读</font></h2>
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0%E7%BC%96%E8%AF%91%E5%99%A8/" rel="tag"># 机器学习编译器</a>
+              <a href="/tags/mlir/" rel="tag"># mlir</a>
+              <a href="/tags/%E5%8A%A8%E6%80%81shape/" rel="tag"># 动态shape</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2025/04/29/BladeDISC-Pass-pipeline-overview/" rel="prev" title="BladeDISC: Pass pipeline overview">
+      <i class="fa fa-chevron-left"></i> BladeDISC: Pass pipeline overview
+    </a></div>
+      <div class="post-nav-item"></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+    <div class="comments" id="gitalk-container"></div>
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#BladeDISC-RAL"><span class="nav-number">1.</span> <span class="nav-text">BladeDISC RAL</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#RAL%E5%8E%9F%E7%90%86"><span class="nav-number">1.1.</span> <span class="nav-text">RAL原理</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#BladeDISC-RAL%E6%80%BB%E4%BD%93%E8%AE%BE%E8%AE%A1"><span class="nav-number">1.2.</span> <span class="nav-text">BladeDISC RAL总体设计</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#%E4%BB%8Ecompiler%E8%A7%92%E5%BA%A6"><span class="nav-number">1.2.1.</span> <span class="nav-text">从compiler角度</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E4%BB%8Eruntime%E8%A7%92%E5%BA%A6"><span class="nav-number">1.2.2.</span> <span class="nav-text">从runtime角度</span></a></li></ol></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#PyTorch%E8%BF%90%E8%A1%8C%E6%97%B6%E7%B3%BB%E7%BB%9F"><span class="nav-number">2.</span> <span class="nav-text">PyTorch运行时系统</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#BladeDISC-RAL%E6%BA%90%E7%A0%81%E8%A7%A3%E8%AF%BB"><span class="nav-number">3.</span> <span class="nav-text">BladeDISC RAL源码解读</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">Leon Dou</p>
+  <div class="site-description" itemprop="description">关注领域：体系结构，编译技术</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">20</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">17</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">14</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2025</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Leon Dou</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-area"></i>
+    </span>
+      <span class="post-meta-item-text">站点总字数：</span>
+    <span title="站点总字数">88k</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+      <span class="post-meta-item-text">站点阅读时长 &asymp;</span>
+    <span title="站点阅读时长">1:20</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://pisces.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Pisces</a> 强力驱动
+  </div>
+
+        
+<div class="busuanzi-count">
+  <script data-pjax async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/pjax/pjax.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+<script src="/js/bookmark.js"></script>
+
+  <script>
+var pjax = new Pjax({
+  selectors: [
+    'head title',
+    '#page-configurations',
+    '.content-wrap',
+    '.post-toc-wrap',
+    '.languages',
+    '#pjax'
+  ],
+  switches: {
+    '.post-toc-wrap': Pjax.switches.innerHTML
+  },
+  analytics: false,
+  cacheBust: false,
+  scrollTo : !CONFIG.bookmark.enable
+});
+
+window.addEventListener('pjax:success', () => {
+  document.querySelectorAll('script[data-pjax], script#page-configurations, #pjax script').forEach(element => {
+    var code = element.text || element.textContent || element.innerHTML || '';
+    var parent = element.parentNode;
+    parent.removeChild(element);
+    var script = document.createElement('script');
+    if (element.id) {
+      script.id = element.id;
+    }
+    if (element.className) {
+      script.className = element.className;
+    }
+    if (element.type) {
+      script.type = element.type;
+    }
+    if (element.src) {
+      script.src = element.src;
+      // Force synchronous loading of peripheral JS.
+      script.async = false;
+    }
+    if (element.dataset.pjax !== undefined) {
+      script.dataset.pjax = '';
+    }
+    if (code !== '') {
+      script.appendChild(document.createTextNode(code));
+    }
+    parent.appendChild(script);
+  });
+  NexT.boot.refresh();
+  // Define Motion Sequence & Bootstrap Motion.
+  if (CONFIG.motion.enable) {
+    NexT.motion.integrator
+      .init()
+      .add(NexT.motion.middleWares.subMenu)
+      .add(NexT.motion.middleWares.postList)
+      .bootstrap();
+  }
+  NexT.utils.updateSidebarPosition();
+});
+</script>
+
+
+
+
+  
+
+
+
+
+  
+<script src="/js/local-search.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+    <div id="pjax">
+  
+
+  
+
+  
+
+<link rel="stylesheet" href="//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.min.css">
+
+<script>
+NexT.utils.loadComments(document.querySelector('#gitalk-container'), () => {
+  NexT.utils.getScript('//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.min.js', () => {
+    var gitalk = new Gitalk({
+      clientID    : 'Ov23liFsw1lTgh0R8s8H',
+      clientSecret: '1f947cb0d107ba1ffbcad8c25688c075224fff36',
+      repo        : 'micropuma.github.io',
+      owner       : 'micropuma',
+      admin       : ['micropuma'],
+      id          : '766d455b305da44d5ef62309020ea08f',
+        language: 'zh-CN',
+      distractionFreeMode: true
+    });
+    gitalk.render('gitalk-container');
+  }, window.Gitalk);
+});
+</script>
+
+    </div>
+</body>
+</html>
