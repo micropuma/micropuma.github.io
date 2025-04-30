@@ -29,7 +29,7 @@
 <meta property="og:image" content="http://example.com/images/image-20250429154132773.png">
 <meta property="og:image" content="http://example.com/images/image-20250429153010114.png">
 <meta property="article:published_time" content="2025-04-29T03:03:13.000Z">
-<meta property="article:modified_time" content="2025-04-29T12:55:36.305Z">
+<meta property="article:modified_time" content="2025-04-30T03:43:54.394Z">
 <meta property="article:author" content="Leon Dou">
 <meta property="article:tag" content="机器学习编译器">
 <meta property="article:tag" content="mlir">
@@ -220,10 +220,16 @@
                 <i class="far fa-calendar"></i>
               </span>
               <span class="post-meta-item-text">发表于</span>
-              
 
-              <time title="创建时间：2025-04-29 11:03:13 / 修改时间：20:55:36" itemprop="dateCreated datePublished" datetime="2025-04-29T11:03:13+08:00">2025-04-29</time>
+              <time title="创建时间：2025-04-29 11:03:13" itemprop="dateCreated datePublished" datetime="2025-04-29T11:03:13+08:00">2025-04-29</time>
             </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2025-04-30 11:43:54" itemprop="dateModified" datetime="2025-04-30T11:43:54+08:00">2025-04-30</time>
+              </span>
             <span class="post-meta-item">
               <span class="post-meta-item-icon">
                 <i class="far fa-folder"></i>
@@ -289,14 +295,12 @@
 <h4 id="从compiler角度"><a href="#从compiler角度" class="headerlink" title="从compiler角度"></a>从compiler角度</h4><p>RAL 在编译器侧通过一系列转换流程（Transformation Passes）将代码适配到 RAL 运行时环境，其核心设计围绕上下文注入、输入输出绑定和统一类型擦除的ABI展开。</p>
 <ul>
 <li><p>上下文注入</p>
-<p>将状态操作（如 GPU 内核加载、内存分配）与编译器逻辑解耦。具体实现方式上：</p>
+<p>将状态操作（如 GPU 内核加载、内存分配）与编译器逻辑解耦。具体实现方式上</p>
 <ol>
-<li><p>自定义MLIR方言：通过 MLIR 框架定义 <code>disc_ral</code> 方言，引入 <code>disc_ral.RalExecutionContextType</code> 类型表示运行时上下文（Context）。该类型在 LLVM IR 中转换为指针类型，隐藏底层资源状态。</p>
-</li>
-<li><p>入口函数重写：译器入口函数（如 <code>main</code>）的首个参数强制注入 Context 对象，所有 RAL API 调用均以 Context 为第一个参数。例如：</p>
-<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 转换前：普通函数参数</span></span><br><span class="line">func @<span class="built_in">main</span>(%arg0 : memref&lt;?x?xf32&gt;, %arg1 : memref&lt;?x?xf32&gt;) -&gt; memref&lt;?x?xf32&gt;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 转换后：首参数注入 Context</span></span><br><span class="line">func @<span class="built_in">main</span>(!disc_ral.context %ctx) &#123;</span><br><span class="line">  %arg0 = disc_ral.<span class="built_in">recv_input</span>(%ctx, <span class="number">0</span>)  <span class="comment">// 通过 Context 获取输入</span></span><br><span class="line">  ...</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-</li>
+<li>自定义MLIR方言：通过 MLIR 框架定义 <code>disc_ral</code> 方言，引入 <code>disc_ral.RalExecutionContextType</code> 类型表示运行时上下文（Context）。该类型在 LLVM IR 中转换为指针类型，隐藏底层资源状态。</li>
+<li>入口函数重写：译器入口函数（如 <code>main</code>）的首个参数强制注入 Context 对象，所有 RAL API 调用均以 Context 为第一个参数。例如：</li>
 </ol>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 转换前：普通函数参数</span></span><br><span class="line">func @<span class="built_in">main</span>(%arg0 : memref&lt;?x?xf32&gt;, %arg1 : memref&lt;?x?xf32&gt;) -&gt; memref&lt;?x?xf32&gt;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 转换后：首参数注入 Context</span></span><br><span class="line">func @<span class="built_in">main</span>(!disc_ral.context %ctx) &#123;</span><br><span class="line">  %arg0 = disc_ral.<span class="built_in">recv_input</span>(%ctx, <span class="number">0</span>)  <span class="comment">// 通过 Context 获取输入</span></span><br><span class="line">  ...</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 <blockquote>
 <p> 这种设计使得编译器无需感知资源状态（如“内核是否已加载”），专注优化逻辑（如算子融合、内存分配优化）。</p>
 </blockquote>
@@ -356,7 +360,7 @@
 <p><strong>RAL Context 与 Execution Context 的架构解析</strong></p>
 <p>RAL Context 是 BladeDISC 运行时的核心管理单元，其设计紧密关联<strong>宿主适配层、设备驱动层和内核层</strong>，通过分层抽象实现跨平台兼容与高效执行。针对不同宿主环境（如 TensorFlow、PyTorch 或独立二进制），RAL 提供差异化的 Context 实现。例如，TensorFlow Context 直接操作 <code>tf::Tensor</code> 和 GPU 设备句柄，而 PyTorch Context 适配 <code>torch::Tensor</code> 及 <code>c10::Stream</code>，二者均通过宿主适配层的 I/O 绑定接口完成数据转换，确保输入输出与宿主环境原生数据结构无缝对接。Context 的生命周期与编译后的二进制模块一致，负责全局资源管理（如 GPU 内核预加载、内存池初始化），其内部封装设备驱动层的多环境实现（如内存分配在 TensorFlow 中调用 <code>GPUDevice::Allocate</code>，在 PyTorch 中则使用 <code>CUDACachingAllocator</code>），使得编译器生成的代码无需感知底层差异。</p>
 <p>RAL Execution Context 作为 Context 的轻量化派生实例，专为单次执行设计，负责运行时动态状态的簿记管理。每次调用编译后的二进制时，从 Context 创建独立的 Execution Context，记录此次执行的临时资源（如输入张量指针、异步计算流标识符）。例如，在 TensorFlow 多线程场景中，多个线程可并发创建各自的 Execution Context，共享 Context 的全局资源（如预加载的 GPU 内核），但独立维护执行状态（如当前 CUDA Stream），避免资源竞争。Execution Context 的生命周期仅限于单次调用，执行结束后立即释放临时状态，从而减少内存占用并支持高并发。这一机制通过设备驱动层的环境适配接口（如 <code>ral_gpu_stream_sync</code>）确保内核执行与宿主环境的原生异步模型兼容，例如 PyTorch 的 JIT 执行通过 Execution Context 传递 <code>c10::cuda::CUDAStream</code>，使自定义内核可直接利用框架管理的计算流。</p>
-<h2 id="PyTorch运行时系统"><a href="#PyTorch运行时系统" class="headerlink" title="PyTorch运行时系统"></a><font color = brown>PyTorch运行时系统</font></h2><p>重点参考<a target="_blank" rel="noopener" href="https://zhuanlan.zhihu.com/p/633169168">Pytorch CUDA runtime</a>。</p>
+<h2 id="PyTorch运行时系统"><a href="#PyTorch运行时系统" class="headerlink" title="PyTorch运行时系统"></a><font color = brown>PyTorch运行时系统</font></h2><p>重点参考<a target="_blank" rel="noopener" href="https://zhuanlan.zhihu.com/p/633169168">Pytorch CUDA runtime</a>和<a target="_blank" rel="noopener" href="https://archwalker.github.io/blog/2019/05/27/pytorch-internals.html">Pytorch Internal</a>。</p>
 <h2 id="BladeDISC-RAL源码解读"><a href="#BladeDISC-RAL源码解读" class="headerlink" title="BladeDISC RAL源码解读"></a><font color = brown>BladeDISC RAL源码解读</font></h2>
     </div>
 
@@ -504,13 +508,13 @@
       <i class="fa fa-chart-area"></i>
     </span>
       <span class="post-meta-item-text">站点总字数：</span>
-    <span title="站点总字数">88k</span>
+    <span title="站点总字数">89k</span>
     <span class="post-meta-divider">|</span>
     <span class="post-meta-item-icon">
       <i class="fa fa-coffee"></i>
     </span>
       <span class="post-meta-item-text">站点阅读时长 &asymp;</span>
-    <span title="站点阅读时长">1:20</span>
+    <span title="站点阅读时长">1:21</span>
 </div>
   <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://pisces.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Pisces</a> 强力驱动
   </div>
