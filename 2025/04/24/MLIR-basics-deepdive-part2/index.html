@@ -271,14 +271,14 @@
                 <i class="far fa-file-word"></i>
               </span>
                 <span class="post-meta-item-text">本文字数：</span>
-              <span>900</span>
+              <span>1.8k</span>
             </span>
             <span class="post-meta-item" title="阅读时长">
               <span class="post-meta-item-icon">
                 <i class="far fa-clock"></i>
               </span>
                 <span class="post-meta-item-text">阅读时长 &asymp;</span>
-              <span>1 分钟</span>
+              <span>2 分钟</span>
             </span>
 
         </div>
@@ -292,6 +292,7 @@
       
         <p><img src="/images/image-20250422105012239.png" alt="image-20250422105012239"></p>
 <span id="more"></span>
+
 <blockquote>
 <p>本篇文章主要基于mlir的<a target="_blank" rel="noopener" href="https://www.youtube.com/watch?v=7ofnlCFzlqg">公开talk</a>，深入理解一下mlir中的operation，attributes以及properties机制的底层实现。本文为此系列的第二篇，着重解读mlir的attirbutes特性。</p>
 </blockquote>
@@ -309,15 +310,17 @@
 </li>
 </ul>
 <p>如下图所示就是两种attribute的典型示例。<code>cmpi</code>操作的<code>谓词</code>属性和操作严格捆绑。</p>
-<p><img src="/images/image-20250426205915933.png" alt="image-20250426205915933" style="zoom: 50%;" /></p>
+<img src="/images/image-20250426205915933.png" alt="image-20250426205915933" style="zoom: 50%;" />
+
 <h2 id="Attribute-底层原理"><a href="#Attribute-底层原理" class="headerlink" title="Attribute 底层原理"></a><font color = brown>Attribute 底层原理</font></h2><p><img src="/images/image-20250426210418663.png" alt="image-20250426210418663"></p>
 <p>上图是编写mlir的时候，经常用到的创建新的attribute。该逻辑是，先构造构造一个vector，然后调用<code>get()</code> API获取一个属性的指针。这里的<code>get()</code> api的特点是，如果已有DenseI64ArrayAttr的内容是offsetsVec，则返回已有的属性，否则创建返回。</p>
 <h3 id="Attribute的recap知识"><a href="#Attribute的recap知识" class="headerlink" title="Attribute的recap知识"></a><font color = green>Attribute的recap知识</font></h3><p>首先来总结一下attribute的一些特点：</p>
-<p><img src="/images/image-20250426210700572.png" alt="image-20250426210700572" style="zoom:50%;" /></p>
+<img src="/images/image-20250426210700572.png" alt="image-20250426210700572" style="zoom:50%;" />
+
 <p>其最核心的一个特点是属性是不可变的，因此其一系列底层机制都围绕不可变性展开。获取一个内容是offsetsVec的DenseI64ArrayAttr，有如下几步骤：</p>
 <ul>
 <li>在operation所在的MLIRContext中获取DenseI64Array的ParametricStorageUniquer（每个属性类型都由一个存储器管理）</li>
-<li>在该storageuniqure中，通过hash的方式查找（key是<Type, int64, llvm::ArrayRef<char>&gt;&gt;）。</li>
+<li>在该storageuniqure中，通过hash的方式查找（key是&lt;Type, int64, llvm::ArrayRef<char>&gt;&gt;）。</li>
 </ul>
 <h3 id="Attribute的get-方法底层逻辑链条"><a href="#Attribute的get-方法底层逻辑链条" class="headerlink" title="Attribute的get()方法底层逻辑链条"></a><font color = green>Attribute的get()方法底层逻辑链条</font></h3><p>首先我们写梳理整个逻辑链条相关的数据结构：</p>
 <h4 id="get方法返回什么"><a href="#get方法返回什么" class="headerlink" title="get方法返回什么"></a>get方法返回什么</h4><p><code>get()</code>方法返回的是DenseArrayAttrStorage指针，该指针包含实际存储内容和一个hash值。</p>
@@ -330,7 +333,7 @@
 <p>如上图所示，一个context上下文中，每个属性都有对应的storage。</p>
 <p><img src="/images/image-20250426221410708.png" alt="image-20250426221410708"></p>
 <p>用一个densemap存储，每个attribute都有一个type id，通过type id检索到对应的ParametricStorageUniqer指针。</p>
-<h4 id="从ParametricStorageUniqer中通过hash值创建-返回属性指针"><a href="#从ParametricStorageUniqer中通过hash值创建-返回属性指针" class="headerlink" title="从ParametricStorageUniqer中通过hash值创建/返回属性指针"></a>从ParametricStorageUniqer中通过hash值创建/返回属性指针</h4><p><img src="/images/image-20250426225725235.png" alt="image-20250426225725235"></p>
+<h4 id="从ParametricStorageUniqer中通过hash值创建-返回属性指针"><a href="#从ParametricStorageUniqer中通过hash值创建-返回属性指针" class="headerlink" title="从ParametricStorageUniqer中通过hash值创建&#x2F;返回属性指针"></a>从ParametricStorageUniqer中通过hash值创建&#x2F;返回属性指针</h4><p><img src="/images/image-20250426225725235.png" alt="image-20250426225725235"></p>
 <p>如下是一个完整的get流程：</p>
 <p><img src="/images/image-20250426225801721.png" alt="image-20250426225801721"></p>
 <p>值得注意的是，底层的存储BumpPtrAllocator类似于内存池，只能开辟，然后空间释放是整个Allocator管理的所有存储都释放。</p>
@@ -346,6 +349,8 @@
 <li>用get方法生成新的Dictionary</li>
 </ul>
 <p>一个简单的setAttr，底层流程分为如上三步，attr的immutable特性，导致其效率较低。</p>
+</blockquote>
+<blockquote>
 <p><img src="/images/image-20250426230550008.png" alt="image-20250426230550008"></p>
 <p>上述slide是一个很好地总结。</p>
 <p>如下是一个检测理解的例子：</p>
@@ -502,13 +507,13 @@
       <i class="fa fa-chart-area"></i>
     </span>
       <span class="post-meta-item-text">站点总字数：</span>
-    <span title="站点总字数">114k</span>
+    <span title="站点总字数">122k</span>
     <span class="post-meta-divider">|</span>
     <span class="post-meta-item-icon">
       <i class="fa fa-coffee"></i>
     </span>
       <span class="post-meta-item-text">站点阅读时长 &asymp;</span>
-    <span title="站点阅读时长">1:44</span>
+    <span title="站点阅读时长">1:51</span>
 </div>
   <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://pisces.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Pisces</a> 强力驱动
   </div>
