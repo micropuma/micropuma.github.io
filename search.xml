@@ -765,6 +765,24 @@
       </tags>
   </entry>
   <entry>
+    <title>BladeDISC: Pytorch integration</title>
+    <url>/2025/04/29/BladeDISC-Pytorch-integration/</url>
+    <content><![CDATA[<p><img src="/images/image-20250429115415316.png" alt="image-20250429115415316"></p>
+<span id="more"></span>
+
+]]></content>
+      <categories>
+        <category>编译技术</category>
+        <category>机器学习编译</category>
+        <category>动态shape</category>
+      </categories>
+      <tags>
+        <tag>机器学习编译器</tag>
+        <tag>mlir</tag>
+        <tag>动态shape</tag>
+      </tags>
+  </entry>
+  <entry>
     <title>BladeDISC: RAL overview</title>
     <url>/2025/04/29/BladeDISC-RAL-overview/</url>
     <content><![CDATA[<p><img src="/images/image-20250429153010114.png" alt="image-20250429153010114"></p>
@@ -944,31 +962,52 @@
       </tags>
   </entry>
   <entry>
-    <title>MLIR Basic: ODS framework</title>
-    <url>/2025/04/12/MLIR-Basic-ODS-framework/</url>
-    <content><![CDATA[]]></content>
-  </entry>
-  <entry>
-    <title>MLIR Basic: DDR framework</title>
-    <url>/2025/04/12/MLIR-Basic-DDR-framework/</url>
-    <content><![CDATA[]]></content>
-  </entry>
-  <entry>
-    <title>BladeDISC: Pytorch integration</title>
-    <url>/2025/04/29/BladeDISC-Pytorch-integration/</url>
-    <content><![CDATA[<p><img src="/images/image-20250429115415316.png" alt="image-20250429115415316"></p>
+    <title>ByteIR 初探</title>
+    <url>/2025/05/06/ByteIR-%E5%88%9D%E6%8E%A2/</url>
+    <content><![CDATA[<p><img src="/images/image-20250506220408172.png" alt="image-20250506220408172"></p>
 <span id="more"></span>
 
+<h2 id="Why-ByteIR？"><a href="#Why-ByteIR？" class="headerlink" title="Why ByteIR？"></a><font color = brown>Why ByteIR？</font></h2><p>看了这么多端到端机器学习编译器（IREE，BladeDISC），为什么选择研究一下ByteIR？这个<a href="https://github.com/bytedance/byteir/issues/9">ByteIR issue9</a>的回答很好地指明了ByteIR相比成熟端到端编译器的区别：</p>
+<ul>
+<li>ByteIR有十分清晰的Frontend，Compiler和runtime，而且三者可以分离编译构建。</li>
+<li>ByteIR在字节内部不同的开发人员都在使用。</li>
+<li>ByteIR是十分简洁的，单纯的是一堆passes集合，辅助开发者完成端到端流程。</li>
+</ul>
+<p>上述三个特点，使得ByteIR十分适合针对性学习。</p>
+<h2 id="源码构建"><a href="#源码构建" class="headerlink" title="源码构建"></a><font color = brown>源码构建</font></h2><h3 id="Compiler部分构建"><a href="#Compiler部分构建" class="headerlink" title="Compiler部分构建"></a><font color = green>Compiler部分构建</font></h3><ol>
+<li><p>clone项目</p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">git clone git@github.com:bytedance/byteir.git</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>构建虚拟环境</p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line"><span class="meta prompt_"># </span><span class="language-bash">构建虚拟环境</span></span><br><span class="line">pip install pybind11</span><br><span class="line">pip install nanobind</span><br><span class="line">pip install numpy</span><br><span class="line">pip install lit</span><br><span class="line">pip install filecheck</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>Build LLVM</p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">cd /path_to_byteir</span><br><span class="line">git submodule update --init external/llvm-project</span><br></pre></td></tr></table></figure>
+
+<p>构建脚本如下：</p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line"><span class="meta prompt_"># </span><span class="language-bash">build llvm</span></span><br><span class="line">cd external/llvm-project</span><br><span class="line">cmake -H./llvm \</span><br><span class="line">      -B./build \</span><br><span class="line">      -GNinja \</span><br><span class="line">      -DLLVM_ENABLE_PROJECTS=mlir \</span><br><span class="line">      -DLLVM_TARGETS_TO_BUILD=&quot;X86;NVPTX&quot; \</span><br><span class="line">      -DCMAKE_BUILD_TYPE=Release \</span><br><span class="line">      -DLLVM_ENABLE_ASSERTIONS=ON \</span><br><span class="line">      -DLLVM_INSTALL_UTILS=ON \</span><br><span class="line">      -DLLVM_CCACHE_BUILD=OFF \</span><br><span class="line">      -DLLVM_ENABLE_TERMINFO=OFF \</span><br><span class="line">      -DMLIR_ENABLE_BINDINGS_PYTHON=ON \</span><br><span class="line">      -DCMAKE_INSTALL_PREFIX=$(pwd)/build/install</span><br><span class="line"><span class="meta prompt_"># </span><span class="language-bash">via -DCMAKE_C_COMPILER=gcc/clang and -DCMAKE_CXX_COMPILER=g++/clang++</span></span><br><span class="line"><span class="meta prompt_"># </span><span class="language-bash">to specify gcc&gt;=8.5 or clang&gt;=7</span> </span><br><span class="line"><span class="meta prompt_"># </span><span class="language-bash"><span class="keyword">for</span> Mac <span class="built_in">users</span>, <span class="built_in">set</span> -DLLVM_TARGETS_TO_BUILD=<span class="string">&quot;AArch64;NVPTX&quot;</span></span></span><br><span class="line"></span><br><span class="line">cmake --build ./build --target all --target install</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>Build ByteIR compiler</p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">cmake -B./compiler/build \</span><br><span class="line">      -H./compiler/cmake \</span><br><span class="line">      -GNinja \</span><br><span class="line">      -DCMAKE_BUILD_TYPE=Release \</span><br><span class="line">      -DPython3_EXECUTABLE=/mnt/home/douliyang/mlir-workspace/byteir/venv/bin/python \</span><br><span class="line">      -DLLVM_INSTALL_PATH=$(pwd)/external/llvm-project/build/install \</span><br><span class="line">      -DLLVM_EXTERNAL_LIT=/mnt/home/douliyang/mlir-workspace/byteir/venv/bin/lit \</span><br><span class="line">      -Dpybind11_DIR=/mnt/home/douliyang/mlir-workspace/byteir/venv/lib/python3.11/site-packages/pybind11/share/cmake/pybind11 \</span><br><span class="line">      -Dnanobind_DIR=/mnt/home/douliyang/mlir-workspace/byteir/venv/lib/python3.11/site-packages/nanobind/cmake \</span><br><span class="line">      -DBYTEIR_ENABLE_BINDINGS_PYTHON=ON</span><br><span class="line"></span><br><span class="line">cmake --build ./compiler/build --target check-byteir</span><br><span class="line">cmake --build ./compiler/build --target byteir-python-pack</span><br></pre></td></tr></table></figure>
+
+<p>上述一定要构建两个测试，第一个测试compiler的pipeline正确性，第二个测试python wrapper api正确性。</p>
+<p>这里构建过程中有几处坑：lit测试由于我使用了虚拟环境，所以需要cmake中显示指定python3的可执行路径。pybind11和nanobind也是同理，需要显示指定路径。</p>
+</li>
+<li><p>测试正确性（一个端到端的测试case）</p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">BYTEIR=&quot;/home/douliyang/large/mlir-workspace/byteir&quot;</span><br><span class="line"></span><br><span class="line">export PYTHONPATH=&quot;$&#123;BYTEIR&#125;/compiler/build/python_packages/byteir&quot;</span><br><span class="line"></span><br><span class="line">python3 -m byteir.tools.compiler -v \</span><br><span class="line">  &quot;$&#123;BYTEIR&#125;/compiler/test/E2E/CUDA/MLPInference/input.mlir&quot; \</span><br><span class="line">  -o out.mlir \</span><br><span class="line">  --entry_func forward \</span><br><span class="line"><span class="meta prompt_">  2&gt;</span><span class="language-bash">&amp;1 | <span class="built_in">tee</span> pipeline.log</span></span><br></pre></td></tr></table></figure></li>
+</ol>
+<h3 id="Runtime部分构建"><a href="#Runtime部分构建" class="headerlink" title="Runtime部分构建"></a><font color = green>Runtime部分构建</font></h3><h2 id="参考资料"><a href="#参考资料" class="headerlink" title="参考资料"></a><font color = brown>参考资料</font></h2><ol>
+<li><a href="https://byteir.ai/">ByteIR官方资料</a></li>
+<li><a href="https://github.com/bytedance/byteir?tab=readme-ov-file">ByteIR github</a></li>
+</ol>
 ]]></content>
       <categories>
         <category>编译技术</category>
         <category>机器学习编译</category>
-        <category>动态shape</category>
       </categories>
       <tags>
         <tag>机器学习编译器</tag>
         <tag>mlir</tag>
-        <tag>动态shape</tag>
       </tags>
   </entry>
   <entry>
@@ -1083,6 +1122,16 @@
         <tag>mlir</tag>
         <tag>basics</tag>
       </tags>
+  </entry>
+  <entry>
+    <title>MLIR Basic: DDR framework</title>
+    <url>/2025/04/12/MLIR-Basic-DDR-framework/</url>
+    <content><![CDATA[]]></content>
+  </entry>
+  <entry>
+    <title>MLIR Basic: ODS framework</title>
+    <url>/2025/04/12/MLIR-Basic-ODS-framework/</url>
+    <content><![CDATA[]]></content>
   </entry>
   <entry>
     <title>MLIR-basics-deepdive-part2</title>
@@ -1293,27 +1342,6 @@
 ]]></content>
   </entry>
   <entry>
-    <title>Pytorch新特性解读</title>
-    <url>/2025/04/05/Pytorch%E6%96%B0%E7%89%B9%E6%80%A7%E8%A7%A3%E8%AF%BB/</url>
-    <content><![CDATA[<p><img src="/images/image-20250405105059068.png" alt="image-20250405105059068"></p>
-<span id="more"></span>
-
-<blockquote>
-<p>在pytorch2中，pytorch增加了许多新的特性，其中最重要的是<code>torchdynamo</code>和<code>torchinductor</code>。本篇博客结合pytorch2在asplos的paper，解读新特性背后的编译技术。</p>
-</blockquote>
-]]></content>
-      <categories>
-        <category>编译技术</category>
-        <category>机器学习编译</category>
-        <category>机器学习系统</category>
-      </categories>
-      <tags>
-        <tag>机器学习编译器</tag>
-        <tag>pytorch技术</tag>
-        <tag>静态图捕捉和编译</tag>
-      </tags>
-  </entry>
-  <entry>
     <title>Transform Dialect tutorial1</title>
     <url>/2025/04/08/Transform-Dialect-tutorial1/</url>
     <content><![CDATA[<p><img src="/images/image-20250408184457571.png" alt="image-20250408184457571"></p>
@@ -1457,6 +1485,50 @@
       </tags>
   </entry>
   <entry>
+    <title>Pytorch新特性解读</title>
+    <url>/2025/04/05/Pytorch%E6%96%B0%E7%89%B9%E6%80%A7%E8%A7%A3%E8%AF%BB/</url>
+    <content><![CDATA[<p><img src="/images/image-20250405105059068.png" alt="image-20250405105059068"></p>
+<span id="more"></span>
+
+<blockquote>
+<p>在pytorch2中，pytorch增加了许多新的特性，其中最重要的是<code>torchdynamo</code>和<code>torchinductor</code>。本篇博客结合pytorch2在asplos的paper，解读新特性背后的编译技术。</p>
+</blockquote>
+]]></content>
+      <categories>
+        <category>编译技术</category>
+        <category>机器学习编译</category>
+        <category>机器学习系统</category>
+      </categories>
+      <tags>
+        <tag>机器学习编译器</tag>
+        <tag>pytorch技术</tag>
+        <tag>静态图捕捉和编译</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>minitorch: Tensor</title>
+    <url>/2025/05/05/minitorch-Tensor/</url>
+    <content><![CDATA[<p><img src="/images/image-20250505150806582.png" alt="image-20250505150806582"></p>
+<span id="more"></span>
+
+<blockquote>
+<p>本篇文章是在完成minitorch的task2后的一些心得体会。在机器学习系统中，大量充斥着tensor这一抽象概念，但我从来没有真正深入理解一下tensor的底层实现机制，以及其带来的好处。本篇文章重点在于解读tensor机制的底层原理和逻辑，具体实现参考<a href="https://dezeming.top/wp-content/uploads/2022/02/MiniTorch-%E5%AD%A6%E4%B9%A0%E5%85%A8%E6%94%BB%E7%95%A5.pdf">minitorch-学习攻略</a>。</p>
+</blockquote>
+<p>本篇文章从分为两个部分来讲解，第一部分讲解tensor的底层存储与上层视图分离机制实现，重点解读strides，offset等索引逻辑，以及tensor的一些常见处理函数。第二部分主要结合minitorch源码，粗略梳理一下miniotrch的和tensor相关的源码框架。</p>
+<h2 id="底层存储于上层视图分离"><a href="#底层存储于上层视图分离" class="headerlink" title="底层存储于上层视图分离"></a><font color = brown>底层存储于上层视图分离</font></h2><h2 id="minitorch中Tensor框架"><a href="#minitorch中Tensor框架" class="headerlink" title="minitorch中Tensor框架"></a><font color = brown>minitorch中Tensor框架</font></h2><h2 id="参考资料"><a href="#参考资料" class="headerlink" title="参考资料"></a><font color = brown>参考资料</font></h2><ol>
+<li><a href="https://dezeming.top/wp-content/uploads/2022/02/MiniTorch-%E5%AD%A6%E4%B9%A0%E5%85%A8%E6%94%BB%E7%95%A5.pdf">minitorch-学习攻略</a></li>
+</ol>
+]]></content>
+      <categories>
+        <category>pytorch</category>
+        <category>机器学习系统</category>
+      </categories>
+      <tags>
+        <tag>机器学习</tag>
+        <tag>机器学习系统</tag>
+      </tags>
+  </entry>
+  <entry>
     <title>minitorch: 自动反向传播</title>
     <url>/2025/04/28/minitorch-%E8%87%AA%E5%8A%A8%E5%8F%8D%E5%90%91%E4%BC%A0%E6%92%AD/</url>
     <content><![CDATA[<p><img src="/images/image-20250428233640749.png" alt="image-20250428233640749"></p>
@@ -1521,29 +1593,6 @@
 <h2 id="参考资料"><a href="#参考资料" class="headerlink" title="参考资料"></a><font color = brown>参考资料</font></h2><ol>
 <li><a href="https://dezeming.top/wp-content/uploads/2022/02/MiniTorch-%E5%AD%A6%E4%B9%A0%E5%85%A8%E6%94%BB%E7%95%A5.pdf">minitorch学习攻略</a></li>
 <li><a href="https://dlsyscourse.org/slides/4-automatic-differentiation.pdf">Deep Learning System chapter5 slide</a></li>
-</ol>
-]]></content>
-      <categories>
-        <category>pytorch</category>
-        <category>机器学习系统</category>
-      </categories>
-      <tags>
-        <tag>机器学习</tag>
-        <tag>机器学习系统</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>minitorch: Tensor</title>
-    <url>/2025/05/05/minitorch-Tensor/</url>
-    <content><![CDATA[<p><img src="/images/image-20250505150806582.png" alt="image-20250505150806582"></p>
-<span id="more"></span>
-
-<blockquote>
-<p>本篇文章是在完成minitorch的task2后的一些心得体会。在机器学习系统中，大量充斥着tensor这一抽象概念，但我从来没有真正深入理解一下tensor的底层实现机制，以及其带来的好处。本篇文章重点在于解读tensor机制的底层原理和逻辑，具体实现参考<a href="https://dezeming.top/wp-content/uploads/2022/02/MiniTorch-%E5%AD%A6%E4%B9%A0%E5%85%A8%E6%94%BB%E7%95%A5.pdf">minitorch-学习攻略</a>。</p>
-</blockquote>
-<p>本篇文章从分为两个部分来讲解，第一部分讲解tensor的底层存储与上层视图分离机制实现，重点解读strides，offset等索引逻辑，以及tensor的一些常见处理函数。第二部分主要结合minitorch源码，粗略梳理一下miniotrch的和tensor相关的源码框架。</p>
-<h2 id="底层存储于上层视图分离"><a href="#底层存储于上层视图分离" class="headerlink" title="底层存储于上层视图分离"></a><font color = brown>底层存储于上层视图分离</font></h2><h2 id="minitorch中Tensor框架"><a href="#minitorch中Tensor框架" class="headerlink" title="minitorch中Tensor框架"></a><font color = brown>minitorch中Tensor框架</font></h2><h2 id="参考资料"><a href="#参考资料" class="headerlink" title="参考资料"></a><font color = brown>参考资料</font></h2><ol>
-<li><a href="https://dezeming.top/wp-content/uploads/2022/02/MiniTorch-%E5%AD%A6%E4%B9%A0%E5%85%A8%E6%94%BB%E7%95%A5.pdf">minitorch-学习攻略</a></li>
 </ol>
 ]]></content>
       <categories>
@@ -1728,6 +1777,43 @@
       </tags>
   </entry>
   <entry>
+    <title>初探minitorch</title>
+    <url>/2025/04/27/%E5%88%9D%E6%8E%A2minitorch/</url>
+    <content><![CDATA[<p><img src="/images/image-20250427110245462.png" alt="image-20250427110245462"></p>
+<span id="more"></span>
+
+<blockquote>
+<p>本篇文章主要介绍minitorch项目的module0所需要的基础工具以及一些python知识。</p>
+</blockquote>
+<h2 id="Functional-Python"><a href="#Functional-Python" class="headerlink" title="Functional Python"></a><font color = brown>Functional Python</font></h2><h3 id="为什么用Functional-Python"><a href="#为什么用Functional-Python" class="headerlink" title="为什么用Functional Python"></a><font color = green>为什么用Functional Python</font></h3><p>重点参考<a href="https://minitorch.github.io/module0/functional/">Functional tutorial</a>文档。首先我们需要弄清楚为什么使用Functional python。MiniTorch 对外的接口（API）模仿 PyTorch 的标准用法，降低用户学习成本。而在内部，库的核心逻辑采用<strong>函数式编程</strong>风格，即通过纯函数（无副作用）和组合函数的方式构建计算逻辑。关于函数式编程，可以参考<a href="https://liaoxuefeng.com/books/python/functional/index.html">廖雪峰python博客</a>（后续会专门开一个博客内容学习讲解函数式编程，函数是编程是一个很重要且复杂的topic）。函数式编程有如下两个优点：</p>
+<ol>
+<li>更易测试</li>
+<li>更易优化</li>
+</ol>
+<p>函数式编程允许如下两件事情：</p>
+<ol>
+<li>将一个函数作为参数传入另一个函数</li>
+<li>将一个函数作为返回值返回</li>
+</ol>
+<h3 id="一个简单的例子"><a href="#一个简单的例子" class="headerlink" title="一个简单的例子"></a><font color = green>一个简单的例子</font></h3><figure class="highlight python"><table><tr><td class="code"><pre><span class="line"><span class="comment"># 支持type hints</span></span><br><span class="line"><span class="keyword">from</span> typing <span class="keyword">import</span> <span class="type">Callable</span>, Iterable</span><br><span class="line"></span><br><span class="line"><span class="comment"># 定义一个函数，返回一个函数，该函数将传入的filter function参数应用到参数数组上</span></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">apply_filter</span>(<span class="params"><span class="built_in">filter</span>: <span class="type">Callable</span>[[<span class="built_in">float</span>], <span class="built_in">bool</span>]</span>) -&gt; <span class="type">Callable</span>[[Iterable[<span class="built_in">float</span>]], Iterable[<span class="built_in">float</span>]]:</span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">func</span>(<span class="params">ls: Iterable[<span class="built_in">float</span>]</span>):</span><br><span class="line">        res = []</span><br><span class="line">        <span class="keyword">for</span> a <span class="keyword">in</span> ls:</span><br><span class="line">            <span class="keyword">if</span> <span class="built_in">filter</span>(a):</span><br><span class="line">                res.append(a)</span><br><span class="line"></span><br><span class="line">        <span class="keyword">return</span> res</span><br><span class="line">    <span class="keyword">return</span> func</span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">more_than_4</span>(<span class="params">a: <span class="built_in">float</span></span>) -&gt; <span class="built_in">bool</span>:</span><br><span class="line">    <span class="keyword">return</span> a &gt; <span class="number">4</span></span><br><span class="line"></span><br><span class="line">array = [<span class="number">1</span>, <span class="number">3</span>, <span class="number">4</span>, <span class="number">5</span>, <span class="number">6</span>, <span class="number">7</span>]</span><br><span class="line">filter_fn = apply_filter(more_than_4) </span><br><span class="line"><span class="built_in">print</span>(filter_fn(array))</span><br></pre></td></tr></table></figure>
+
+<p>通过上述例子，来辅助我们的理解。上述例子需要完成一个任务：从一个数组中，挑选出数值大于4的数字并重新组合返回。如果使用传统写法，则针对不同的筛选条件，都要遍历并筛选，之间会有大量逻辑重复。通过使用函数式编程范式，将filter封装成一个函数并传参，可减少重复代码，且有更强的可扩展性。</p>
+<h2 id="MiniTorch项目的辅助工具"><a href="#MiniTorch项目的辅助工具" class="headerlink" title="MiniTorch项目的辅助工具"></a><font color = brown>MiniTorch项目的辅助工具</font></h2><p>MiniTorch项目学习起来一个最大的优点，就是其对于测试，coding等规范性均做了详细的要求和工具辅助。<code>black</code>和<code>flake</code>等代码规范性检测工具，<code>PyTest</code>测试框架以及<code>github CI</code>版本管理和测试流程，以上均是本章讲解的重点。</p>
+<h3 id="PyTest框架"><a href="#PyTest框架" class="headerlink" title="PyTest框架"></a><font color = green>PyTest框架</font></h3><h2 id="References"><a href="#References" class="headerlink" title="References"></a><font color = brown>References</font></h2><ol>
+<li><a href="https://minitorch.github.io/">MiniTorch官网</a></li>
+<li><a href="https://dezeming.top/wp-content/uploads/2022/02/MiniTorch-%E5%AD%A6%E4%B9%A0%E5%85%A8%E6%94%BB%E7%95%A5.pdf">MiniTorch学习参考攻略</a></li>
+</ol>
+]]></content>
+      <categories>
+        <category>pytorch</category>
+        <category>机器学习系统</category>
+      </categories>
+      <tags>
+        <tag>机器学习</tag>
+        <tag>机器学习系统</tag>
+      </tags>
+  </entry>
+  <entry>
     <title>计算密集算子融合</title>
     <url>/2025/03/31/%E8%AE%A1%E7%AE%97%E5%AF%86%E9%9B%86%E7%AE%97%E5%AD%90%E8%9E%8D%E5%90%88/</url>
     <content><![CDATA[<p><img src="/images/image-20250331211738664.png" alt="image-20250331211738664"></p>
@@ -1817,43 +1903,6 @@
         <tag>机器学习编译器</tag>
         <tag>mlir</tag>
         <tag>算子融合技术</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>初探minitorch</title>
-    <url>/2025/04/27/%E5%88%9D%E6%8E%A2minitorch/</url>
-    <content><![CDATA[<p><img src="/images/image-20250427110245462.png" alt="image-20250427110245462"></p>
-<span id="more"></span>
-
-<blockquote>
-<p>本篇文章主要介绍minitorch项目的module0所需要的基础工具以及一些python知识。</p>
-</blockquote>
-<h2 id="Functional-Python"><a href="#Functional-Python" class="headerlink" title="Functional Python"></a><font color = brown>Functional Python</font></h2><h3 id="为什么用Functional-Python"><a href="#为什么用Functional-Python" class="headerlink" title="为什么用Functional Python"></a><font color = green>为什么用Functional Python</font></h3><p>重点参考<a href="https://minitorch.github.io/module0/functional/">Functional tutorial</a>文档。首先我们需要弄清楚为什么使用Functional python。MiniTorch 对外的接口（API）模仿 PyTorch 的标准用法，降低用户学习成本。而在内部，库的核心逻辑采用<strong>函数式编程</strong>风格，即通过纯函数（无副作用）和组合函数的方式构建计算逻辑。关于函数式编程，可以参考<a href="https://liaoxuefeng.com/books/python/functional/index.html">廖雪峰python博客</a>（后续会专门开一个博客内容学习讲解函数式编程，函数是编程是一个很重要且复杂的topic）。函数式编程有如下两个优点：</p>
-<ol>
-<li>更易测试</li>
-<li>更易优化</li>
-</ol>
-<p>函数式编程允许如下两件事情：</p>
-<ol>
-<li>将一个函数作为参数传入另一个函数</li>
-<li>将一个函数作为返回值返回</li>
-</ol>
-<h3 id="一个简单的例子"><a href="#一个简单的例子" class="headerlink" title="一个简单的例子"></a><font color = green>一个简单的例子</font></h3><figure class="highlight python"><table><tr><td class="code"><pre><span class="line"><span class="comment"># 支持type hints</span></span><br><span class="line"><span class="keyword">from</span> typing <span class="keyword">import</span> <span class="type">Callable</span>, Iterable</span><br><span class="line"></span><br><span class="line"><span class="comment"># 定义一个函数，返回一个函数，该函数将传入的filter function参数应用到参数数组上</span></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">apply_filter</span>(<span class="params"><span class="built_in">filter</span>: <span class="type">Callable</span>[[<span class="built_in">float</span>], <span class="built_in">bool</span>]</span>) -&gt; <span class="type">Callable</span>[[Iterable[<span class="built_in">float</span>]], Iterable[<span class="built_in">float</span>]]:</span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">func</span>(<span class="params">ls: Iterable[<span class="built_in">float</span>]</span>):</span><br><span class="line">        res = []</span><br><span class="line">        <span class="keyword">for</span> a <span class="keyword">in</span> ls:</span><br><span class="line">            <span class="keyword">if</span> <span class="built_in">filter</span>(a):</span><br><span class="line">                res.append(a)</span><br><span class="line"></span><br><span class="line">        <span class="keyword">return</span> res</span><br><span class="line">    <span class="keyword">return</span> func</span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">more_than_4</span>(<span class="params">a: <span class="built_in">float</span></span>) -&gt; <span class="built_in">bool</span>:</span><br><span class="line">    <span class="keyword">return</span> a &gt; <span class="number">4</span></span><br><span class="line"></span><br><span class="line">array = [<span class="number">1</span>, <span class="number">3</span>, <span class="number">4</span>, <span class="number">5</span>, <span class="number">6</span>, <span class="number">7</span>]</span><br><span class="line">filter_fn = apply_filter(more_than_4) </span><br><span class="line"><span class="built_in">print</span>(filter_fn(array))</span><br></pre></td></tr></table></figure>
-
-<p>通过上述例子，来辅助我们的理解。上述例子需要完成一个任务：从一个数组中，挑选出数值大于4的数字并重新组合返回。如果使用传统写法，则针对不同的筛选条件，都要遍历并筛选，之间会有大量逻辑重复。通过使用函数式编程范式，将filter封装成一个函数并传参，可减少重复代码，且有更强的可扩展性。</p>
-<h2 id="MiniTorch项目的辅助工具"><a href="#MiniTorch项目的辅助工具" class="headerlink" title="MiniTorch项目的辅助工具"></a><font color = brown>MiniTorch项目的辅助工具</font></h2><p>MiniTorch项目学习起来一个最大的优点，就是其对于测试，coding等规范性均做了详细的要求和工具辅助。<code>black</code>和<code>flake</code>等代码规范性检测工具，<code>PyTest</code>测试框架以及<code>github CI</code>版本管理和测试流程，以上均是本章讲解的重点。</p>
-<h3 id="PyTest框架"><a href="#PyTest框架" class="headerlink" title="PyTest框架"></a><font color = green>PyTest框架</font></h3><h2 id="References"><a href="#References" class="headerlink" title="References"></a><font color = brown>References</font></h2><ol>
-<li><a href="https://minitorch.github.io/">MiniTorch官网</a></li>
-<li><a href="https://dezeming.top/wp-content/uploads/2022/02/MiniTorch-%E5%AD%A6%E4%B9%A0%E5%85%A8%E6%94%BB%E7%95%A5.pdf">MiniTorch学习参考攻略</a></li>
-</ol>
-]]></content>
-      <categories>
-        <category>pytorch</category>
-        <category>机器学习系统</category>
-      </categories>
-      <tags>
-        <tag>机器学习</tag>
-        <tag>机器学习系统</tag>
       </tags>
   </entry>
   <entry>
