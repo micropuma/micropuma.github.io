@@ -191,6 +191,105 @@
   
   
   <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://example.com/2025/05/05/minitorch-Tensor/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="Leon Dou">
+      <meta itemprop="description" content="关注领域：体系结构，编译技术">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Leon's Blog">
+    </span>
+      <header class="post-header">
+        <h2 class="post-title" itemprop="name headline">
+          
+            <a href="/2025/05/05/minitorch-Tensor/" class="post-title-link" itemprop="url">minitorch: Tensor</a>
+        </h2>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2025-05-05 15:05:34" itemprop="dateCreated datePublished" datetime="2025-05-05T15:05:34+08:00">2025-05-05</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2025-05-06 13:39:34" itemprop="dateModified" datetime="2025-05-06T13:39:34+08:00">2025-05-06</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/pytorch/" itemprop="url" rel="index"><span itemprop="name">pytorch</span></a>
+                </span>
+                  ，
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/pytorch/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0%E7%B3%BB%E7%BB%9F/" itemprop="url" rel="index"><span itemprop="name">机器学习系统</span></a>
+                </span>
+            </span>
+
+          <br>
+            <span class="post-meta-item" title="本文字数">
+              <span class="post-meta-item-icon">
+                <i class="far fa-file-word"></i>
+              </span>
+                <span class="post-meta-item-text">本文字数：</span>
+              <span>328</span>
+            </span>
+            <span class="post-meta-item" title="阅读时长">
+              <span class="post-meta-item-icon">
+                <i class="far fa-clock"></i>
+              </span>
+                <span class="post-meta-item-text">阅读时长 &asymp;</span>
+              <span>1 分钟</span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+          <p><img src="/images/image-20250505150806582.png" alt="image-20250505150806582"></p>
+          <!--noindex-->
+            <div class="post-button">
+              <a class="btn" href="/2025/05/05/minitorch-Tensor/#more" rel="contents">
+                阅读全文 &raquo;
+              </a>
+            </div>
+          <!--/noindex-->
+        
+      
+    </div>
+
+    
+    
+    
+      <footer class="post-footer">
+        <div class="post-eof"></div>
+      </footer>
+  </article>
+  
+  
+  
+
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
     <link itemprop="mainEntityOfPage" href="http://example.com/2025/04/29/BladeDISC-RAL-overview/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
@@ -717,7 +816,7 @@
                   <i class="far fa-calendar-check"></i>
                 </span>
                 <span class="post-meta-item-text">更新于</span>
-                <time title="修改时间：2025-04-29 15:03:57" itemprop="dateModified" datetime="2025-04-29T15:03:57+08:00">2025-04-29</time>
+                <time title="修改时间：2025-05-06 19:37:01" itemprop="dateModified" datetime="2025-05-06T19:37:01+08:00">2025-05-06</time>
               </span>
 
           <br>
@@ -726,14 +825,14 @@
                 <i class="far fa-file-word"></i>
               </span>
                 <span class="post-meta-item-text">本文字数：</span>
-              <span>25</span>
+              <span>3.6k</span>
             </span>
             <span class="post-meta-item" title="阅读时长">
               <span class="post-meta-item-icon">
                 <i class="far fa-clock"></i>
               </span>
                 <span class="post-meta-item-text">阅读时长 &asymp;</span>
-              <span>1 分钟</span>
+              <span>3 分钟</span>
             </span>
 
         </div>
@@ -748,9 +847,91 @@
           <span id="more"></span>
 
 <blockquote>
-<p>本篇博客重点阐述MLIR的自动向量化技术的实现细节</p>
+<p>本篇博客重点阐述MLIR的自动向量化技术的原理，并结合实际项目（如IREE项目）探索实现细节。</p>
 </blockquote>
-<p><img src="/images/image-20250429141523169.png" alt="image-20250429141523169"></p>
+<h2 id="MLIR-Vector-dialect引言"><a href="#MLIR-Vector-dialect引言" class="headerlink" title="MLIR Vector dialect引言"></a><font color = brown>MLIR Vector dialect引言</font></h2><blockquote>
+<p>这一部分讲清楚亮点：</p>
+<ul>
+<li>vector dialect在整个pipeline的位置</li>
+<li>vector dialect的逐层抽象下降逻辑</li>
+</ul>
+</blockquote>
+<p>首先，我们需要明晰vector dialect在一个端到端编译器的lower过程中，所处的位置。</p>
+<img src="/images/image-20250506144615423.png" alt="image-20250506144615423" style="zoom:50%;" />
+
+<p>由上图所示，vector dialect一般在affine和linalg dialect之后，在LLVM等底层dialect之前。此时编译器已经完成了高层的一些算子优化：多面体优化，tiling优化，循环融合优化，在vector层面则主要完成数据并行优化（主要针对SIMD架构做优化）。</p>
+<p>在vector dialect的内部，也可以进行分层划分，主要逻辑是自底向上，从指令层级（LLVMIR）到硬件强相关操作（NVVM dialect）到虚拟硬件无关操作三个层级。具体的例子如下图所示：</p>
+<p><img src="/images/image-20250506145154267.png" alt="image-20250506145154267"></p>
+<p>在高层的虚拟vector dialect中，和硬件无关，适合完成自动并行化等优化。然后通过MLIR的pattern rewrite机制逐层转换成硬件相关向量。以CUDA为例，MLIR社区提供NVVM dialect，可以抽象cuda的tensor core操作，编译器可以尝试将虚拟向量转为tensor core向量处理。最终将硬件相关vector转为LLVM做代码生成。</p>
+<h2 id="设计思考"><a href="#设计思考" class="headerlink" title="设计思考"></a><font color = brown>设计思考</font></h2><h3 id="向量化粒度思考"><a href="#向量化粒度思考" class="headerlink" title="向量化粒度思考"></a><font color = green>向量化粒度思考</font></h3><p>首先，我们要思考在高层vector逐层转向LLVM IR的过程中，其vector的粒度由什么决定。整个vector系统的设计逻辑是要将高层vector逐层转换为可以在硬件上高效利用数据并行的指令，因此最小粒度由硬件决定。该最小粒度在硬件相关vector层级就会暴露出来：</p>
+<p><img src="/images/image-20250506153342615.png" alt="image-20250506153342615"></p>
+<p>对于非最小粒度的倍数的vector，要么在高层转换成功，要么损失性能，或是在一些特定硬件会直接不合法而导致编译失败。</p>
+<blockquote>
+<p>这一部分其实也是vectorization优化的一个重难点，如何针对硬件进行合理的向量化优化。后续会围绕这一点重点分析已有的编译器的硬件相关向量化。</p>
+</blockquote>
+<h3 id="Automatic-Vectorization"><a href="#Automatic-Vectorization" class="headerlink" title="Automatic Vectorization"></a><font color = green>Automatic Vectorization</font></h3><p>不同于前面对于向量化降级粒度的思考，这一部分主要讨论如何将标量转换为向量表示。自动向量化的核心思想是，<strong>从一段代码中提取出结构化信息（数据并行性）并重组，本质是lowering的反面：raising操作</strong>。由于MLIR的多层级结构，因此自动向量化一般在linalg等高层ir就完成，而非affine层循环表示中完成，这样可以节省大量开销和优化复杂度。这一部分后续会结合代码详细解读。</p>
+<h3 id="Lowering-to-LLVM-tradeoff"><a href="#Lowering-to-LLVM-tradeoff" class="headerlink" title="Lowering to LLVM tradeoff"></a><font color = green>Lowering to LLVM tradeoff</font></h3><p>在LLVM中，其ir只支持1-D vector，因此需要将高层mlir vector降级到1-D vecctor。该过程有如下选项：</p>
+<p><img src="/images/image-20250506160200267.png" alt="image-20250506160200267"></p>
+<p>明白我们有哪些选择后，下一步是理解LLVM的vector有什么约束条件，在原文中大概翻译如下：</p>
+<blockquote>
+<h3 id="LLVM对多维向量的限制"><a href="#LLVM对多维向量的限制" class="headerlink" title="LLVM对多维向量的限制"></a>LLVM对多维向量的限制</h3><ol>
+<li><strong>原生仅支持1D向量</strong>：LLVM的向量操作（如<code>extractelement</code>、<code>insertelement</code>、<code>shufflevector</code>）直接支持动态索引，但仅适用于1D向量。</li>
+<li><strong>聚合类型的静态性</strong>：多维向量需降维为<strong>聚合类型</strong>（如结构体或数组），但相关操作（<code>extractvalue</code>&#x2F;<code>insertvalue</code>）仅允许静态索引，动态索引需通过内存指针（<code>getelementptr</code>）间接实现，效率较低。</li>
+</ol>
+<hr>
+<h3 id="MLIR中的两种实现方案"><a href="#MLIR中的两种实现方案" class="headerlink" title="MLIR中的两种实现方案"></a>MLIR中的两种实现方案</h3><h4 id="方案一：嵌套聚合（Nested-Aggregate）"><a href="#方案一：嵌套聚合（Nested-Aggregate）" class="headerlink" title="方案一：嵌套聚合（Nested Aggregate）"></a>方案一：嵌套聚合（Nested Aggregate）</h4><ul>
+<li><p><strong>原理</strong>：将n维向量编码为多层嵌套的1D向量（如<code>vector&lt;4x8x16x32xf32&gt;</code>视为<code>[4 x [8 x [16 x &lt;32xf32&gt;]]]</code>）。</p>
+<p>优点：</p>
+<ul>
+<li>保留维度层次，无需额外线性化逻辑。</li>
+<li>静态索引操作（如提取子向量）天然适配硬件寄存器结构。</li>
+</ul>
+</li>
+<li><p>缺点：</p>
+<ul>
+<li>动态索引非最内层维度时，需将数据写入内存再通过指针操作，性能损耗大。</li>
+<li>无法直接使用LLVM针对1D向量的优化指令（如SIMD指令）。</li>
+</ul>
+</li>
+</ul>
+<h4 id="方案二：扁平化1D向量（Flattened-Vector）"><a href="#方案二：扁平化1D向量（Flattened-Vector）" class="headerlink" title="方案二：扁平化1D向量（Flattened Vector）"></a>方案二：扁平化1D向量（Flattened Vector）</h4><ul>
+<li><strong>原理</strong>：将n维向量展平为单一大尺寸1D向量（如<code>vector&lt;4x8x16x32xf32&gt;</code>转为<code>vector&lt;4 * 8 * 16 * 32=16384xf32&gt;</code>）。</li>
+<li>优点：<ul>
+<li>支持全维度动态索引（<code>insertelement</code>&#x2F;<code>extractelement</code>）。</li>
+<li>兼容LLVM的1D向量优化指令和硬件指令。</li>
+</ul>
+</li>
+<li>缺点：<ul>
+<li>引入复杂线性化&#x2F;反线性化逻辑，代码生成复杂度高。</li>
+<li>掩盖实际硬件向量边界（如固定128位SIMD），可能导致非对齐访问或低效向量拆分。</li>
+</ul>
+</li>
+</ul>
+<hr>
+<h3 id="核心权衡：抽象灵活性与硬件效率"><a href="#核心权衡：抽象灵活性与硬件效率" class="headerlink" title="核心权衡：抽象灵活性与硬件效率"></a>核心权衡：抽象灵活性与硬件效率</h3><ul>
+<li><strong>嵌套聚合</strong>更贴近硬件物理结构（如多级寄存器），利于静态代码优化，但牺牲动态索引能力。</li>
+<li><strong>扁平化向量</strong>提供编程灵活性，但需在代码生成阶段隐式处理维度映射，可能阻碍硬件针对性优化。</li>
+</ul>
+<h4 id="折中方案"><a href="#折中方案" class="headerlink" title="折中方案"></a>折中方案</h4><p>通过<strong>显式维度转换操作</strong>（如<code>vector.cast</code>）按需展平部分维度，例如将<code>vector&lt;4x8x16x32xf32&gt;</code>局部转为<code>vector&lt;4x4096xf32&gt;</code>，既保留外层静态索引优化空间，又允许内层使用动态索引或SIMD指令。</p>
+</blockquote>
+<p>上述关于extractvalue操作不支持动态索引这点，刚开始会感觉比较难以理解。其本质原因是现代处理器（CPU&#x2F;GPU）的<strong>寄存器文件（Register File）</strong> 是硬件直接操作的超高速存储单元，访问索引的时候存在物理设计约束：</p>
+<ul>
+<li><strong>固定寄存器数量</strong>：每个线程&#x2F;核心可用的寄存器数量是硬件固定的（如NVIDIA GPU每个线程最多255个寄存器）。</li>
+<li><strong>静态寄存器分配</strong>：寄存器在编译时由编译器分配，操作寄存器的指令<strong>直接编码寄存器编号</strong>（如 <code>R0</code>, <code>R1</code>）。</li>
+<li><strong>无动态索引支持</strong>：硬件指令无法通过运行时变量选择寄存器（如无法生成 <code>MOV R%idx, 42</code> 这样的指令）。</li>
+</ul>
+<p>由于上述三个物理设计约束，寄存器难以支持动态索引，也导致嵌套聚合的动态索引局限。将眼光从mlir编译放远来看，其实众多编程模型对于寄存器的动静态问题早有讨论：</p>
+<ul>
+<li>通过循环展开，化动态为静态。</li>
+<li>split memory，内存可以动态索引，但是带来访存开销问题。</li>
+</ul>
+<h2 id="vector实际实现机制"><a href="#vector实际实现机制" class="headerlink" title="vector实际实现机制"></a><font color = brown>vector实际实现机制</font></h2><h3 id="Implication-on-codegen"><a href="#Implication-on-codegen" class="headerlink" title="Implication on codegen"></a><font color = green>Implication on codegen</font></h3><p>MLIR的n维向量类型在降级到LLVM时被表示为(n-1)维数组包裹的1维向量，这导致静态索引和动态索引的分层限制：仅最内层1维向量支持动态索引（通过<code>insertelement</code>&#x2F;<code>extractelement</code>），外层(n-1)维只能静态访问，否则需显式内存操作（<code>load</code>&#x2F;<code>store</code>）。代码生成需权衡循环展开与内存访问，动态索引需通过内存指针实现，而硬件寄存器分配和溢出问题则推迟到LLVM后端处理，MLIR层通过抽象成本模型指导优化选择。</p>
+<h3 id="Implication-on-Lowering-to-Accelerators"><a href="#Implication-on-Lowering-to-Accelerators" class="headerlink" title="Implication on Lowering to Accelerators"></a><font color = green>Implication on Lowering to Accelerators</font></h3><p>针对支持高维向量的加速器，MLIR通过<code>vector.cast</code>将最内层维度展平为1维向量（如<code>vector&lt;Kxf32&gt;</code>），直接对接LLVM-IR或加速器特定指令。这一过程需在<strong>加速器专用方言中定制转换规则，例如处理不规则维度时的掩码或数据重组逻辑，而标准化的展平操作（如<code>K=K1*K2*…*Kn</code>）近乎无开销</strong>。目标是实现跨CPU&#x2F;GPU&#x2F;加速器的统一代码生成框架，通过模式重写和成本模型灵活适配硬件特性。</p>
+<p><font color = red>这一条在各种机器学习编译器中都有大量代码实现</font></p>
+<p><img src="/images/image-20250506193313255.png" alt="image-20250506193313255"></p>
+<h3 id="Implication-on-calling-external-functions-that-operate-on-vectors"><a href="#Implication-on-calling-external-functions-that-operate-on-vectors" class="headerlink" title="Implication on calling external functions that operate on vectors"></a><font color = green>Implication on calling external functions that operate on vectors</font></h3><p>调用外部向量函数时，可能需要线性化多维向量以匹配ABI接口。MLIR需在调用边界隐式插入维度转换逻辑，确保数据布局与目标函数兼容。例如，将<code>vector&lt;4x4xf32&gt;</code>转为连续内存块或1D向量，避免因多维结构导致调用约定冲突。</p>
+<h3 id="Relationship-to-LLVM-matrix-type-proposal"><a href="#Relationship-to-LLVM-matrix-type-proposal" class="headerlink" title="Relationship to LLVM matrix type proposal"></a><font color = green>Relationship to LLVM matrix type proposal</font></h3><p>LLVM矩阵提案（支持2D矩阵及专用指令）与MLIR多维向量设计存在互补性。MLIR更高维的通用向量抽象可降级为LLVM矩阵或原生1D向量，而MLIR的<code>vector.cast</code>机制为CPU&#x2F;加速器提供了统一接口。未来MLIR可能成为跨硬件向量化策略的枢纽层，LLVM矩阵则作为特定场景的子集实现。</p>
+<h3 id="Conclusion"><a href="#Conclusion" class="headerlink" title="Conclusion"></a><font color = green>Conclusion</font></h3><p>**MLIR选择“嵌套聚合1D向量”作为核心抽象，因其明确区分内存与寄存器语义，同时通过<code>vector.cast</code>兼容硬件特定指令。**这种设计支持粗粒度向量操作（如跨多硬件向量的模式匹配），并通过显式维度转换平衡灵活性与性能，而非依赖LLVM隐式线性化。尽管LLVM矩阵提案适合硬件专用场景，MLIR的高维模型更适配跨平台代码生成需求，成为连接算法与硬件优化的桥梁。</p>
 
       
     </div>
@@ -1075,117 +1256,10 @@
   
   
 
-      
-  
-  
-  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
-    <link itemprop="mainEntityOfPage" href="http://example.com/2025/04/16/AI%E7%BC%96%E8%AF%91%E5%99%A8%E5%90%8E%E7%AB%AF-%E8%BF%90%E8%A1%8C%E6%97%B6/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="image" content="/images/avatar.gif">
-      <meta itemprop="name" content="Leon Dou">
-      <meta itemprop="description" content="关注领域：体系结构，编译技术">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="Leon's Blog">
-    </span>
-      <header class="post-header">
-        <h2 class="post-title" itemprop="name headline">
-          
-            <a href="/2025/04/16/AI%E7%BC%96%E8%AF%91%E5%99%A8%E5%90%8E%E7%AB%AF-%E8%BF%90%E8%A1%8C%E6%97%B6/" class="post-title-link" itemprop="url">AI编译器后端&运行时</a>
-        </h2>
-
-        <div class="post-meta">
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-calendar"></i>
-              </span>
-              <span class="post-meta-item-text">发表于</span>
-
-              <time title="创建时间：2025-04-16 17:52:16" itemprop="dateCreated datePublished" datetime="2025-04-16T17:52:16+08:00">2025-04-16</time>
-            </span>
-              <span class="post-meta-item">
-                <span class="post-meta-item-icon">
-                  <i class="far fa-calendar-check"></i>
-                </span>
-                <span class="post-meta-item-text">更新于</span>
-                <time title="修改时间：2025-05-02 22:40:38" itemprop="dateModified" datetime="2025-05-02T22:40:38+08:00">2025-05-02</time>
-              </span>
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-folder"></i>
-              </span>
-              <span class="post-meta-item-text">分类于</span>
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/%E7%BC%96%E8%AF%91%E6%8A%80%E6%9C%AF/" itemprop="url" rel="index"><span itemprop="name">编译技术</span></a>
-                </span>
-                  ，
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/%E7%BC%96%E8%AF%91%E6%8A%80%E6%9C%AF/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0%E7%BC%96%E8%AF%91/" itemprop="url" rel="index"><span itemprop="name">机器学习编译</span></a>
-                </span>
-                  ，
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/%E7%BC%96%E8%AF%91%E6%8A%80%E6%9C%AF/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0%E7%BC%96%E8%AF%91/%E5%90%8E%E7%AB%AF/" itemprop="url" rel="index"><span itemprop="name">后端</span></a>
-                </span>
-                  ，
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/%E7%BC%96%E8%AF%91%E6%8A%80%E6%9C%AF/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0%E7%BC%96%E8%AF%91/%E5%90%8E%E7%AB%AF/%E8%BF%90%E8%A1%8C%E6%97%B6/" itemprop="url" rel="index"><span itemprop="name">运行时</span></a>
-                </span>
-            </span>
-
-          <br>
-            <span class="post-meta-item" title="本文字数">
-              <span class="post-meta-item-icon">
-                <i class="far fa-file-word"></i>
-              </span>
-                <span class="post-meta-item-text">本文字数：</span>
-              <span>7.7k</span>
-            </span>
-            <span class="post-meta-item" title="阅读时长">
-              <span class="post-meta-item-icon">
-                <i class="far fa-clock"></i>
-              </span>
-                <span class="post-meta-item-text">阅读时长 &asymp;</span>
-              <span>7 分钟</span>
-            </span>
-
-        </div>
-      </header>
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-          <p><img src="/images/image-20250420234716898.png" alt="image-20250420234716898"></p>
-          <!--noindex-->
-            <div class="post-button">
-              <a class="btn" href="/2025/04/16/AI%E7%BC%96%E8%AF%91%E5%99%A8%E5%90%8E%E7%AB%AF-%E8%BF%90%E8%A1%8C%E6%97%B6/#more" rel="contents">
-                阅读全文 &raquo;
-              </a>
-            </div>
-          <!--/noindex-->
-        
-      
-    </div>
-
-    
-    
-    
-      <footer class="post-footer">
-        <div class="post-eof"></div>
-      </footer>
-  </article>
-  
-  
-  
-
 
   
   <nav class="pagination">
-    <span class="page-number current">1</span><a class="page-number" href="/page/2/">2</a><a class="extend next" rel="next" href="/page/2/"><i class="fa fa-angle-right" aria-label="下一页"></i></a>
+    <span class="page-number current">1</span><a class="page-number" href="/page/2/">2</a><a class="page-number" href="/page/3/">3</a><a class="extend next" rel="next" href="/page/2/"><i class="fa fa-angle-right" aria-label="下一页"></i></a>
   </nav>
 
 
@@ -1251,7 +1325,7 @@
       <div class="site-state-item site-state-posts">
           <a href="/archives/">
         
-          <span class="site-state-item-count">20</span>
+          <span class="site-state-item-count">21</span>
           <span class="site-state-item-name">日志</span>
         </a>
       </div>
@@ -1301,13 +1375,13 @@
       <i class="fa fa-chart-area"></i>
     </span>
       <span class="post-meta-item-text">站点总字数：</span>
-    <span title="站点总字数">122k</span>
+    <span title="站点总字数">126k</span>
     <span class="post-meta-divider">|</span>
     <span class="post-meta-item-icon">
       <i class="fa fa-coffee"></i>
     </span>
       <span class="post-meta-item-text">站点阅读时长 &asymp;</span>
-    <span title="站点阅读时长">1:51</span>
+    <span title="站点阅读时长">1:54</span>
 </div>
   <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://pisces.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Pisces</a> 强力驱动
   </div>

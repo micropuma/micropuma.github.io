@@ -1,77 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <search>
   <entry>
-    <title>Allo项目初探</title>
-    <url>/2025/03/29/Allo%E9%A1%B9%E7%9B%AE%E5%88%9D%E6%8E%A2/</url>
-    <content><![CDATA[<p><img src="/images/image-20250330205827771.png" alt="image-20250330205827771"></p>
-<span id="more"></span>
-
-<h2 id="项目构建"><a href="#项目构建" class="headerlink" title="项目构建"></a><font color = brown>项目构建</font></h2><p>主要参考<a href="https://cornell-zhang.github.io/allo/setup/index.html">Allo doc</a>的set up章节，这里我选择源码构建的方式。项目构建流程如下：</p>
-<ol>
-<li><p>clone项目</p>
-<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">git clone --recursive git@github.com:micropuma/allo.git</span><br></pre></td></tr></table></figure>
-</li>
-<li><p>构建llvm子项目</p>
-<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">cd allo/externals/llvm-project</span><br><span class="line"><span class="meta prompt_"># </span><span class="language-bash">Apply our patch</span></span><br><span class="line">git apply ../llvm_patch</span><br><span class="line"><span class="meta prompt_"># </span><span class="language-bash">Python 3.12 is required</span></span><br><span class="line">mkdir -p build</span><br></pre></td></tr></table></figure>
-
-<p>由于需要python bind11，以及后续需要pip install很多python库，因此这里推荐用conda创建虚拟环境：</p>
-<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">conda create -n allo python=3.12         # python版本一定是3.12</span><br><span class="line">conda activate allo</span><br><span class="line">pip install pybind11</span><br></pre></td></tr></table></figure>
-
-<p>编写shell脚本，一键构建llvm：</p>
-<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">cd build</span><br><span class="line">cmake -G Ninja ../llvm \</span><br><span class="line">    -DLLVM_ENABLE_PROJECTS=&quot;clang;mlir;openmp&quot; \</span><br><span class="line">    -DLLVM_BUILD_EXAMPLES=ON \</span><br><span class="line">    -DLLVM_TARGETS_TO_BUILD=&quot;host&quot; \</span><br><span class="line">    -DCMAKE_BUILD_TYPE=Release \</span><br><span class="line">    -DLLVM_ENABLE_ASSERTIONS=ON \</span><br><span class="line">    -DLLVM_INSTALL_UTILS=ON \</span><br><span class="line">    -DMLIR_ENABLE_BINDINGS_PYTHON=ON \</span><br><span class="line">    -DPython3_EXECUTABLE=`which python3`</span><br><span class="line">ninja -j $(nproc)</span><br><span class="line"><span class="meta prompt_"></span></span><br><span class="line"><span class="meta prompt_"># </span><span class="language-bash"><span class="built_in">export</span> environment variable</span></span><br><span class="line">export LLVM_BUILD_DIR=$(pwd)</span><br></pre></td></tr></table></figure>
-</li>
-<li><p>构建Allo项目，首先回退到项目根目录，运行如下命令：</p>
-<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">python3 -m pip install -v -e . -i https://pypi.tuna.tsinghua.edu.cn/simple  # 建议用清华镜像，否则容易拉取失败</span><br></pre></td></tr></table></figure></li>
-</ol>
-<h2 id="Allo项目使用"><a href="#Allo项目使用" class="headerlink" title="Allo项目使用"></a><font color = brown>Allo项目使用</font></h2><h3 id="Pytorch集成例子"><a href="#Pytorch集成例子" class="headerlink" title="Pytorch集成例子"></a><font color = green>Pytorch集成例子</font></h3><p>Allo项目除了使用ADL（加速定义语言）来描述计算任务外，也可以集成在pytorch中使用。具体参考<a href="https://cornell-zhang.github.io/allo/dive/pytorch.html">allo pytorch集成例子</a>。</p>
-<p>具体代码如下：</p>
-<figure class="highlight python"><table><tr><td class="code"><pre><span class="line"><span class="keyword">import</span> torch</span><br><span class="line"><span class="keyword">import</span> torch.nn.functional <span class="keyword">as</span> F</span><br><span class="line"><span class="keyword">import</span> torch.nn <span class="keyword">as</span> nn</span><br><span class="line"></span><br><span class="line"><span class="keyword">class</span> <span class="title class_">Model</span>(nn.Module):</span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">__init__</span>(<span class="params">self</span>):</span><br><span class="line">        <span class="built_in">super</span>(Model, <span class="variable language_">self</span>).__init__()</span><br><span class="line"></span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">forward</span>(<span class="params">self, x, y</span>):</span><br><span class="line">        x = x + y</span><br><span class="line">        x = F.relu(x)</span><br><span class="line">        <span class="keyword">return</span> x</span><br><span class="line"></span><br><span class="line">model = Model()</span><br><span class="line">model.<span class="built_in">eval</span>()</span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> allo</span><br><span class="line">example_inputs = [torch.rand(<span class="number">1</span>, <span class="number">3</span>, <span class="number">10</span>, <span class="number">10</span>), torch.rand(<span class="number">1</span>, <span class="number">3</span>, <span class="number">10</span>, <span class="number">10</span>)]</span><br><span class="line">llvm_mod = allo.frontend.from_pytorch(model, example_inputs=example_inputs)</span><br><span class="line"></span><br><span class="line">golden = model(*example_inputs)</span><br><span class="line">np_inputs = [x.detach().numpy() <span class="keyword">for</span> x <span class="keyword">in</span> example_inputs]</span><br><span class="line">res = llvm_mod(*np_inputs)</span><br><span class="line">torch.testing.assert_close(res, golden.detach().numpy())</span><br><span class="line"><span class="built_in">print</span>(<span class="string">&quot;Passed!&quot;</span>)</span><br><span class="line"></span><br><span class="line">mod = allo.frontend.from_pytorch(model, example_inputs=example_inputs, target=<span class="string">&quot;vhls&quot;</span>)</span><br><span class="line"><span class="built_in">print</span>(mod.hls_code)</span><br></pre></td></tr></table></figure>
-
-<p>执行如下scirpt：</p>
-<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line"><span class="meta prompt_">#</span><span class="language-bash">!/bin/bash</span></span><br><span class="line"></span><br><span class="line">LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libstdc++.so.6 python test.py</span><br></pre></td></tr></table></figure>
-
-<blockquote>
-<p>:key:注意，由于conda环境中的libstdc++版本低，可能会在import allo的时候报错。强制指定系统libstdc++版本即可。</p>
-</blockquote>
-<h3 id="Allo-AIE集成"><a href="#Allo-AIE集成" class="headerlink" title="Allo AIE集成"></a><font color = green>Allo AIE集成</font></h3><p>Allo项目目前可以集成AIE后端了，目前只局限于aie2（NPU）。该流程是端到端的编译流程，支持从pytorch或是huggingface上的模型lower到aie后端，并执行。具体流程如下：</p>
-<p><img src="/images/image-20250407111644037.png" alt="image-20250407111644037"></p>
-<p>目前存在的流程问题：</p>
-<ul>
-<li><p>Pytorch只能target到cpu和fpga上，目前没有支持pytorch到aie的端到端流程。</p>
-<p><img src="/images/image-20250407124451930.png" alt="image-20250407124451930"></p>
-</li>
-<li><p>对于aie，目前allo支持用python编写算子，并且只能支持aie2（NPU），没有支持VCK190。</p>
-<p><img src="/images/image-20250407124501753.png" alt="image-20250407124501753"></p>
-</li>
-<li><p>Pytorch算子支持受局限。</p>
-<p><img src="/images/image-20250407124509106.png" alt="image-20250407124509106"></p>
-</li>
-</ul>
-<h2 id="Allo项目架构"><a href="#Allo项目架构" class="headerlink" title="Allo项目架构"></a><font color = brown>Allo项目架构</font></h2><p><img src="/images/image-20250331184126715.png" alt="image-20250331184126715"></p>
-<h3 id="前端"><a href="#前端" class="headerlink" title="前端"></a><font color = green>前端</font></h3><p><code>Allo</code>项目在前端使用python语言编写，主要完成<strong>python系统</strong>和<strong>pytorch系统</strong>到mlir系统的接入。针对pytorch系统，用于可以使用<code>torch.compile(model, &quot;allo&quot;)</code>将pytorch代码编译成allo的中间表达形式，借助于TorchDynamo系统。具体的，基于<code>torch.fx</code>作为高层ir，将其中的每一个pytorch计算单元翻译成allo的function call，后续转换和优化交由allo来完成。硬件无关优化比如算子融合在torch系统中完成，而硬件相关优化则由allo完成，两者是正交关系。</p>
-<h2 id="代码生成"><a href="#代码生成" class="headerlink" title="代码生成"></a><font color = green>代码生成</font></h2><p>用户通过<code>s.build(&lt;target&gt;)</code>来针对指定硬件生成代码。目前支持的后端硬件有：CPU，AMD的fpga以及AMD AIE（Ryzen AI）。</p>
-<h2 id="中间优化"><a href="#中间优化" class="headerlink" title="中间优化"></a><font color = green>中间优化</font></h2><p>这一部分完全在mlir系统中完成所有的优化。</p>
-<blockquote>
-<p>Allo项目的框架是比较简单的，后续会结合源代码详细解读。</p>
-</blockquote>
-<h2 id="参考资料"><a href="#参考资料" class="headerlink" title="参考资料"></a><font color = brown>参考资料</font></h2><ol>
-<li><a href="https://cornell-zhang.github.io/allo/">Allo doc</a></li>
-<li><a href="http://arxiv.org/abs/2404.04815">Allo paper</a></li>
-<li><a href="https://github.com/cornell-zhang/allo">Allo project</a></li>
-</ol>
-]]></content>
-      <categories>
-        <category>编译技术</category>
-        <category>机器学习编译</category>
-        <category>异构设计</category>
-      </categories>
-      <tags>
-        <tag>机器学习编译器</tag>
-        <tag>mlir</tag>
-        <tag>异构计算系统</tag>
-      </tags>
-  </entry>
-  <entry>
     <title>AI编译器后端&amp;运行时</title>
     <url>/2025/04/16/AI%E7%BC%96%E8%AF%91%E5%99%A8%E5%90%8E%E7%AB%AF-%E8%BF%90%E8%A1%8C%E6%97%B6/</url>
     <content><![CDATA[<p><img src="/images/image-20250420234716898.png" alt="image-20250420234716898"></p>
@@ -343,21 +272,74 @@
       </tags>
   </entry>
   <entry>
-    <title>BladeDISC: Pytorch integration</title>
-    <url>/2025/04/29/BladeDISC-Pytorch-integration/</url>
-    <content><![CDATA[<p><img src="/images/image-20250429115415316.png" alt="image-20250429115415316"></p>
+    <title>Allo项目初探</title>
+    <url>/2025/03/29/Allo%E9%A1%B9%E7%9B%AE%E5%88%9D%E6%8E%A2/</url>
+    <content><![CDATA[<p><img src="/images/image-20250330205827771.png" alt="image-20250330205827771"></p>
 <span id="more"></span>
 
+<h2 id="项目构建"><a href="#项目构建" class="headerlink" title="项目构建"></a><font color = brown>项目构建</font></h2><p>主要参考<a href="https://cornell-zhang.github.io/allo/setup/index.html">Allo doc</a>的set up章节，这里我选择源码构建的方式。项目构建流程如下：</p>
+<ol>
+<li><p>clone项目</p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">git clone --recursive git@github.com:micropuma/allo.git</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>构建llvm子项目</p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">cd allo/externals/llvm-project</span><br><span class="line"><span class="meta prompt_"># </span><span class="language-bash">Apply our patch</span></span><br><span class="line">git apply ../llvm_patch</span><br><span class="line"><span class="meta prompt_"># </span><span class="language-bash">Python 3.12 is required</span></span><br><span class="line">mkdir -p build</span><br></pre></td></tr></table></figure>
+
+<p>由于需要python bind11，以及后续需要pip install很多python库，因此这里推荐用conda创建虚拟环境：</p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">conda create -n allo python=3.12         # python版本一定是3.12</span><br><span class="line">conda activate allo</span><br><span class="line">pip install pybind11</span><br></pre></td></tr></table></figure>
+
+<p>编写shell脚本，一键构建llvm：</p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">cd build</span><br><span class="line">cmake -G Ninja ../llvm \</span><br><span class="line">    -DLLVM_ENABLE_PROJECTS=&quot;clang;mlir;openmp&quot; \</span><br><span class="line">    -DLLVM_BUILD_EXAMPLES=ON \</span><br><span class="line">    -DLLVM_TARGETS_TO_BUILD=&quot;host&quot; \</span><br><span class="line">    -DCMAKE_BUILD_TYPE=Release \</span><br><span class="line">    -DLLVM_ENABLE_ASSERTIONS=ON \</span><br><span class="line">    -DLLVM_INSTALL_UTILS=ON \</span><br><span class="line">    -DMLIR_ENABLE_BINDINGS_PYTHON=ON \</span><br><span class="line">    -DPython3_EXECUTABLE=`which python3`</span><br><span class="line">ninja -j $(nproc)</span><br><span class="line"><span class="meta prompt_"></span></span><br><span class="line"><span class="meta prompt_"># </span><span class="language-bash"><span class="built_in">export</span> environment variable</span></span><br><span class="line">export LLVM_BUILD_DIR=$(pwd)</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>构建Allo项目，首先回退到项目根目录，运行如下命令：</p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">python3 -m pip install -v -e . -i https://pypi.tuna.tsinghua.edu.cn/simple  # 建议用清华镜像，否则容易拉取失败</span><br></pre></td></tr></table></figure></li>
+</ol>
+<h2 id="Allo项目使用"><a href="#Allo项目使用" class="headerlink" title="Allo项目使用"></a><font color = brown>Allo项目使用</font></h2><h3 id="Pytorch集成例子"><a href="#Pytorch集成例子" class="headerlink" title="Pytorch集成例子"></a><font color = green>Pytorch集成例子</font></h3><p>Allo项目除了使用ADL（加速定义语言）来描述计算任务外，也可以集成在pytorch中使用。具体参考<a href="https://cornell-zhang.github.io/allo/dive/pytorch.html">allo pytorch集成例子</a>。</p>
+<p>具体代码如下：</p>
+<figure class="highlight python"><table><tr><td class="code"><pre><span class="line"><span class="keyword">import</span> torch</span><br><span class="line"><span class="keyword">import</span> torch.nn.functional <span class="keyword">as</span> F</span><br><span class="line"><span class="keyword">import</span> torch.nn <span class="keyword">as</span> nn</span><br><span class="line"></span><br><span class="line"><span class="keyword">class</span> <span class="title class_">Model</span>(nn.Module):</span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">__init__</span>(<span class="params">self</span>):</span><br><span class="line">        <span class="built_in">super</span>(Model, <span class="variable language_">self</span>).__init__()</span><br><span class="line"></span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">forward</span>(<span class="params">self, x, y</span>):</span><br><span class="line">        x = x + y</span><br><span class="line">        x = F.relu(x)</span><br><span class="line">        <span class="keyword">return</span> x</span><br><span class="line"></span><br><span class="line">model = Model()</span><br><span class="line">model.<span class="built_in">eval</span>()</span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> allo</span><br><span class="line">example_inputs = [torch.rand(<span class="number">1</span>, <span class="number">3</span>, <span class="number">10</span>, <span class="number">10</span>), torch.rand(<span class="number">1</span>, <span class="number">3</span>, <span class="number">10</span>, <span class="number">10</span>)]</span><br><span class="line">llvm_mod = allo.frontend.from_pytorch(model, example_inputs=example_inputs)</span><br><span class="line"></span><br><span class="line">golden = model(*example_inputs)</span><br><span class="line">np_inputs = [x.detach().numpy() <span class="keyword">for</span> x <span class="keyword">in</span> example_inputs]</span><br><span class="line">res = llvm_mod(*np_inputs)</span><br><span class="line">torch.testing.assert_close(res, golden.detach().numpy())</span><br><span class="line"><span class="built_in">print</span>(<span class="string">&quot;Passed!&quot;</span>)</span><br><span class="line"></span><br><span class="line">mod = allo.frontend.from_pytorch(model, example_inputs=example_inputs, target=<span class="string">&quot;vhls&quot;</span>)</span><br><span class="line"><span class="built_in">print</span>(mod.hls_code)</span><br></pre></td></tr></table></figure>
+
+<p>执行如下scirpt：</p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line"><span class="meta prompt_">#</span><span class="language-bash">!/bin/bash</span></span><br><span class="line"></span><br><span class="line">LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libstdc++.so.6 python test.py</span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p>:key:注意，由于conda环境中的libstdc++版本低，可能会在import allo的时候报错。强制指定系统libstdc++版本即可。</p>
+</blockquote>
+<h3 id="Allo-AIE集成"><a href="#Allo-AIE集成" class="headerlink" title="Allo AIE集成"></a><font color = green>Allo AIE集成</font></h3><p>Allo项目目前可以集成AIE后端了，目前只局限于aie2（NPU）。该流程是端到端的编译流程，支持从pytorch或是huggingface上的模型lower到aie后端，并执行。具体流程如下：</p>
+<p><img src="/images/image-20250407111644037.png" alt="image-20250407111644037"></p>
+<p>目前存在的流程问题：</p>
+<ul>
+<li><p>Pytorch只能target到cpu和fpga上，目前没有支持pytorch到aie的端到端流程。</p>
+<p><img src="/images/image-20250407124451930.png" alt="image-20250407124451930"></p>
+</li>
+<li><p>对于aie，目前allo支持用python编写算子，并且只能支持aie2（NPU），没有支持VCK190。</p>
+<p><img src="/images/image-20250407124501753.png" alt="image-20250407124501753"></p>
+</li>
+<li><p>Pytorch算子支持受局限。</p>
+<p><img src="/images/image-20250407124509106.png" alt="image-20250407124509106"></p>
+</li>
+</ul>
+<h2 id="Allo项目架构"><a href="#Allo项目架构" class="headerlink" title="Allo项目架构"></a><font color = brown>Allo项目架构</font></h2><p><img src="/images/image-20250331184126715.png" alt="image-20250331184126715"></p>
+<h3 id="前端"><a href="#前端" class="headerlink" title="前端"></a><font color = green>前端</font></h3><p><code>Allo</code>项目在前端使用python语言编写，主要完成<strong>python系统</strong>和<strong>pytorch系统</strong>到mlir系统的接入。针对pytorch系统，用于可以使用<code>torch.compile(model, &quot;allo&quot;)</code>将pytorch代码编译成allo的中间表达形式，借助于TorchDynamo系统。具体的，基于<code>torch.fx</code>作为高层ir，将其中的每一个pytorch计算单元翻译成allo的function call，后续转换和优化交由allo来完成。硬件无关优化比如算子融合在torch系统中完成，而硬件相关优化则由allo完成，两者是正交关系。</p>
+<h2 id="代码生成"><a href="#代码生成" class="headerlink" title="代码生成"></a><font color = green>代码生成</font></h2><p>用户通过<code>s.build(&lt;target&gt;)</code>来针对指定硬件生成代码。目前支持的后端硬件有：CPU，AMD的fpga以及AMD AIE（Ryzen AI）。</p>
+<h2 id="中间优化"><a href="#中间优化" class="headerlink" title="中间优化"></a><font color = green>中间优化</font></h2><p>这一部分完全在mlir系统中完成所有的优化。</p>
+<blockquote>
+<p>Allo项目的框架是比较简单的，后续会结合源代码详细解读。</p>
+</blockquote>
+<h2 id="参考资料"><a href="#参考资料" class="headerlink" title="参考资料"></a><font color = brown>参考资料</font></h2><ol>
+<li><a href="https://cornell-zhang.github.io/allo/">Allo doc</a></li>
+<li><a href="http://arxiv.org/abs/2404.04815">Allo paper</a></li>
+<li><a href="https://github.com/cornell-zhang/allo">Allo project</a></li>
+</ol>
 ]]></content>
       <categories>
         <category>编译技术</category>
         <category>机器学习编译</category>
-        <category>动态shape</category>
+        <category>异构设计</category>
       </categories>
       <tags>
         <tag>机器学习编译器</tag>
         <tag>mlir</tag>
-        <tag>动态shape</tag>
+        <tag>异构计算系统</tag>
       </tags>
   </entry>
   <entry>
@@ -783,11 +765,6 @@
       </tags>
   </entry>
   <entry>
-    <title>MLIR Basic: DDR framework</title>
-    <url>/2025/04/12/MLIR-Basic-DDR-framework/</url>
-    <content><![CDATA[]]></content>
-  </entry>
-  <entry>
     <title>BladeDISC: RAL overview</title>
     <url>/2025/04/29/BladeDISC-RAL-overview/</url>
     <content><![CDATA[<p><img src="/images/image-20250429153010114.png" alt="image-20250429153010114"></p>
@@ -893,11 +870,6 @@
       </tags>
   </entry>
   <entry>
-    <title>MLIR Basic: ODS framework</title>
-    <url>/2025/04/12/MLIR-Basic-ODS-framework/</url>
-    <content><![CDATA[]]></content>
-  </entry>
-  <entry>
     <title>BladeDISC初探</title>
     <url>/2025/04/01/BladeDISC%E5%88%9D%E6%8E%A2/</url>
     <content><![CDATA[<p><img src="/images/image-20250401195537142.png" alt="image-20250401195537142"></p>
@@ -959,6 +931,34 @@
 <h2 id="参考资料"><a href="#参考资料" class="headerlink" title="参考资料"></a><font color = brown>参考资料</font></h2><ol>
 <li><a href="https://github.com/alibaba/BladeDISC">BladeDisc github</a></li>
 </ol>
+]]></content>
+      <categories>
+        <category>编译技术</category>
+        <category>机器学习编译</category>
+        <category>动态shape</category>
+      </categories>
+      <tags>
+        <tag>机器学习编译器</tag>
+        <tag>mlir</tag>
+        <tag>动态shape</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>MLIR Basic: ODS framework</title>
+    <url>/2025/04/12/MLIR-Basic-ODS-framework/</url>
+    <content><![CDATA[]]></content>
+  </entry>
+  <entry>
+    <title>MLIR Basic: DDR framework</title>
+    <url>/2025/04/12/MLIR-Basic-DDR-framework/</url>
+    <content><![CDATA[]]></content>
+  </entry>
+  <entry>
+    <title>BladeDISC: Pytorch integration</title>
+    <url>/2025/04/29/BladeDISC-Pytorch-integration/</url>
+    <content><![CDATA[<p><img src="/images/image-20250429115415316.png" alt="image-20250429115415316"></p>
+<span id="more"></span>
+
 ]]></content>
       <categories>
         <category>编译技术</category>
@@ -1205,9 +1205,91 @@
     <content><![CDATA[<span id="more"></span>
 
 <blockquote>
-<p>本篇博客重点阐述MLIR的自动向量化技术的实现细节</p>
+<p>本篇博客重点阐述MLIR的自动向量化技术的原理，并结合实际项目（如IREE项目）探索实现细节。</p>
 </blockquote>
-<p><img src="/images/image-20250429141523169.png" alt="image-20250429141523169"></p>
+<h2 id="MLIR-Vector-dialect引言"><a href="#MLIR-Vector-dialect引言" class="headerlink" title="MLIR Vector dialect引言"></a><font color = brown>MLIR Vector dialect引言</font></h2><blockquote>
+<p>这一部分讲清楚亮点：</p>
+<ul>
+<li>vector dialect在整个pipeline的位置</li>
+<li>vector dialect的逐层抽象下降逻辑</li>
+</ul>
+</blockquote>
+<p>首先，我们需要明晰vector dialect在一个端到端编译器的lower过程中，所处的位置。</p>
+<img src="/images/image-20250506144615423.png" alt="image-20250506144615423" style="zoom:50%;" />
+
+<p>由上图所示，vector dialect一般在affine和linalg dialect之后，在LLVM等底层dialect之前。此时编译器已经完成了高层的一些算子优化：多面体优化，tiling优化，循环融合优化，在vector层面则主要完成数据并行优化（主要针对SIMD架构做优化）。</p>
+<p>在vector dialect的内部，也可以进行分层划分，主要逻辑是自底向上，从指令层级（LLVMIR）到硬件强相关操作（NVVM dialect）到虚拟硬件无关操作三个层级。具体的例子如下图所示：</p>
+<p><img src="/images/image-20250506145154267.png" alt="image-20250506145154267"></p>
+<p>在高层的虚拟vector dialect中，和硬件无关，适合完成自动并行化等优化。然后通过MLIR的pattern rewrite机制逐层转换成硬件相关向量。以CUDA为例，MLIR社区提供NVVM dialect，可以抽象cuda的tensor core操作，编译器可以尝试将虚拟向量转为tensor core向量处理。最终将硬件相关vector转为LLVM做代码生成。</p>
+<h2 id="设计思考"><a href="#设计思考" class="headerlink" title="设计思考"></a><font color = brown>设计思考</font></h2><h3 id="向量化粒度思考"><a href="#向量化粒度思考" class="headerlink" title="向量化粒度思考"></a><font color = green>向量化粒度思考</font></h3><p>首先，我们要思考在高层vector逐层转向LLVM IR的过程中，其vector的粒度由什么决定。整个vector系统的设计逻辑是要将高层vector逐层转换为可以在硬件上高效利用数据并行的指令，因此最小粒度由硬件决定。该最小粒度在硬件相关vector层级就会暴露出来：</p>
+<p><img src="/images/image-20250506153342615.png" alt="image-20250506153342615"></p>
+<p>对于非最小粒度的倍数的vector，要么在高层转换成功，要么损失性能，或是在一些特定硬件会直接不合法而导致编译失败。</p>
+<blockquote>
+<p>这一部分其实也是vectorization优化的一个重难点，如何针对硬件进行合理的向量化优化。后续会围绕这一点重点分析已有的编译器的硬件相关向量化。</p>
+</blockquote>
+<h3 id="Automatic-Vectorization"><a href="#Automatic-Vectorization" class="headerlink" title="Automatic Vectorization"></a><font color = green>Automatic Vectorization</font></h3><p>不同于前面对于向量化降级粒度的思考，这一部分主要讨论如何将标量转换为向量表示。自动向量化的核心思想是，<strong>从一段代码中提取出结构化信息（数据并行性）并重组，本质是lowering的反面：raising操作</strong>。由于MLIR的多层级结构，因此自动向量化一般在linalg等高层ir就完成，而非affine层循环表示中完成，这样可以节省大量开销和优化复杂度。这一部分后续会结合代码详细解读。</p>
+<h3 id="Lowering-to-LLVM-tradeoff"><a href="#Lowering-to-LLVM-tradeoff" class="headerlink" title="Lowering to LLVM tradeoff"></a><font color = green>Lowering to LLVM tradeoff</font></h3><p>在LLVM中，其ir只支持1-D vector，因此需要将高层mlir vector降级到1-D vecctor。该过程有如下选项：</p>
+<p><img src="/images/image-20250506160200267.png" alt="image-20250506160200267"></p>
+<p>明白我们有哪些选择后，下一步是理解LLVM的vector有什么约束条件，在原文中大概翻译如下：</p>
+<blockquote>
+<h3 id="LLVM对多维向量的限制"><a href="#LLVM对多维向量的限制" class="headerlink" title="LLVM对多维向量的限制"></a>LLVM对多维向量的限制</h3><ol>
+<li><strong>原生仅支持1D向量</strong>：LLVM的向量操作（如<code>extractelement</code>、<code>insertelement</code>、<code>shufflevector</code>）直接支持动态索引，但仅适用于1D向量。</li>
+<li><strong>聚合类型的静态性</strong>：多维向量需降维为<strong>聚合类型</strong>（如结构体或数组），但相关操作（<code>extractvalue</code>&#x2F;<code>insertvalue</code>）仅允许静态索引，动态索引需通过内存指针（<code>getelementptr</code>）间接实现，效率较低。</li>
+</ol>
+<hr>
+<h3 id="MLIR中的两种实现方案"><a href="#MLIR中的两种实现方案" class="headerlink" title="MLIR中的两种实现方案"></a>MLIR中的两种实现方案</h3><h4 id="方案一：嵌套聚合（Nested-Aggregate）"><a href="#方案一：嵌套聚合（Nested-Aggregate）" class="headerlink" title="方案一：嵌套聚合（Nested Aggregate）"></a>方案一：嵌套聚合（Nested Aggregate）</h4><ul>
+<li><p><strong>原理</strong>：将n维向量编码为多层嵌套的1D向量（如<code>vector&lt;4x8x16x32xf32&gt;</code>视为<code>[4 x [8 x [16 x &lt;32xf32&gt;]]]</code>）。</p>
+<p>优点：</p>
+<ul>
+<li>保留维度层次，无需额外线性化逻辑。</li>
+<li>静态索引操作（如提取子向量）天然适配硬件寄存器结构。</li>
+</ul>
+</li>
+<li><p>缺点：</p>
+<ul>
+<li>动态索引非最内层维度时，需将数据写入内存再通过指针操作，性能损耗大。</li>
+<li>无法直接使用LLVM针对1D向量的优化指令（如SIMD指令）。</li>
+</ul>
+</li>
+</ul>
+<h4 id="方案二：扁平化1D向量（Flattened-Vector）"><a href="#方案二：扁平化1D向量（Flattened-Vector）" class="headerlink" title="方案二：扁平化1D向量（Flattened Vector）"></a>方案二：扁平化1D向量（Flattened Vector）</h4><ul>
+<li><strong>原理</strong>：将n维向量展平为单一大尺寸1D向量（如<code>vector&lt;4x8x16x32xf32&gt;</code>转为<code>vector&lt;4 * 8 * 16 * 32=16384xf32&gt;</code>）。</li>
+<li>优点：<ul>
+<li>支持全维度动态索引（<code>insertelement</code>&#x2F;<code>extractelement</code>）。</li>
+<li>兼容LLVM的1D向量优化指令和硬件指令。</li>
+</ul>
+</li>
+<li>缺点：<ul>
+<li>引入复杂线性化&#x2F;反线性化逻辑，代码生成复杂度高。</li>
+<li>掩盖实际硬件向量边界（如固定128位SIMD），可能导致非对齐访问或低效向量拆分。</li>
+</ul>
+</li>
+</ul>
+<hr>
+<h3 id="核心权衡：抽象灵活性与硬件效率"><a href="#核心权衡：抽象灵活性与硬件效率" class="headerlink" title="核心权衡：抽象灵活性与硬件效率"></a>核心权衡：抽象灵活性与硬件效率</h3><ul>
+<li><strong>嵌套聚合</strong>更贴近硬件物理结构（如多级寄存器），利于静态代码优化，但牺牲动态索引能力。</li>
+<li><strong>扁平化向量</strong>提供编程灵活性，但需在代码生成阶段隐式处理维度映射，可能阻碍硬件针对性优化。</li>
+</ul>
+<h4 id="折中方案"><a href="#折中方案" class="headerlink" title="折中方案"></a>折中方案</h4><p>通过<strong>显式维度转换操作</strong>（如<code>vector.cast</code>）按需展平部分维度，例如将<code>vector&lt;4x8x16x32xf32&gt;</code>局部转为<code>vector&lt;4x4096xf32&gt;</code>，既保留外层静态索引优化空间，又允许内层使用动态索引或SIMD指令。</p>
+</blockquote>
+<p>上述关于extractvalue操作不支持动态索引这点，刚开始会感觉比较难以理解。其本质原因是现代处理器（CPU&#x2F;GPU）的<strong>寄存器文件（Register File）</strong> 是硬件直接操作的超高速存储单元，访问索引的时候存在物理设计约束：</p>
+<ul>
+<li><strong>固定寄存器数量</strong>：每个线程&#x2F;核心可用的寄存器数量是硬件固定的（如NVIDIA GPU每个线程最多255个寄存器）。</li>
+<li><strong>静态寄存器分配</strong>：寄存器在编译时由编译器分配，操作寄存器的指令<strong>直接编码寄存器编号</strong>（如 <code>R0</code>, <code>R1</code>）。</li>
+<li><strong>无动态索引支持</strong>：硬件指令无法通过运行时变量选择寄存器（如无法生成 <code>MOV R%idx, 42</code> 这样的指令）。</li>
+</ul>
+<p>由于上述三个物理设计约束，寄存器难以支持动态索引，也导致嵌套聚合的动态索引局限。将眼光从mlir编译放远来看，其实众多编程模型对于寄存器的动静态问题早有讨论：</p>
+<ul>
+<li>通过循环展开，化动态为静态。</li>
+<li>split memory，内存可以动态索引，但是带来访存开销问题。</li>
+</ul>
+<h2 id="vector实际实现机制"><a href="#vector实际实现机制" class="headerlink" title="vector实际实现机制"></a><font color = brown>vector实际实现机制</font></h2><h3 id="Implication-on-codegen"><a href="#Implication-on-codegen" class="headerlink" title="Implication on codegen"></a><font color = green>Implication on codegen</font></h3><p>MLIR的n维向量类型在降级到LLVM时被表示为(n-1)维数组包裹的1维向量，这导致静态索引和动态索引的分层限制：仅最内层1维向量支持动态索引（通过<code>insertelement</code>&#x2F;<code>extractelement</code>），外层(n-1)维只能静态访问，否则需显式内存操作（<code>load</code>&#x2F;<code>store</code>）。代码生成需权衡循环展开与内存访问，动态索引需通过内存指针实现，而硬件寄存器分配和溢出问题则推迟到LLVM后端处理，MLIR层通过抽象成本模型指导优化选择。</p>
+<h3 id="Implication-on-Lowering-to-Accelerators"><a href="#Implication-on-Lowering-to-Accelerators" class="headerlink" title="Implication on Lowering to Accelerators"></a><font color = green>Implication on Lowering to Accelerators</font></h3><p>针对支持高维向量的加速器，MLIR通过<code>vector.cast</code>将最内层维度展平为1维向量（如<code>vector&lt;Kxf32&gt;</code>），直接对接LLVM-IR或加速器特定指令。这一过程需在<strong>加速器专用方言中定制转换规则，例如处理不规则维度时的掩码或数据重组逻辑，而标准化的展平操作（如<code>K=K1*K2*…*Kn</code>）近乎无开销</strong>。目标是实现跨CPU&#x2F;GPU&#x2F;加速器的统一代码生成框架，通过模式重写和成本模型灵活适配硬件特性。</p>
+<p><font color = red>这一条在各种机器学习编译器中都有大量代码实现</font></p>
+<p><img src="/images/image-20250506193313255.png" alt="image-20250506193313255"></p>
+<h3 id="Implication-on-calling-external-functions-that-operate-on-vectors"><a href="#Implication-on-calling-external-functions-that-operate-on-vectors" class="headerlink" title="Implication on calling external functions that operate on vectors"></a><font color = green>Implication on calling external functions that operate on vectors</font></h3><p>调用外部向量函数时，可能需要线性化多维向量以匹配ABI接口。MLIR需在调用边界隐式插入维度转换逻辑，确保数据布局与目标函数兼容。例如，将<code>vector&lt;4x4xf32&gt;</code>转为连续内存块或1D向量，避免因多维结构导致调用约定冲突。</p>
+<h3 id="Relationship-to-LLVM-matrix-type-proposal"><a href="#Relationship-to-LLVM-matrix-type-proposal" class="headerlink" title="Relationship to LLVM matrix type proposal"></a><font color = green>Relationship to LLVM matrix type proposal</font></h3><p>LLVM矩阵提案（支持2D矩阵及专用指令）与MLIR多维向量设计存在互补性。MLIR更高维的通用向量抽象可降级为LLVM矩阵或原生1D向量，而MLIR的<code>vector.cast</code>机制为CPU&#x2F;加速器提供了统一接口。未来MLIR可能成为跨硬件向量化策略的枢纽层，LLVM矩阵则作为特定场景的子集实现。</p>
+<h3 id="Conclusion"><a href="#Conclusion" class="headerlink" title="Conclusion"></a><font color = green>Conclusion</font></h3><p>**MLIR选择“嵌套聚合1D向量”作为核心抽象，因其明确区分内存与寄存器语义，同时通过<code>vector.cast</code>兼容硬件特定指令。**这种设计支持粗粒度向量操作（如跨多硬件向量的模式匹配），并通过显式维度转换平衡灵活性与性能，而非依赖LLVM隐式线性化。尽管LLVM矩阵提案适合硬件专用场景，MLIR的高维模型更适配跨平台代码生成需求，成为连接算法与硬件优化的桥梁。</p>
 ]]></content>
   </entry>
   <entry>
@@ -1229,82 +1311,6 @@
         <tag>机器学习编译器</tag>
         <tag>pytorch技术</tag>
         <tag>静态图捕捉和编译</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>minitorch: 自动反向传播</title>
-    <url>/2025/04/28/minitorch-%E8%87%AA%E5%8A%A8%E5%8F%8D%E5%90%91%E4%BC%A0%E6%92%AD/</url>
-    <content><![CDATA[<p><img src="/images/image-20250428233640749.png" alt="image-20250428233640749"></p>
-<span id="more"></span>
-
-<blockquote>
-<p>在完成minitorch的task1部分的过程中，发现自己对于计算图以及自动反向求导仅仅停留在纸面公式上，难以转换为代码实现。本文章重点解读计算图的自动反向求导机制，从原理出发，最终分析minitorch中如何用代码实现该机制。</p>
-</blockquote>
-<h2 id="自动反向求导原理"><a href="#自动反向求导原理" class="headerlink" title="自动反向求导原理"></a><font color = brown>自动反向求导原理</font></h2><p>这一部分主要参考<a href="https://dlsyscourse.org/slides/4-automatic-differentiation.pdf">Auto Differentiation slide</a>。求导系统，可以分为前向求导和反向求导。</p>
-<h3 id="前向求导-vs-反向求导"><a href="#前向求导-vs-反向求导" class="headerlink" title="前向求导 vs. 反向求导"></a><font color = green>前向求导 vs. 反向求导</font></h3><p>如下图所示是两种求导机制的对比：</p>
-<p><img src="/images/image-20250429102807002.png" alt="image-20250429102807002"></p>
-<p>可以总结为两点：</p>
-<ul>
-<li>传播顺序，一个是正向的拓扑序，一个是反向拓扑序。</li>
-<li>计算的逻辑不一样，前向求导求的是中间结果关于叶子节点的偏导（<strong>符合数学计算逻辑</strong>），反向求导求的是结果节点关于中间结果的偏导（<strong>slide中称为伴随变量，表征某个中间结果对最终结果的偏导</strong>）。</li>
-</ul>
-<blockquote>
-<p>仔细思考，反向求导相比前向求导最大的优势，是前向求导针对不同的变量，需要个走一个拓扑序完成求导过程，时间复杂度更高。并且，一般的计算图都是多输入少输出，因此反向求导相比前向求导计算量更小。</p>
-</blockquote>
-<p>在反向求导的过程中，以上图为例，v2节点由于同时是v4和v5的输入，因此在求v2节点的伴随变量的时候，需要做加法运算来讲v4和v5的伴随变量一块传播。具体的数学理论支撑见下图：</p>
-<p><img src="/images/image-20250429103955103.png" alt="image-20250429103955103"></p>
-<h3 id="反向求导计算公式-反向计算图"><a href="#反向求导计算公式-反向计算图" class="headerlink" title="反向求导计算公式 &amp; 反向计算图"></a><font color = green>反向求导计算公式 &amp; 反向计算图</font></h3><p>这一小节主要讲两件事：反向求导的计算公式，以及实际的机器学习系统中，如何通过构造计算图的方式加速反向求导的效率。这两点是紧密结合的，前者为理论支撑，后者为工程实现。</p>
-<h4 id="计算公式"><a href="#计算公式" class="headerlink" title="计算公式"></a>计算公式</h4><p><img src="/images/image-20250429104341091.png" alt="image-20250429104341091"></p>
-<p>这个伪代码整体逻辑比较清晰，再次不过多赘述。</p>
-<h4 id="反向计算图"><a href="#反向计算图" class="headerlink" title="反向计算图"></a>反向计算图</h4><p>有了上述公式，我们需要思考实际工程中，怎样实现能够尽量高效。一种想法是结合partial disjoint手动计算，而目前常用的机器学习系统都是在正向传播的过程中（遍历正向图），同时构建一个反向传播图。</p>
-<p><img src="/images/image-20250429104616503.png" alt="image-20250429104616503"></p>
-<p>上图摘自<a href="https://dlsyscourse.org/">Deep Learning System</a>课程的slide，在课程中提供了一个完整示例，揭示如何在运行反向计算算法的同时，构建反向计算图。强烈建议读者参考学习该课程的反向求导章节加深理解。</p>
-<p><img src="/images/image-20250430140134356.png" alt="image-20250430140134356"></p>
-<p>上图摘自<a href="https://archwalker.github.io/blog/2019/05/27/pytorch-internals.html">Pytorch Internal 博客</a>，下面摘抄一些博客中的话辅助理解：</p>
-<blockquote>
-<p>请花一点时间学习上面这张图。有一些东西需要展开来讲；下面列出了哪些东西值得关注：</p>
-<ol>
-<li>首先请忽略掉那些红色和蓝色的代码。PyTorch实现了<a href="https://en.wikipedia.org/wiki/Automatic_differentiation#Reverse_accumulation">reverse-mode automatic differentiation</a> (反向模式自动微分)，意味着我们通过反向遍历计算图的方式计算出梯度。注意看变量名：我们在红色代码区域的最下面计算了loss；然后，在蓝色代码区域首先我们计算了grad_loss。loss 由 next_h2计算而来，因此我们计算grad_next_h2。严格来讲，这些以grad_开头的变量其实并不是gradients；他们实际上是Jacobian矩阵左乘了一个向量，但是在PyTorch中我们就叫它们grad，大部分人都能理解其中的差异。</li>
-<li>即使代码结构相同，代码的行为也是不同的：前向(forwards)的每一行被一个微分计算代替，表示对这个前向操作的求导。例如，<code>tanh</code>操作符变成了<code>tanh_backward</code>操作符(如上图最左边的绿线所关联的两行所示)。前向和后向计算的输入和输出颠倒过来：如果前向操作生成了<code>next_h2</code>，那么后向操作取<code>grad_next_h2</code>作为输入。</li>
-</ol>
-</blockquote>
-<p>至此，我们来总结一下反向传播和自动求导反向传播（构建反向图）两种方式得优缺点。</p>
-<p><img src="/images/image-20250429104853521.png" alt="image-20250429104853521"></p>
-<p><img src="/images/image-20250429104946307.png" alt="image-20250429104946307"></p>
-<p>朴素的反向传播时间复杂度高（不同变量均需要遍历），但是图存储量小。而构建反向图图存储量会变大（反向节点：Partial Disjoint节点和Disjoint节点），但是只用跑一遍反向图即可完成所有计算，并且如果添加计算逻辑，可扩展性也更强。目前的主流机器学习框架：PyTorch，TensorFlow和JAX均使用反向图，朴素的反向传播可见于早期的Caffe系统中。</p>
-<h2 id="MiniTorch工程实现"><a href="#MiniTorch工程实现" class="headerlink" title="MiniTorch工程实现"></a><font color = brown>MiniTorch工程实现</font></h2><p>这一部分主要是记录完成<a href="https://minitorch.github.io/module1/module1/">minitorch assign1</a>过程中的学习心得。该实验仅仅是将Minitorch的反向传播系统最核心的组件挖空留给学生进行编写，如何完成这个实验可以参考<a href="https://dezeming.top/wp-content/uploads/2022/02/MiniTorch-%E5%AD%A6%E4%B9%A0%E5%85%A8%E6%94%BB%E7%95%A5.pdf">minitorch 学习攻略</a>。本章节重点解读minitorch的反向传播系统的架构设计。</p>
-<p>本章节将按照如下逻辑展开：</p>
-<ul>
-<li>类之间的关系和类的详细解读</li>
-<li>Pytorch内部机制</li>
-</ul>
-<h3 id="类的解读"><a href="#类的解读" class="headerlink" title="类的解读"></a><font color = green>类的解读</font></h3><p>在初阅读minitorch的底层代码，会迷失在眼花缭乱的各种类实现中。我们要去把握的，是自动反向求导过程中，最核心的功能是什么？在构造反向计算图中，我们需要知道一个值（output）是如何由输入（inputs）计算得到的，即需要跟踪函数内部计算，而这也是目前python系统无法支持的事情。因此本质上，minitorch的类系统设计，就是完成如下三件事：</p>
-<ul>
-<li>用代理类（Variables）替换所有python值</li>
-<li>把所有数学运算符替换为代理运算符（Functions）</li>
-<li>把Variables功能增强以记住过去应用于它们的Functions</li>
-</ul>
-<blockquote>
-<p>在assign1中，只是完成标量的反向求导系统，后续assign会扩展。因此本章节主要面向Scalar讲述。</p>
-</blockquote>
-<p><img src="/images/image-20250430165328520.png" alt="image-20250430165328520"></p>
-<p>如上图所示，是整个minitorch的从前向计算到反向传播的一个完整的流程图。Scalar是代理类替换python值，ScalarFn替换数学运算法，包含forward和backward方法，辅助Scalar类的上下文记录环节。ScalarHistory类则是每个Scalar用来记录上下文的辅助类。整个流程是比较清晰的，结合流程图和源码可以方便理解全貌。</p>
-<h3 id="Pytorch的自动微分设计"><a href="#Pytorch的自动微分设计" class="headerlink" title="Pytorch的自动微分设计"></a><font color = green>Pytorch的自动微分设计</font></h3><p>由于Pytorch系统源码极其复杂，这里仅仅参考<a href="https://archwalker.github.io/blog/2019/05/27/pytorch-internals.html">Pytorch Internal的talk</a>，概括性分享自动微分设计，比对minitorch的具体实现学习。后续可能会开一篇文章着重讲解PyTorch系统，包括PyTorch2.0提出的一些新特性（TorchDynamo等）。</p>
-<img src="/images/image-20250430140602705.png" alt="image-20250430140602705" style="zoom:50%;" />
-
-<p>当我们在tensor上调用各种operations的时候（forward前向过程），一些元数据(metadata)也需要被记录下来。让我们调整一下tensor数据结构的示意图：现在不仅仅单单一个tensor指向storage，我们会有一个封装着这个tensor和更多信息(自动微分元信息(AutogradeMeta))的变量(variable)。这个变量所包含的信息是用户调用<code>loss.backward()</code>执行自动微分所必备的。</p>
-<h2 id="参考资料"><a href="#参考资料" class="headerlink" title="参考资料"></a><font color = brown>参考资料</font></h2><ol>
-<li><a href="https://dezeming.top/wp-content/uploads/2022/02/MiniTorch-%E5%AD%A6%E4%B9%A0%E5%85%A8%E6%94%BB%E7%95%A5.pdf">minitorch学习攻略</a></li>
-<li><a href="https://dlsyscourse.org/slides/4-automatic-differentiation.pdf">Deep Learning System chapter5 slide</a></li>
-</ol>
-]]></content>
-      <categories>
-        <category>pytorch</category>
-        <category>机器学习系统</category>
-      </categories>
-      <tags>
-        <tag>机器学习</tag>
-        <tag>机器学习系统</tag>
       </tags>
   </entry>
   <entry>
@@ -1448,6 +1454,105 @@
       <tags>
         <tag>mlir</tag>
         <tag>dialect学习</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>minitorch: 自动反向传播</title>
+    <url>/2025/04/28/minitorch-%E8%87%AA%E5%8A%A8%E5%8F%8D%E5%90%91%E4%BC%A0%E6%92%AD/</url>
+    <content><![CDATA[<p><img src="/images/image-20250428233640749.png" alt="image-20250428233640749"></p>
+<span id="more"></span>
+
+<blockquote>
+<p>在完成minitorch的task1部分的过程中，发现自己对于计算图以及自动反向求导仅仅停留在纸面公式上，难以转换为代码实现。本文章重点解读计算图的自动反向求导机制，从原理出发，最终分析minitorch中如何用代码实现该机制。</p>
+</blockquote>
+<h2 id="自动反向求导原理"><a href="#自动反向求导原理" class="headerlink" title="自动反向求导原理"></a><font color = brown>自动反向求导原理</font></h2><p>这一部分主要参考<a href="https://dlsyscourse.org/slides/4-automatic-differentiation.pdf">Auto Differentiation slide</a>。求导系统，可以分为前向求导和反向求导。</p>
+<h3 id="前向求导-vs-反向求导"><a href="#前向求导-vs-反向求导" class="headerlink" title="前向求导 vs. 反向求导"></a><font color = green>前向求导 vs. 反向求导</font></h3><p>如下图所示是两种求导机制的对比：</p>
+<p><img src="/images/image-20250429102807002.png" alt="image-20250429102807002"></p>
+<p>可以总结为两点：</p>
+<ul>
+<li>传播顺序，一个是正向的拓扑序，一个是反向拓扑序。</li>
+<li>计算的逻辑不一样，前向求导求的是中间结果关于叶子节点的偏导（<strong>符合数学计算逻辑</strong>），反向求导求的是结果节点关于中间结果的偏导（<strong>slide中称为伴随变量，表征某个中间结果对最终结果的偏导</strong>）。</li>
+</ul>
+<blockquote>
+<p>仔细思考，反向求导相比前向求导最大的优势，是前向求导针对不同的变量，需要个走一个拓扑序完成求导过程，时间复杂度更高。并且，一般的计算图都是多输入少输出，因此反向求导相比前向求导计算量更小。</p>
+</blockquote>
+<p>在反向求导的过程中，以上图为例，v2节点由于同时是v4和v5的输入，因此在求v2节点的伴随变量的时候，需要做加法运算来讲v4和v5的伴随变量一块传播。具体的数学理论支撑见下图：</p>
+<p><img src="/images/image-20250429103955103.png" alt="image-20250429103955103"></p>
+<h3 id="反向求导计算公式-反向计算图"><a href="#反向求导计算公式-反向计算图" class="headerlink" title="反向求导计算公式 &amp; 反向计算图"></a><font color = green>反向求导计算公式 &amp; 反向计算图</font></h3><p>这一小节主要讲两件事：反向求导的计算公式，以及实际的机器学习系统中，如何通过构造计算图的方式加速反向求导的效率。这两点是紧密结合的，前者为理论支撑，后者为工程实现。</p>
+<h4 id="计算公式"><a href="#计算公式" class="headerlink" title="计算公式"></a>计算公式</h4><p><img src="/images/image-20250429104341091.png" alt="image-20250429104341091"></p>
+<p>这个伪代码整体逻辑比较清晰，再次不过多赘述。</p>
+<h4 id="反向计算图"><a href="#反向计算图" class="headerlink" title="反向计算图"></a>反向计算图</h4><p>有了上述公式，我们需要思考实际工程中，怎样实现能够尽量高效。一种想法是结合partial disjoint手动计算，而目前常用的机器学习系统都是在正向传播的过程中（遍历正向图），同时构建一个反向传播图。</p>
+<p><img src="/images/image-20250429104616503.png" alt="image-20250429104616503"></p>
+<p>上图摘自<a href="https://dlsyscourse.org/">Deep Learning System</a>课程的slide，在课程中提供了一个完整示例，揭示如何在运行反向计算算法的同时，构建反向计算图。强烈建议读者参考学习该课程的反向求导章节加深理解。</p>
+<p><img src="/images/image-20250430140134356.png" alt="image-20250430140134356"></p>
+<p>上图摘自<a href="https://archwalker.github.io/blog/2019/05/27/pytorch-internals.html">Pytorch Internal 博客</a>，下面摘抄一些博客中的话辅助理解：</p>
+<blockquote>
+<p>请花一点时间学习上面这张图。有一些东西需要展开来讲；下面列出了哪些东西值得关注：</p>
+<ol>
+<li>首先请忽略掉那些红色和蓝色的代码。PyTorch实现了<a href="https://en.wikipedia.org/wiki/Automatic_differentiation#Reverse_accumulation">reverse-mode automatic differentiation</a> (反向模式自动微分)，意味着我们通过反向遍历计算图的方式计算出梯度。注意看变量名：我们在红色代码区域的最下面计算了loss；然后，在蓝色代码区域首先我们计算了grad_loss。loss 由 next_h2计算而来，因此我们计算grad_next_h2。严格来讲，这些以grad_开头的变量其实并不是gradients；他们实际上是Jacobian矩阵左乘了一个向量，但是在PyTorch中我们就叫它们grad，大部分人都能理解其中的差异。</li>
+<li>即使代码结构相同，代码的行为也是不同的：前向(forwards)的每一行被一个微分计算代替，表示对这个前向操作的求导。例如，<code>tanh</code>操作符变成了<code>tanh_backward</code>操作符(如上图最左边的绿线所关联的两行所示)。前向和后向计算的输入和输出颠倒过来：如果前向操作生成了<code>next_h2</code>，那么后向操作取<code>grad_next_h2</code>作为输入。</li>
+</ol>
+</blockquote>
+<p>至此，我们来总结一下反向传播和自动求导反向传播（构建反向图）两种方式得优缺点。</p>
+<p><img src="/images/image-20250429104853521.png" alt="image-20250429104853521"></p>
+<p><img src="/images/image-20250429104946307.png" alt="image-20250429104946307"></p>
+<p>朴素的反向传播时间复杂度高（不同变量均需要遍历），但是图存储量小。而构建反向图图存储量会变大（反向节点：Partial Disjoint节点和Disjoint节点），但是只用跑一遍反向图即可完成所有计算，并且如果添加计算逻辑，可扩展性也更强。目前的主流机器学习框架：PyTorch，TensorFlow和JAX均使用反向图，朴素的反向传播可见于早期的Caffe系统中。</p>
+<h2 id="MiniTorch工程实现"><a href="#MiniTorch工程实现" class="headerlink" title="MiniTorch工程实现"></a><font color = brown>MiniTorch工程实现</font></h2><p>这一部分主要是记录完成<a href="https://minitorch.github.io/module1/module1/">minitorch assign1</a>过程中的学习心得。该实验仅仅是将Minitorch的反向传播系统最核心的组件挖空留给学生进行编写，如何完成这个实验可以参考<a href="https://dezeming.top/wp-content/uploads/2022/02/MiniTorch-%E5%AD%A6%E4%B9%A0%E5%85%A8%E6%94%BB%E7%95%A5.pdf">minitorch 学习攻略</a>。本章节重点解读minitorch的反向传播系统的架构设计。</p>
+<p>本章节将按照如下逻辑展开：</p>
+<ul>
+<li>类之间的关系和类的详细解读</li>
+<li>Pytorch内部机制</li>
+</ul>
+<h3 id="类的解读"><a href="#类的解读" class="headerlink" title="类的解读"></a><font color = green>类的解读</font></h3><p>在初阅读minitorch的底层代码，会迷失在眼花缭乱的各种类实现中。我们要去把握的，是自动反向求导过程中，最核心的功能是什么？在构造反向计算图中，我们需要知道一个值（output）是如何由输入（inputs）计算得到的，即需要跟踪函数内部计算，而这也是目前python系统无法支持的事情。因此本质上，minitorch的类系统设计，就是完成如下三件事：</p>
+<ul>
+<li>用代理类（Variables）替换所有python值</li>
+<li>把所有数学运算符替换为代理运算符（Functions）</li>
+<li>把Variables功能增强以记住过去应用于它们的Functions</li>
+</ul>
+<blockquote>
+<p>在assign1中，只是完成标量的反向求导系统，后续assign会扩展。因此本章节主要面向Scalar讲述。</p>
+</blockquote>
+<p><img src="/images/image-20250430165328520.png" alt="image-20250430165328520"></p>
+<p>如上图所示，是整个minitorch的从前向计算到反向传播的一个完整的流程图。Scalar是代理类替换python值，ScalarFn替换数学运算法，包含forward和backward方法，辅助Scalar类的上下文记录环节。ScalarHistory类则是每个Scalar用来记录上下文的辅助类。整个流程是比较清晰的，结合流程图和源码可以方便理解全貌。</p>
+<h3 id="Pytorch的自动微分设计"><a href="#Pytorch的自动微分设计" class="headerlink" title="Pytorch的自动微分设计"></a><font color = green>Pytorch的自动微分设计</font></h3><p>由于Pytorch系统源码极其复杂，这里仅仅参考<a href="https://archwalker.github.io/blog/2019/05/27/pytorch-internals.html">Pytorch Internal的talk</a>，概括性分享自动微分设计，比对minitorch的具体实现学习。后续可能会开一篇文章着重讲解PyTorch系统，包括PyTorch2.0提出的一些新特性（TorchDynamo等）。</p>
+<img src="/images/image-20250430140602705.png" alt="image-20250430140602705" style="zoom:50%;" />
+
+<p>当我们在tensor上调用各种operations的时候（forward前向过程），一些元数据(metadata)也需要被记录下来。让我们调整一下tensor数据结构的示意图：现在不仅仅单单一个tensor指向storage，我们会有一个封装着这个tensor和更多信息(自动微分元信息(AutogradeMeta))的变量(variable)。这个变量所包含的信息是用户调用<code>loss.backward()</code>执行自动微分所必备的。</p>
+<h2 id="参考资料"><a href="#参考资料" class="headerlink" title="参考资料"></a><font color = brown>参考资料</font></h2><ol>
+<li><a href="https://dezeming.top/wp-content/uploads/2022/02/MiniTorch-%E5%AD%A6%E4%B9%A0%E5%85%A8%E6%94%BB%E7%95%A5.pdf">minitorch学习攻略</a></li>
+<li><a href="https://dlsyscourse.org/slides/4-automatic-differentiation.pdf">Deep Learning System chapter5 slide</a></li>
+</ol>
+]]></content>
+      <categories>
+        <category>pytorch</category>
+        <category>机器学习系统</category>
+      </categories>
+      <tags>
+        <tag>机器学习</tag>
+        <tag>机器学习系统</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>minitorch: Tensor</title>
+    <url>/2025/05/05/minitorch-Tensor/</url>
+    <content><![CDATA[<p><img src="/images/image-20250505150806582.png" alt="image-20250505150806582"></p>
+<span id="more"></span>
+
+<blockquote>
+<p>本篇文章是在完成minitorch的task2后的一些心得体会。在机器学习系统中，大量充斥着tensor这一抽象概念，但我从来没有真正深入理解一下tensor的底层实现机制，以及其带来的好处。本篇文章重点在于解读tensor机制的底层原理和逻辑，具体实现参考<a href="https://dezeming.top/wp-content/uploads/2022/02/MiniTorch-%E5%AD%A6%E4%B9%A0%E5%85%A8%E6%94%BB%E7%95%A5.pdf">minitorch-学习攻略</a>。</p>
+</blockquote>
+<p>本篇文章从分为两个部分来讲解，第一部分讲解tensor的底层存储与上层视图分离机制实现，重点解读strides，offset等索引逻辑，以及tensor的一些常见处理函数。第二部分主要结合minitorch源码，粗略梳理一下miniotrch的和tensor相关的源码框架。</p>
+<h2 id="底层存储于上层视图分离"><a href="#底层存储于上层视图分离" class="headerlink" title="底层存储于上层视图分离"></a><font color = brown>底层存储于上层视图分离</font></h2><h2 id="minitorch中Tensor框架"><a href="#minitorch中Tensor框架" class="headerlink" title="minitorch中Tensor框架"></a><font color = brown>minitorch中Tensor框架</font></h2><h2 id="参考资料"><a href="#参考资料" class="headerlink" title="参考资料"></a><font color = brown>参考资料</font></h2><ol>
+<li><a href="https://dezeming.top/wp-content/uploads/2022/02/MiniTorch-%E5%AD%A6%E4%B9%A0%E5%85%A8%E6%94%BB%E7%95%A5.pdf">minitorch-学习攻略</a></li>
+</ol>
+]]></content>
+      <categories>
+        <category>pytorch</category>
+        <category>机器学习系统</category>
+      </categories>
+      <tags>
+        <tag>机器学习</tag>
+        <tag>机器学习系统</tag>
       </tags>
   </entry>
   <entry>
@@ -1623,43 +1728,6 @@
       </tags>
   </entry>
   <entry>
-    <title>初探minitorch</title>
-    <url>/2025/04/27/%E5%88%9D%E6%8E%A2minitorch/</url>
-    <content><![CDATA[<p><img src="/images/image-20250427110245462.png" alt="image-20250427110245462"></p>
-<span id="more"></span>
-
-<blockquote>
-<p>本篇文章主要介绍minitorch项目的module0所需要的基础工具以及一些python知识。</p>
-</blockquote>
-<h2 id="Functional-Python"><a href="#Functional-Python" class="headerlink" title="Functional Python"></a><font color = brown>Functional Python</font></h2><h3 id="为什么用Functional-Python"><a href="#为什么用Functional-Python" class="headerlink" title="为什么用Functional Python"></a><font color = green>为什么用Functional Python</font></h3><p>重点参考<a href="https://minitorch.github.io/module0/functional/">Functional tutorial</a>文档。首先我们需要弄清楚为什么使用Functional python。MiniTorch 对外的接口（API）模仿 PyTorch 的标准用法，降低用户学习成本。而在内部，库的核心逻辑采用<strong>函数式编程</strong>风格，即通过纯函数（无副作用）和组合函数的方式构建计算逻辑。关于函数式编程，可以参考<a href="https://liaoxuefeng.com/books/python/functional/index.html">廖雪峰python博客</a>（后续会专门开一个博客内容学习讲解函数式编程，函数是编程是一个很重要且复杂的topic）。函数式编程有如下两个优点：</p>
-<ol>
-<li>更易测试</li>
-<li>更易优化</li>
-</ol>
-<p>函数式编程允许如下两件事情：</p>
-<ol>
-<li>将一个函数作为参数传入另一个函数</li>
-<li>将一个函数作为返回值返回</li>
-</ol>
-<h3 id="一个简单的例子"><a href="#一个简单的例子" class="headerlink" title="一个简单的例子"></a><font color = green>一个简单的例子</font></h3><figure class="highlight python"><table><tr><td class="code"><pre><span class="line"><span class="comment"># 支持type hints</span></span><br><span class="line"><span class="keyword">from</span> typing <span class="keyword">import</span> <span class="type">Callable</span>, Iterable</span><br><span class="line"></span><br><span class="line"><span class="comment"># 定义一个函数，返回一个函数，该函数将传入的filter function参数应用到参数数组上</span></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">apply_filter</span>(<span class="params"><span class="built_in">filter</span>: <span class="type">Callable</span>[[<span class="built_in">float</span>], <span class="built_in">bool</span>]</span>) -&gt; <span class="type">Callable</span>[[Iterable[<span class="built_in">float</span>]], Iterable[<span class="built_in">float</span>]]:</span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">func</span>(<span class="params">ls: Iterable[<span class="built_in">float</span>]</span>):</span><br><span class="line">        res = []</span><br><span class="line">        <span class="keyword">for</span> a <span class="keyword">in</span> ls:</span><br><span class="line">            <span class="keyword">if</span> <span class="built_in">filter</span>(a):</span><br><span class="line">                res.append(a)</span><br><span class="line"></span><br><span class="line">        <span class="keyword">return</span> res</span><br><span class="line">    <span class="keyword">return</span> func</span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">more_than_4</span>(<span class="params">a: <span class="built_in">float</span></span>) -&gt; <span class="built_in">bool</span>:</span><br><span class="line">    <span class="keyword">return</span> a &gt; <span class="number">4</span></span><br><span class="line"></span><br><span class="line">array = [<span class="number">1</span>, <span class="number">3</span>, <span class="number">4</span>, <span class="number">5</span>, <span class="number">6</span>, <span class="number">7</span>]</span><br><span class="line">filter_fn = apply_filter(more_than_4) </span><br><span class="line"><span class="built_in">print</span>(filter_fn(array))</span><br></pre></td></tr></table></figure>
-
-<p>通过上述例子，来辅助我们的理解。上述例子需要完成一个任务：从一个数组中，挑选出数值大于4的数字并重新组合返回。如果使用传统写法，则针对不同的筛选条件，都要遍历并筛选，之间会有大量逻辑重复。通过使用函数式编程范式，将filter封装成一个函数并传参，可减少重复代码，且有更强的可扩展性。</p>
-<h2 id="MiniTorch项目的辅助工具"><a href="#MiniTorch项目的辅助工具" class="headerlink" title="MiniTorch项目的辅助工具"></a><font color = brown>MiniTorch项目的辅助工具</font></h2><p>MiniTorch项目学习起来一个最大的优点，就是其对于测试，coding等规范性均做了详细的要求和工具辅助。<code>black</code>和<code>flake</code>等代码规范性检测工具，<code>PyTest</code>测试框架以及<code>github CI</code>版本管理和测试流程，以上均是本章讲解的重点。</p>
-<h3 id="PyTest框架"><a href="#PyTest框架" class="headerlink" title="PyTest框架"></a><font color = green>PyTest框架</font></h3><h2 id="References"><a href="#References" class="headerlink" title="References"></a><font color = brown>References</font></h2><ol>
-<li><a href="https://minitorch.github.io/">MiniTorch官网</a></li>
-<li><a href="https://dezeming.top/wp-content/uploads/2022/02/MiniTorch-%E5%AD%A6%E4%B9%A0%E5%85%A8%E6%94%BB%E7%95%A5.pdf">MiniTorch学习参考攻略</a></li>
-</ol>
-]]></content>
-      <categories>
-        <category>pytorch</category>
-        <category>机器学习系统</category>
-      </categories>
-      <tags>
-        <tag>机器学习</tag>
-        <tag>机器学习系统</tag>
-      </tags>
-  </entry>
-  <entry>
     <title>计算密集算子融合</title>
     <url>/2025/03/31/%E8%AE%A1%E7%AE%97%E5%AF%86%E9%9B%86%E7%AE%97%E5%AD%90%E8%9E%8D%E5%90%88/</url>
     <content><![CDATA[<p><img src="/images/image-20250331211738664.png" alt="image-20250331211738664"></p>
@@ -1749,6 +1817,43 @@
         <tag>机器学习编译器</tag>
         <tag>mlir</tag>
         <tag>算子融合技术</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>初探minitorch</title>
+    <url>/2025/04/27/%E5%88%9D%E6%8E%A2minitorch/</url>
+    <content><![CDATA[<p><img src="/images/image-20250427110245462.png" alt="image-20250427110245462"></p>
+<span id="more"></span>
+
+<blockquote>
+<p>本篇文章主要介绍minitorch项目的module0所需要的基础工具以及一些python知识。</p>
+</blockquote>
+<h2 id="Functional-Python"><a href="#Functional-Python" class="headerlink" title="Functional Python"></a><font color = brown>Functional Python</font></h2><h3 id="为什么用Functional-Python"><a href="#为什么用Functional-Python" class="headerlink" title="为什么用Functional Python"></a><font color = green>为什么用Functional Python</font></h3><p>重点参考<a href="https://minitorch.github.io/module0/functional/">Functional tutorial</a>文档。首先我们需要弄清楚为什么使用Functional python。MiniTorch 对外的接口（API）模仿 PyTorch 的标准用法，降低用户学习成本。而在内部，库的核心逻辑采用<strong>函数式编程</strong>风格，即通过纯函数（无副作用）和组合函数的方式构建计算逻辑。关于函数式编程，可以参考<a href="https://liaoxuefeng.com/books/python/functional/index.html">廖雪峰python博客</a>（后续会专门开一个博客内容学习讲解函数式编程，函数是编程是一个很重要且复杂的topic）。函数式编程有如下两个优点：</p>
+<ol>
+<li>更易测试</li>
+<li>更易优化</li>
+</ol>
+<p>函数式编程允许如下两件事情：</p>
+<ol>
+<li>将一个函数作为参数传入另一个函数</li>
+<li>将一个函数作为返回值返回</li>
+</ol>
+<h3 id="一个简单的例子"><a href="#一个简单的例子" class="headerlink" title="一个简单的例子"></a><font color = green>一个简单的例子</font></h3><figure class="highlight python"><table><tr><td class="code"><pre><span class="line"><span class="comment"># 支持type hints</span></span><br><span class="line"><span class="keyword">from</span> typing <span class="keyword">import</span> <span class="type">Callable</span>, Iterable</span><br><span class="line"></span><br><span class="line"><span class="comment"># 定义一个函数，返回一个函数，该函数将传入的filter function参数应用到参数数组上</span></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">apply_filter</span>(<span class="params"><span class="built_in">filter</span>: <span class="type">Callable</span>[[<span class="built_in">float</span>], <span class="built_in">bool</span>]</span>) -&gt; <span class="type">Callable</span>[[Iterable[<span class="built_in">float</span>]], Iterable[<span class="built_in">float</span>]]:</span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">func</span>(<span class="params">ls: Iterable[<span class="built_in">float</span>]</span>):</span><br><span class="line">        res = []</span><br><span class="line">        <span class="keyword">for</span> a <span class="keyword">in</span> ls:</span><br><span class="line">            <span class="keyword">if</span> <span class="built_in">filter</span>(a):</span><br><span class="line">                res.append(a)</span><br><span class="line"></span><br><span class="line">        <span class="keyword">return</span> res</span><br><span class="line">    <span class="keyword">return</span> func</span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">more_than_4</span>(<span class="params">a: <span class="built_in">float</span></span>) -&gt; <span class="built_in">bool</span>:</span><br><span class="line">    <span class="keyword">return</span> a &gt; <span class="number">4</span></span><br><span class="line"></span><br><span class="line">array = [<span class="number">1</span>, <span class="number">3</span>, <span class="number">4</span>, <span class="number">5</span>, <span class="number">6</span>, <span class="number">7</span>]</span><br><span class="line">filter_fn = apply_filter(more_than_4) </span><br><span class="line"><span class="built_in">print</span>(filter_fn(array))</span><br></pre></td></tr></table></figure>
+
+<p>通过上述例子，来辅助我们的理解。上述例子需要完成一个任务：从一个数组中，挑选出数值大于4的数字并重新组合返回。如果使用传统写法，则针对不同的筛选条件，都要遍历并筛选，之间会有大量逻辑重复。通过使用函数式编程范式，将filter封装成一个函数并传参，可减少重复代码，且有更强的可扩展性。</p>
+<h2 id="MiniTorch项目的辅助工具"><a href="#MiniTorch项目的辅助工具" class="headerlink" title="MiniTorch项目的辅助工具"></a><font color = brown>MiniTorch项目的辅助工具</font></h2><p>MiniTorch项目学习起来一个最大的优点，就是其对于测试，coding等规范性均做了详细的要求和工具辅助。<code>black</code>和<code>flake</code>等代码规范性检测工具，<code>PyTest</code>测试框架以及<code>github CI</code>版本管理和测试流程，以上均是本章讲解的重点。</p>
+<h3 id="PyTest框架"><a href="#PyTest框架" class="headerlink" title="PyTest框架"></a><font color = green>PyTest框架</font></h3><h2 id="References"><a href="#References" class="headerlink" title="References"></a><font color = brown>References</font></h2><ol>
+<li><a href="https://minitorch.github.io/">MiniTorch官网</a></li>
+<li><a href="https://dezeming.top/wp-content/uploads/2022/02/MiniTorch-%E5%AD%A6%E4%B9%A0%E5%85%A8%E6%94%BB%E7%95%A5.pdf">MiniTorch学习参考攻略</a></li>
+</ol>
+]]></content>
+      <categories>
+        <category>pytorch</category>
+        <category>机器学习系统</category>
+      </categories>
+      <tags>
+        <tag>机器学习</tag>
+        <tag>机器学习系统</tag>
       </tags>
   </entry>
   <entry>
