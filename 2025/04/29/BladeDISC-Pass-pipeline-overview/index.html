@@ -28,7 +28,7 @@
 <meta property="og:image" content="http://example.com/images/image-20250430230905042.png">
 <meta property="og:image" content="http://example.com/images/pass_pipeline.png">
 <meta property="article:published_time" content="2025-04-29T03:03:02.000Z">
-<meta property="article:modified_time" content="2025-05-04T06:02:46.618Z">
+<meta property="article:modified_time" content="2025-05-07T15:18:43.017Z">
 <meta property="article:author" content="Leon Dou">
 <meta property="article:tag" content="机器学习编译器">
 <meta property="article:tag" content="mlir">
@@ -227,7 +227,7 @@
                   <i class="far fa-calendar-check"></i>
                 </span>
                 <span class="post-meta-item-text">更新于</span>
-                <time title="修改时间：2025-05-04 14:02:46" itemprop="dateModified" datetime="2025-05-04T14:02:46+08:00">2025-05-04</time>
+                <time title="修改时间：2025-05-07 23:18:43" itemprop="dateModified" datetime="2025-05-07T23:18:43+08:00">2025-05-07</time>
               </span>
             <span class="post-meta-item">
               <span class="post-meta-item-icon">
@@ -260,14 +260,14 @@
                 <i class="far fa-file-word"></i>
               </span>
                 <span class="post-meta-item-text">本文字数：</span>
-              <span>17k</span>
+              <span>18k</span>
             </span>
             <span class="post-meta-item" title="阅读时长">
               <span class="post-meta-item-icon">
                 <i class="far fa-clock"></i>
               </span>
                 <span class="post-meta-item-text">阅读时长 &asymp;</span>
-              <span>16 分钟</span>
+              <span>17 分钟</span>
             </span>
 
         </div>
@@ -505,8 +505,51 @@
 </tr>
 </tbody></table>
 <h4 id="2-推测优化（Speculation）"><a href="#2-推测优化（Speculation）" class="headerlink" title="(2) 推测优化（Speculation）"></a><strong>(2) 推测优化（Speculation）</strong></h4><ul>
-<li><input disabled="" type="checkbox"> <code>DiscSpecializeFusionWithSpeculationPass</code></li>
+<li><input checked="" disabled="" type="checkbox"> <code>DiscSpecializeFusionWithSpeculationPass</code></li>
 </ul>
+<pre class="mermaid">graph TD
+    A[开始] --> B[运行DiscSpecializeFusionWithSpeculationPass]
+    B --> C[阶段1: 广播推测优化]
+    C --> C1[收集所有FusionOp]
+    C1 --> C2{HasCandidateBroadcastOp?}
+    C2 -->|是| C3[克隆Fusion并消除广播]
+    C3 --> C4[生成形状等价条件pred]
+    C4 --> C5[创建scf.if分支]
+    C5 --> C6[Then分支: 优化后代码]
+    C5 --> C7[Else分支: 原始代码]
+    
+    B --> D[阶段2: 列归约推测]
+    D --> D1[检查环境变量NEW_COL]
+    D1 --> D2{row < col?}
+    D2 -->|是| D3[线程级分块调度]
+    D2 -->|否| D4[块级分块调度]
+    D3 & D4 --> D5[创建scf.if分支]
+    
+    B --> E[阶段3: 行归约推测]
+    E --> E1[计算max_warps_per_wave]
+    E1 --> E2{满足条件?}
+    E2 -->|条件1/2/3| E3[One-Block-One-Row]
+    E2 -->|否则| E4[One-Warp-One-Row]
+    E3 & E4 --> E5[创建scf.if分支]
+    
+    B --> F[阶段4: 向量化/分块推测]
+    F --> F1{融合类型判断}
+    F1 -->|kRowReduction| F2[行数检查]
+    F1 -->|kLoop| F3[元素数检查]
+    F2 --> F4[生成向量化条件]
+    F3 --> F5[动态计算向量尺寸]
+    F4 & F5 --> F6[创建scf.if分支]
+    
+    B --> G[形状约束管理]
+    G --> G1[加载符号维度信息]
+    G1 --> G2[克隆时维护符号映射]
+    G2 --> G3[保存更新后的约束]
+    
+    classDef logic fill:#f9f,stroke:#333;
+    classDef condition fill:#ccf,stroke:#333;
+    class C2,D2,E2,F1 condition
+    class C3,C4,D3,D4,E3,E4,F2,F3,F5 logic</pre>
+
 <table>
 <thead>
 <tr>
@@ -521,7 +564,7 @@
 </tbody></table>
 <hr>
 <h3 id="5-运行时与库调用相关阶段-key"><a href="#5-运行时与库调用相关阶段-key" class="headerlink" title="5. 运行时与库调用相关阶段:key:"></a><strong>5. 运行时与库调用相关阶段</strong>:key:</h3><ul>
-<li><input disabled="" type="checkbox"> <code>RalInjectExecutionContextPass</code></li>
+<li><input checked="" disabled="" type="checkbox"> <code>RalInjectExecutionContextPass</code></li>
 <li><input disabled="" type="checkbox"> <code>DiscLowerToLibraryCallPass</code></li>
 <li><input disabled="" type="checkbox"> <code>DiscConstToRALPass</code></li>
 </ul>
@@ -836,13 +879,13 @@
       <i class="fa fa-chart-area"></i>
     </span>
       <span class="post-meta-item-text">站点总字数：</span>
-    <span title="站点总字数">128k</span>
+    <span title="站点总字数">133k</span>
     <span class="post-meta-divider">|</span>
     <span class="post-meta-item-icon">
       <i class="fa fa-coffee"></i>
     </span>
       <span class="post-meta-item-text">站点阅读时长 &asymp;</span>
-    <span title="站点阅读时长">1:57</span>
+    <span title="站点阅读时长">2:01</span>
 </div>
   <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://pisces.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Pisces</a> 强力驱动
   </div>
