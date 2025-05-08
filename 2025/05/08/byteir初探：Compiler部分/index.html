@@ -21,26 +21,21 @@
   </script>
 
   <meta property="og:type" content="article">
-<meta property="og:title" content="Allo项目初探">
-<meta property="og:url" content="http://example.com/2025/03/29/Allo%E9%A1%B9%E7%9B%AE%E5%88%9D%E6%8E%A2/index.html">
+<meta property="og:title" content="byteir初探：Compiler部分">
+<meta property="og:url" content="http://example.com/2025/05/08/byteir%E5%88%9D%E6%8E%A2%EF%BC%9ACompiler%E9%83%A8%E5%88%86/index.html">
 <meta property="og:site_name" content="Leon&#39;s Blog">
 <meta property="og:locale" content="zh_CN">
-<meta property="og:image" content="http://example.com/images/image-20250330205827771.png">
-<meta property="og:image" content="http://example.com/images/image-20250407111644037.png">
-<meta property="og:image" content="http://example.com/images/image-20250407124451930.png">
-<meta property="og:image" content="http://example.com/images/image-20250407124501753.png">
-<meta property="og:image" content="http://example.com/images/image-20250407124509106.png">
-<meta property="og:image" content="http://example.com/images/image-20250331184126715.png">
-<meta property="article:published_time" content="2025-03-29T15:04:32.000Z">
-<meta property="article:modified_time" content="2025-04-07T04:45:11.079Z">
+<meta property="og:image" content="http://example.com/images/image-20250508125112166.png">
+<meta property="og:image" content="http://example.com/images/image-20250508165752639.png">
+<meta property="article:published_time" content="2025-05-08T04:44:54.000Z">
+<meta property="article:modified_time" content="2025-05-08T09:52:01.227Z">
 <meta property="article:author" content="Leon Dou">
 <meta property="article:tag" content="机器学习编译器">
 <meta property="article:tag" content="mlir">
-<meta property="article:tag" content="异构计算系统">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:image" content="http://example.com/images/image-20250330205827771.png">
+<meta name="twitter:image" content="http://example.com/images/image-20250508125112166.png">
 
-<link rel="canonical" href="http://example.com/2025/03/29/Allo%E9%A1%B9%E7%9B%AE%E5%88%9D%E6%8E%A2/">
+<link rel="canonical" href="http://example.com/2025/05/08/byteir%E5%88%9D%E6%8E%A2%EF%BC%9ACompiler%E9%83%A8%E5%88%86/">
 
 
 <script id="page-configurations">
@@ -53,7 +48,7 @@
   };
 </script>
 
-  <title>Allo项目初探 | Leon's Blog</title>
+  <title>byteir初探：Compiler部分 | Leon's Blog</title>
   
 
 
@@ -201,7 +196,7 @@
   
   
   <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
-    <link itemprop="mainEntityOfPage" href="http://example.com/2025/03/29/Allo%E9%A1%B9%E7%9B%AE%E5%88%9D%E6%8E%A2/">
+    <link itemprop="mainEntityOfPage" href="http://example.com/2025/05/08/byteir%E5%88%9D%E6%8E%A2%EF%BC%9ACompiler%E9%83%A8%E5%88%86/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
       <meta itemprop="image" content="/images/avatar.gif">
@@ -214,7 +209,7 @@
     </span>
       <header class="post-header">
         <h1 class="post-title" itemprop="name headline">
-          Allo项目初探
+          byteir初探：Compiler部分
         </h1>
 
         <div class="post-meta">
@@ -223,16 +218,10 @@
                 <i class="far fa-calendar"></i>
               </span>
               <span class="post-meta-item-text">发表于</span>
+              
 
-              <time title="创建时间：2025-03-29 23:04:32" itemprop="dateCreated datePublished" datetime="2025-03-29T23:04:32+08:00">2025-03-29</time>
+              <time title="创建时间：2025-05-08 12:44:54 / 修改时间：17:52:01" itemprop="dateCreated datePublished" datetime="2025-05-08T12:44:54+08:00">2025-05-08</time>
             </span>
-              <span class="post-meta-item">
-                <span class="post-meta-item-icon">
-                  <i class="far fa-calendar-check"></i>
-                </span>
-                <span class="post-meta-item-text">更新于</span>
-                <time title="修改时间：2025-04-07 12:45:11" itemprop="dateModified" datetime="2025-04-07T12:45:11+08:00">2025-04-07</time>
-              </span>
             <span class="post-meta-item">
               <span class="post-meta-item-icon">
                 <i class="far fa-folder"></i>
@@ -244,10 +233,6 @@
                   ，
                 <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
                   <a href="/categories/%E7%BC%96%E8%AF%91%E6%8A%80%E6%9C%AF/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0%E7%BC%96%E8%AF%91/" itemprop="url" rel="index"><span itemprop="name">机器学习编译</span></a>
-                </span>
-                  ，
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/%E7%BC%96%E8%AF%91%E6%8A%80%E6%9C%AF/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0%E7%BC%96%E8%AF%91/%E5%BC%82%E6%9E%84%E8%AE%BE%E8%AE%A1/" itemprop="url" rel="index"><span itemprop="name">异构设计</span></a>
                 </span>
             </span>
 
@@ -264,14 +249,14 @@
                 <i class="far fa-file-word"></i>
               </span>
                 <span class="post-meta-item-text">本文字数：</span>
-              <span>2.5k</span>
+              <span>409</span>
             </span>
             <span class="post-meta-item" title="阅读时长">
               <span class="post-meta-item-icon">
                 <i class="far fa-clock"></i>
               </span>
                 <span class="post-meta-item-text">阅读时长 &asymp;</span>
-              <span>2 分钟</span>
+              <span>1 分钟</span>
             </span>
 
         </div>
@@ -283,62 +268,30 @@
     <div class="post-body" itemprop="articleBody">
 
       
-        <p><img src="/images/image-20250330205827771.png" alt="image-20250330205827771"></p>
+        <img src="/images/image-20250508125112166.png" alt="image-20250508125112166" style="zoom:50%;" />
+
 <span id="more"></span>
 
-<h2 id="项目构建"><a href="#项目构建" class="headerlink" title="项目构建"></a><font color = brown>项目构建</font></h2><p>主要参考<a target="_blank" rel="noopener" href="https://cornell-zhang.github.io/allo/setup/index.html">Allo doc</a>的set up章节，这里我选择源码构建的方式。项目构建流程如下：</p>
-<ol>
-<li><p>clone项目</p>
-<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">git clone --recursive git@github.com:micropuma/allo.git</span><br></pre></td></tr></table></figure>
-</li>
-<li><p>构建llvm子项目</p>
-<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">cd allo/externals/llvm-project</span><br><span class="line"><span class="meta prompt_"># </span><span class="language-bash">Apply our patch</span></span><br><span class="line">git apply ../llvm_patch</span><br><span class="line"><span class="meta prompt_"># </span><span class="language-bash">Python 3.12 is required</span></span><br><span class="line">mkdir -p build</span><br></pre></td></tr></table></figure>
+<h2 id="Compiler部分概览"><a href="#Compiler部分概览" class="headerlink" title="Compiler部分概览"></a><font color = brown>Compiler部分概览</font></h2><p><img src="/images/image-20250508165752639.png" alt="image-20250508165752639"></p>
+<pre class="mermaid">graph TD
+    A[Start: hlo-graph-opt] --> B[hlo-fusion-opt]
+    B --> C[linalg-tensor-opt]
+    C --> D[byre-tensor-opt]
+    D --> E[byteir-bufferize-opt]
+    E --> F[linalg-memref-opt]
+    F --> G[scf-opt]
+    G --> H[gpu-opt]
+    H --> I[inline + lccl-to-byre + gpu-launch-func-to-byre]
+    I --> J[set-op-space & set-arg-space]
+    J --> K[byre-opt]
+    K --> L[nvvm-codegenfor device]
+    K --> M[byre-hostfor host]
+    M --> N[remove-module-tag]
+    L --> O[translate_to_ptx]
+    N --> P[write host MLIR / MLIRBC]</pre>
 
-<p>由于需要python bind11，以及后续需要pip install很多python库，因此这里推荐用conda创建虚拟环境：</p>
-<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">conda create -n allo python=3.12         # python版本一定是3.12</span><br><span class="line">conda activate allo</span><br><span class="line">pip install pybind11</span><br></pre></td></tr></table></figure>
 
-<p>编写shell脚本，一键构建llvm：</p>
-<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">cd build</span><br><span class="line">cmake -G Ninja ../llvm \</span><br><span class="line">    -DLLVM_ENABLE_PROJECTS=&quot;clang;mlir;openmp&quot; \</span><br><span class="line">    -DLLVM_BUILD_EXAMPLES=ON \</span><br><span class="line">    -DLLVM_TARGETS_TO_BUILD=&quot;host&quot; \</span><br><span class="line">    -DCMAKE_BUILD_TYPE=Release \</span><br><span class="line">    -DLLVM_ENABLE_ASSERTIONS=ON \</span><br><span class="line">    -DLLVM_INSTALL_UTILS=ON \</span><br><span class="line">    -DMLIR_ENABLE_BINDINGS_PYTHON=ON \</span><br><span class="line">    -DPython3_EXECUTABLE=`which python3`</span><br><span class="line">ninja -j $(nproc)</span><br><span class="line"><span class="meta prompt_"></span></span><br><span class="line"><span class="meta prompt_"># </span><span class="language-bash"><span class="built_in">export</span> environment variable</span></span><br><span class="line">export LLVM_BUILD_DIR=$(pwd)</span><br></pre></td></tr></table></figure>
-</li>
-<li><p>构建Allo项目，首先回退到项目根目录，运行如下命令：</p>
-<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">python3 -m pip install -v -e . -i https://pypi.tuna.tsinghua.edu.cn/simple  # 建议用清华镜像，否则容易拉取失败</span><br></pre></td></tr></table></figure></li>
-</ol>
-<h2 id="Allo项目使用"><a href="#Allo项目使用" class="headerlink" title="Allo项目使用"></a><font color = brown>Allo项目使用</font></h2><h3 id="Pytorch集成例子"><a href="#Pytorch集成例子" class="headerlink" title="Pytorch集成例子"></a><font color = green>Pytorch集成例子</font></h3><p>Allo项目除了使用ADL（加速定义语言）来描述计算任务外，也可以集成在pytorch中使用。具体参考<a target="_blank" rel="noopener" href="https://cornell-zhang.github.io/allo/dive/pytorch.html">allo pytorch集成例子</a>。</p>
-<p>具体代码如下：</p>
-<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> torch</span><br><span class="line"><span class="keyword">import</span> torch.nn.functional <span class="keyword">as</span> F</span><br><span class="line"><span class="keyword">import</span> torch.nn <span class="keyword">as</span> nn</span><br><span class="line"></span><br><span class="line"><span class="keyword">class</span> <span class="title class_">Model</span>(nn.Module):</span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">__init__</span>(<span class="params">self</span>):</span><br><span class="line">        <span class="built_in">super</span>(Model, <span class="variable language_">self</span>).__init__()</span><br><span class="line"></span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">forward</span>(<span class="params">self, x, y</span>):</span><br><span class="line">        x = x + y</span><br><span class="line">        x = F.relu(x)</span><br><span class="line">        <span class="keyword">return</span> x</span><br><span class="line"></span><br><span class="line">model = Model()</span><br><span class="line">model.<span class="built_in">eval</span>()</span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> allo</span><br><span class="line">example_inputs = [torch.rand(<span class="number">1</span>, <span class="number">3</span>, <span class="number">10</span>, <span class="number">10</span>), torch.rand(<span class="number">1</span>, <span class="number">3</span>, <span class="number">10</span>, <span class="number">10</span>)]</span><br><span class="line">llvm_mod = allo.frontend.from_pytorch(model, example_inputs=example_inputs)</span><br><span class="line"></span><br><span class="line">golden = model(*example_inputs)</span><br><span class="line">np_inputs = [x.detach().numpy() <span class="keyword">for</span> x <span class="keyword">in</span> example_inputs]</span><br><span class="line">res = llvm_mod(*np_inputs)</span><br><span class="line">torch.testing.assert_close(res, golden.detach().numpy())</span><br><span class="line"><span class="built_in">print</span>(<span class="string">&quot;Passed!&quot;</span>)</span><br><span class="line"></span><br><span class="line">mod = allo.frontend.from_pytorch(model, example_inputs=example_inputs, target=<span class="string">&quot;vhls&quot;</span>)</span><br><span class="line"><span class="built_in">print</span>(mod.hls_code)</span><br></pre></td></tr></table></figure>
 
-<p>执行如下scirpt：</p>
-<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta prompt_">#</span><span class="language-bash">!/bin/bash</span></span><br><span class="line"></span><br><span class="line">LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libstdc++.so.6 python test.py</span><br></pre></td></tr></table></figure>
-
-<blockquote>
-<p>:key:注意，由于conda环境中的libstdc++版本低，可能会在import allo的时候报错。强制指定系统libstdc++版本即可。</p>
-</blockquote>
-<h3 id="Allo-AIE集成"><a href="#Allo-AIE集成" class="headerlink" title="Allo AIE集成"></a><font color = green>Allo AIE集成</font></h3><p>Allo项目目前可以集成AIE后端了，目前只局限于aie2（NPU）。该流程是端到端的编译流程，支持从pytorch或是huggingface上的模型lower到aie后端，并执行。具体流程如下：</p>
-<p><img src="/images/image-20250407111644037.png" alt="image-20250407111644037"></p>
-<p>目前存在的流程问题：</p>
-<ul>
-<li><p>Pytorch只能target到cpu和fpga上，目前没有支持pytorch到aie的端到端流程。</p>
-<p><img src="/images/image-20250407124451930.png" alt="image-20250407124451930"></p>
-</li>
-<li><p>对于aie，目前allo支持用python编写算子，并且只能支持aie2（NPU），没有支持VCK190。</p>
-<p><img src="/images/image-20250407124501753.png" alt="image-20250407124501753"></p>
-</li>
-<li><p>Pytorch算子支持受局限。</p>
-<p><img src="/images/image-20250407124509106.png" alt="image-20250407124509106"></p>
-</li>
-</ul>
-<h2 id="Allo项目架构"><a href="#Allo项目架构" class="headerlink" title="Allo项目架构"></a><font color = brown>Allo项目架构</font></h2><p><img src="/images/image-20250331184126715.png" alt="image-20250331184126715"></p>
-<h3 id="前端"><a href="#前端" class="headerlink" title="前端"></a><font color = green>前端</font></h3><p><code>Allo</code>项目在前端使用python语言编写，主要完成<strong>python系统</strong>和<strong>pytorch系统</strong>到mlir系统的接入。针对pytorch系统，用于可以使用<code>torch.compile(model, &quot;allo&quot;)</code>将pytorch代码编译成allo的中间表达形式，借助于TorchDynamo系统。具体的，基于<code>torch.fx</code>作为高层ir，将其中的每一个pytorch计算单元翻译成allo的function call，后续转换和优化交由allo来完成。硬件无关优化比如算子融合在torch系统中完成，而硬件相关优化则由allo完成，两者是正交关系。</p>
-<h2 id="代码生成"><a href="#代码生成" class="headerlink" title="代码生成"></a><font color = green>代码生成</font></h2><p>用户通过<code>s.build(&lt;target&gt;)</code>来针对指定硬件生成代码。目前支持的后端硬件有：CPU，AMD的fpga以及AMD AIE（Ryzen AI）。</p>
-<h2 id="中间优化"><a href="#中间优化" class="headerlink" title="中间优化"></a><font color = green>中间优化</font></h2><p>这一部分完全在mlir系统中完成所有的优化。</p>
-<blockquote>
-<p>Allo项目的框架是比较简单的，后续会结合源代码详细解读。</p>
-</blockquote>
-<h2 id="参考资料"><a href="#参考资料" class="headerlink" title="参考资料"></a><font color = brown>参考资料</font></h2><ol>
-<li><a target="_blank" rel="noopener" href="https://cornell-zhang.github.io/allo/">Allo doc</a></li>
-<li><a target="_blank" rel="noopener" href="http://arxiv.org/abs/2404.04815">Allo paper</a></li>
-<li><a target="_blank" rel="noopener" href="https://github.com/cornell-zhang/allo">Allo project</a></li>
-</ol>
 
     </div>
 
@@ -350,7 +303,6 @@
           <div class="post-tags">
               <a href="/tags/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0%E7%BC%96%E8%AF%91%E5%99%A8/" rel="tag"># 机器学习编译器</a>
               <a href="/tags/mlir/" rel="tag"># mlir</a>
-              <a href="/tags/%E5%BC%82%E6%9E%84%E8%AE%A1%E7%AE%97%E7%B3%BB%E7%BB%9F/" rel="tag"># 异构计算系统</a>
           </div>
 
         
@@ -358,11 +310,11 @@
 
         
     <div class="post-nav">
-      <div class="post-nav-item"></div>
       <div class="post-nav-item">
-    <a href="/2025/03/31/%E8%AE%A1%E7%AE%97%E5%AF%86%E9%9B%86%E7%AE%97%E5%AD%90%E8%9E%8D%E5%90%88/" rel="next" title="计算密集算子融合">
-      计算密集算子融合 <i class="fa fa-chevron-right"></i>
+    <a href="/2025/05/06/ByteIR-%E5%88%9D%E6%8E%A2/" rel="prev" title="ByteIR 初探">
+      <i class="fa fa-chevron-left"></i> ByteIR 初探
     </a></div>
+      <div class="post-nav-item"></div>
     </div>
       </footer>
     
@@ -422,7 +374,7 @@
 
       <!--noindex-->
       <div class="post-toc-wrap sidebar-panel">
-          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E9%A1%B9%E7%9B%AE%E6%9E%84%E5%BB%BA"><span class="nav-number">1.</span> <span class="nav-text">项目构建</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Allo%E9%A1%B9%E7%9B%AE%E4%BD%BF%E7%94%A8"><span class="nav-number">2.</span> <span class="nav-text">Allo项目使用</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#Pytorch%E9%9B%86%E6%88%90%E4%BE%8B%E5%AD%90"><span class="nav-number">2.1.</span> <span class="nav-text">Pytorch集成例子</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Allo-AIE%E9%9B%86%E6%88%90"><span class="nav-number">2.2.</span> <span class="nav-text">Allo AIE集成</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Allo%E9%A1%B9%E7%9B%AE%E6%9E%B6%E6%9E%84"><span class="nav-number">3.</span> <span class="nav-text">Allo项目架构</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%89%8D%E7%AB%AF"><span class="nav-number">3.1.</span> <span class="nav-text">前端</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BB%A3%E7%A0%81%E7%94%9F%E6%88%90"><span class="nav-number">4.</span> <span class="nav-text">代码生成</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%AD%E9%97%B4%E4%BC%98%E5%8C%96"><span class="nav-number">5.</span> <span class="nav-text">中间优化</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%8F%82%E8%80%83%E8%B5%84%E6%96%99"><span class="nav-number">6.</span> <span class="nav-text">参考资料</span></a></li></ol></div>
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#Compiler%E9%83%A8%E5%88%86%E6%A6%82%E8%A7%88"><span class="nav-number">1.</span> <span class="nav-text">Compiler部分概览</span></a></li></ol></div>
       </div>
       <!--/noindex-->
 
@@ -648,7 +600,7 @@ NexT.utils.loadComments(document.querySelector('#gitalk-container'), () => {
       repo        : 'micropuma.github.io',
       owner       : 'micropuma',
       admin       : ['micropuma'],
-      id          : 'e774afedeeb94b00bce0d876039da965',
+      id          : '090047953068ed83fc8b2181b1665ef4',
         language: 'zh-CN',
       distractionFreeMode: true
     });
