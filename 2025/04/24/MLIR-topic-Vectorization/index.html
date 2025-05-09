@@ -286,6 +286,7 @@
       
         <p><img src="/images/image-20250509105758710.png" alt="image-20250509105758710"></p>
 <span id="more"></span>
+
 <blockquote>
 <p>本篇博客重点阐述MLIR的自动向量化技术的原理，并结合实际项目（如IREE项目）探索实现细节。</p>
 </blockquote>
@@ -297,10 +298,12 @@
 </ul>
 </blockquote>
 <p>首先，我们需要明晰vector dialect在一个端到端编译器的lower过程中，所处的位置。</p>
-<p><img src="F:\LeonBlog\source\images\image-20250507104738739.png" alt="image-20250507104738739" style="zoom:50%;" /></p>
+<img src="F:\LeonBlog\source\images\image-20250507104738739.png" alt="image-20250507104738739" style="zoom:50%;" />
+
 <p>由上图所示，vector dialect一般在affine和linalg dialect之后，在LLVM等底层dialect之前。此时编译器已经完成了高层的一些算子优化：多面体优化，tiling优化，循环融合优化，在vector层面则主要完成数据并行优化（主要针对SIMD架构做优化）。</p>
 <p>在vector dialect的内部，也可以进行分层划分，主要逻辑是自底向上，从指令层级（LLVMIR）到硬件强相关操作（NVVM dialect）到虚拟硬件无关操作三个层级。具体的例子如下图所示：</p>
-<p><img src="F:\LeonBlog\source\images\image-20250507104757817.png" alt="image-20250507104757817" style="zoom:50%;" /></p>
+<img src="F:\LeonBlog\source\images\image-20250507104757817.png" alt="image-20250507104757817" style="zoom:50%;" />
+
 <p>在高层的虚拟vector dialect中，和硬件无关，适合完成自动并行化等优化。然后通过MLIR的pattern rewrite机制逐层转换成硬件相关向量。以CUDA为例，MLIR社区提供NVVM dialect，可以抽象cuda的tensor core操作，编译器可以尝试将虚拟向量转为tensor core向量处理。最终将硬件相关vector转为LLVM做代码生成。</p>
 <h2 id="设计思考"><a href="#设计思考" class="headerlink" title="设计思考"></a><font color = brown>设计思考</font></h2><h3 id="向量化粒度思考"><a href="#向量化粒度思考" class="headerlink" title="向量化粒度思考"></a><font color = green>向量化粒度思考</font></h3><p>首先，我们要思考在高层vector逐层转向LLVM IR的过程中，其vector的粒度由什么决定。整个vector系统的设计逻辑是要将高层vector逐层转换为可以在硬件上高效利用数据并行的指令，因此最小粒度由硬件决定。该最小粒度在硬件相关vector层级就会暴露出来：</p>
 <p><img src="F:\LeonBlog\source\images\image-20250507104842507.png" alt="image-20250507104842507"></p>
@@ -318,7 +321,7 @@
 <blockquote>
 <h3 id="LLVM对多维向量的限制"><a href="#LLVM对多维向量的限制" class="headerlink" title="LLVM对多维向量的限制"></a>LLVM对多维向量的限制</h3><ol>
 <li><strong>原生仅支持1D向量</strong>：LLVM的向量操作（如<code>extractelement</code>、<code>insertelement</code>、<code>shufflevector</code>）直接支持动态索引，但仅适用于1D向量。</li>
-<li><strong>聚合类型的静态性</strong>：多维向量需降维为<strong>聚合类型</strong>（如结构体或数组），但相关操作（<code>extractvalue</code>/<code>insertvalue</code>）仅允许静态索引，动态索引需通过内存指针（<code>getelementptr</code>）间接实现，效率较低。</li>
+<li><strong>聚合类型的静态性</strong>：多维向量需降维为<strong>聚合类型</strong>（如结构体或数组），但相关操作（<code>extractvalue</code>&#x2F;<code>insertvalue</code>）仅允许静态索引，动态索引需通过内存指针（<code>getelementptr</code>）间接实现，效率较低。</li>
 </ol>
 <hr>
 <h3 id="MLIR中的两种实现方案"><a href="#MLIR中的两种实现方案" class="headerlink" title="MLIR中的两种实现方案"></a>MLIR中的两种实现方案</h3><h4 id="方案一：嵌套聚合（Nested-Aggregate）"><a href="#方案一：嵌套聚合（Nested-Aggregate）" class="headerlink" title="方案一：嵌套聚合（Nested Aggregate）"></a>方案一：嵌套聚合（Nested Aggregate）</h4><ul>
@@ -339,12 +342,12 @@
 <h4 id="方案二：扁平化1D向量（Flattened-Vector）"><a href="#方案二：扁平化1D向量（Flattened-Vector）" class="headerlink" title="方案二：扁平化1D向量（Flattened Vector）"></a>方案二：扁平化1D向量（Flattened Vector）</h4><ul>
 <li><strong>原理</strong>：将n维向量展平为单一大尺寸1D向量（如<code>vector&lt;4x8x16x32xf32&gt;</code>转为<code>vector&lt;4 * 8 * 16 * 32=16384xf32&gt;</code>）。</li>
 <li>优点：<ul>
-<li>支持全维度动态索引（<code>insertelement</code>/<code>extractelement</code>）。</li>
+<li>支持全维度动态索引（<code>insertelement</code>&#x2F;<code>extractelement</code>）。</li>
 <li>兼容LLVM的1D向量优化指令和硬件指令。</li>
 </ul>
 </li>
 <li>缺点：<ul>
-<li>引入复杂线性化/反线性化逻辑，代码生成复杂度高。</li>
+<li>引入复杂线性化&#x2F;反线性化逻辑，代码生成复杂度高。</li>
 <li>掩盖实际硬件向量边界（如固定128位SIMD），可能导致非对齐访问或低效向量拆分。</li>
 </ul>
 </li>
@@ -356,9 +359,9 @@
 </ul>
 <h4 id="折中方案"><a href="#折中方案" class="headerlink" title="折中方案"></a>折中方案</h4><p>通过<strong>显式维度转换操作</strong>（如<code>vector.cast</code>）按需展平部分维度，例如将<code>vector&lt;4x8x16x32xf32&gt;</code>局部转为<code>vector&lt;4x4096xf32&gt;</code>，既保留外层静态索引优化空间，又允许内层使用动态索引或SIMD指令。</p>
 </blockquote>
-<p>上述关于extractvalue操作不支持动态索引这点，刚开始会感觉比较难以理解。其本质原因是现代处理器（CPU/GPU）的<strong>寄存器文件（Register File）</strong> 是硬件直接操作的超高速存储单元，访问索引的时候存在物理设计约束：</p>
+<p>上述关于extractvalue操作不支持动态索引这点，刚开始会感觉比较难以理解。其本质原因是现代处理器（CPU&#x2F;GPU）的<strong>寄存器文件（Register File）</strong> 是硬件直接操作的超高速存储单元，访问索引的时候存在物理设计约束：</p>
 <ul>
-<li><strong>固定寄存器数量</strong>：每个线程/核心可用的寄存器数量是硬件固定的（如NVIDIA GPU每个线程最多255个寄存器）。</li>
+<li><strong>固定寄存器数量</strong>：每个线程&#x2F;核心可用的寄存器数量是硬件固定的（如NVIDIA GPU每个线程最多255个寄存器）。</li>
 <li><strong>静态寄存器分配</strong>：寄存器在编译时由编译器分配，操作寄存器的指令<strong>直接编码寄存器编号</strong>（如 <code>R0</code>, <code>R1</code>）。</li>
 <li><strong>无动态索引支持</strong>：硬件指令无法通过运行时变量选择寄存器（如无法生成 <code>MOV R%idx, 42</code> 这样的指令）。</li>
 </ul>
@@ -369,13 +372,12 @@
 <li><p>split memory，内存可以动态索引，但是带来访存开销问题。</p>
 </li>
 </ul>
-<h2 id="vector实际实现机制"><a href="#vector实际实现机制" class="headerlink" title="vector实际实现机制"></a><font color = brown>vector实际实现机制</font></h2><h3 id="Implication-on-codegen"><a href="#Implication-on-codegen" class="headerlink" title="Implication on codegen"></a><font color = green>Implication on codegen</font></h3><p>MLIR的n维向量类型在降级到LLVM时被表示为(n-1)维数组包裹的1维向量，这导致静态索引和动态索引的分层限制：仅最内层1维向量支持动态索引（通过<code>insertelement</code>/<code>extractelement</code>），外层(n-1)维只能静态访问，否则需显式内存操作（<code>load</code>/<code>store</code>）。代码生成需权衡循环展开与内存访问，动态索引需通过内存指针实现，而硬件寄存器分配和溢出问题则推迟到LLVM后端处理，MLIR层通过抽象成本模型指导优化选择。</p>
-<h3 id="Implication-on-Lowering-to-Accelerators"><a href="#Implication-on-Lowering-to-Accelerators" class="headerlink" title="Implication on Lowering to Accelerators"></a><font color = green>Implication on Lowering to Accelerators</font></h3><p>针对支持高维向量的加速器，MLIR通过<code>vector.cast</code>将最内层维度展平为1维向量（如<code>vector&lt;Kxf32&gt;</code>），直接对接LLVM-IR或加速器特定指令。这一过程需在<strong>加速器专用方言中定制转换规则，例如处理不规则维度时的掩码或数据重组逻辑，而标准化的展平操作（如<code>K=K1*K2*…*Kn</code>）近乎无开销</strong>。目标是实现跨CPU/GPU/加速器的统一代码生成框架，通过模式重写和成本模型灵活适配硬件特性。</p>
-<font color = red>这一条在各种机器学习编译器中都有大量代码实现</font>
-
+<h2 id="vector实际实现机制"><a href="#vector实际实现机制" class="headerlink" title="vector实际实现机制"></a><font color = brown>vector实际实现机制</font></h2><h3 id="Implication-on-codegen"><a href="#Implication-on-codegen" class="headerlink" title="Implication on codegen"></a><font color = green>Implication on codegen</font></h3><p>MLIR的n维向量类型在降级到LLVM时被表示为(n-1)维数组包裹的1维向量，这导致静态索引和动态索引的分层限制：仅最内层1维向量支持动态索引（通过<code>insertelement</code>&#x2F;<code>extractelement</code>），外层(n-1)维只能静态访问，否则需显式内存操作（<code>load</code>&#x2F;<code>store</code>）。代码生成需权衡循环展开与内存访问，动态索引需通过内存指针实现，而硬件寄存器分配和溢出问题则推迟到LLVM后端处理，MLIR层通过抽象成本模型指导优化选择。</p>
+<h3 id="Implication-on-Lowering-to-Accelerators"><a href="#Implication-on-Lowering-to-Accelerators" class="headerlink" title="Implication on Lowering to Accelerators"></a><font color = green>Implication on Lowering to Accelerators</font></h3><p>针对支持高维向量的加速器，MLIR通过<code>vector.cast</code>将最内层维度展平为1维向量（如<code>vector&lt;Kxf32&gt;</code>），直接对接LLVM-IR或加速器特定指令。这一过程需在<strong>加速器专用方言中定制转换规则，例如处理不规则维度时的掩码或数据重组逻辑，而标准化的展平操作（如<code>K=K1*K2*…*Kn</code>）近乎无开销</strong>。目标是实现跨CPU&#x2F;GPU&#x2F;加速器的统一代码生成框架，通过模式重写和成本模型灵活适配硬件特性。</p>
+<p><font color = red>这一条在各种机器学习编译器中都有大量代码实现</font></p>
 <h3 id="Implication-on-calling-external-functions-that-operate-on-vectors"><a href="#Implication-on-calling-external-functions-that-operate-on-vectors" class="headerlink" title="Implication on calling external functions that operate on vectors"></a><font color = green>Implication on calling external functions that operate on vectors</font></h3><p>调用外部向量函数时，可能需要线性化多维向量以匹配ABI接口。MLIR需在调用边界隐式插入维度转换逻辑，确保数据布局与目标函数兼容。例如，将<code>vector&lt;4x4xf32&gt;</code>转为连续内存块或1D向量，避免因多维结构导致调用约定冲突。</p>
-<h3 id="Relationship-to-LLVM-matrix-type-proposal"><a href="#Relationship-to-LLVM-matrix-type-proposal" class="headerlink" title="Relationship to LLVM matrix type proposal"></a><font color = green>Relationship to LLVM matrix type proposal</font></h3><p>LLVM矩阵提案（支持2D矩阵及专用指令）与MLIR多维向量设计存在互补性。MLIR更高维的通用向量抽象可降级为LLVM矩阵或原生1D向量，而MLIR的<code>vector.cast</code>机制为CPU/加速器提供了统一接口。未来MLIR可能成为跨硬件向量化策略的枢纽层，LLVM矩阵则作为特定场景的子集实现。</p>
-<h3 id="Conclusion"><a href="#Conclusion" class="headerlink" title="Conclusion"></a><font color = green>Conclusion</font></h3><p><strong>MLIR选择“嵌套聚合1D向量”作为核心抽象，因其明确区分内存与寄存器语义，同时通过<code>vector.cast</code>兼容硬件特定指令。</strong>这种设计支持粗粒度向量操作（如跨多硬件向量的模式匹配），并通过显式维度转换平衡灵活性与性能，而非依赖LLVM隐式线性化。尽管LLVM矩阵提案适合硬件专用场景，MLIR的高维模型更适配跨平台代码生成需求，成为连接算法与硬件优化的桥梁。</p>
+<h3 id="Relationship-to-LLVM-matrix-type-proposal"><a href="#Relationship-to-LLVM-matrix-type-proposal" class="headerlink" title="Relationship to LLVM matrix type proposal"></a><font color = green>Relationship to LLVM matrix type proposal</font></h3><p>LLVM矩阵提案（支持2D矩阵及专用指令）与MLIR多维向量设计存在互补性。MLIR更高维的通用向量抽象可降级为LLVM矩阵或原生1D向量，而MLIR的<code>vector.cast</code>机制为CPU&#x2F;加速器提供了统一接口。未来MLIR可能成为跨硬件向量化策略的枢纽层，LLVM矩阵则作为特定场景的子集实现。</p>
+<h3 id="Conclusion"><a href="#Conclusion" class="headerlink" title="Conclusion"></a><font color = green>Conclusion</font></h3><p>**MLIR选择“嵌套聚合1D向量”作为核心抽象，因其明确区分内存与寄存器语义，同时通过<code>vector.cast</code>兼容硬件特定指令。**这种设计支持粗粒度向量操作（如跨多硬件向量的模式匹配），并通过显式维度转换平衡灵活性与性能，而非依赖LLVM隐式线性化。尽管LLVM矩阵提案适合硬件专用场景，MLIR的高维模型更适配跨平台代码生成需求，成为连接算法与硬件优化的桥梁。</p>
 <h2 id="向量化流程"><a href="#向量化流程" class="headerlink" title="向量化流程"></a><font color = brown>向量化流程</font></h2><p>主要参考<a target="_blank" rel="noopener" href="https://www.lei.chat/posts/mlir-vector-dialect-and-patterns/#handling-high-d-vectors">Lei chat blog</a>。下述内容大量摘自博客以及一些个人总结。</p>
 <p><img src="F:\LeonBlog\source\images\image-20250507142752068.png" alt="image-20250507142752068"></p>
 <p><img src="F:\LeonBlog\source\images\image-20250507142338159.png" alt="image-20250507142338159"></p>
@@ -530,13 +532,13 @@
       <i class="fa fa-chart-area"></i>
     </span>
       <span class="post-meta-item-text">站点总字数：</span>
-    <span title="站点总字数">144k</span>
+    <span title="站点总字数">145k</span>
     <span class="post-meta-divider">|</span>
     <span class="post-meta-item-icon">
       <i class="fa fa-coffee"></i>
     </span>
       <span class="post-meta-item-text">站点阅读时长 &asymp;</span>
-    <span title="站点阅读时长">2:11</span>
+    <span title="站点阅读时长">2:12</span>
 </div>
   <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://pisces.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Pisces</a> 强力驱动
   </div>
