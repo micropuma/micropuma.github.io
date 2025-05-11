@@ -1,6 +1,277 @@
 <?xml version="1.0" encoding="utf-8"?>
 <search>
   <entry>
+    <title>AI编译器后端&amp;运行时</title>
+    <url>/2025/04/16/AI%E7%BC%96%E8%AF%91%E5%99%A8%E5%90%8E%E7%AB%AF-%E8%BF%90%E8%A1%8C%E6%97%B6/</url>
+    <content><![CDATA[<p><img src="/images/image-20250420234716898.png" alt="image-20250420234716898"></p>
+<span id="more"></span>
+
+<blockquote>
+<p>在尝试将pytorch接入aie平台的过程中，发现自己对于AI编译器在机器学习系统中的定位所知甚少。由于先前经验大多只停留在将高级语言转换成硬件相关的ir代码，而忽略了后端以及运行时系统协作方面的知识，遇到瓶颈。因此本博客通过参考机器学习系统书籍，以及目前主流AI编译器的后端和运行时系统的协作，查漏补缺，补全自己的知识盲点。</p>
+</blockquote>
+<h2 id="AI编译器后端和运行时架构"><a href="#AI编译器后端和运行时架构" class="headerlink" title="AI编译器后端和运行时架构"></a><font color = brown>AI编译器后端和运行时架构</font></h2><p>通过参考<a href="https://openmlsys.github.io/chapter_backend_and_runtime/index.html">mlsys open book</a>和<a href="https://zhuanlan.zhihu.com/p/651036523">tensorflow xla解读</a>，对机器学习编译有了新的理解。机器学习编译技术需要与运行时系统相互写作，才能将一个机器学习模型完整的跑在GPU&#x2F;NPU上。下图是AI系统的一个软件栈示意图：</p>
+<img src="/images/image-20250418172339205.png" alt="image-20250418172339205" style="zoom: 80%;" />
+
+<p>上述优化流程，是针对静态图的全图编译运行流程（tensorflow XLA这种动态圈图有一定区别）。按照软件栈层级关系，可以分为编译层和运行时系统层。</p>
+<ul>
+<li>编译层：编译层的输入是整个静态计算图或是部分子图，因此首先需要编译器前端用户代码进行解析翻译得到计算图IR，并对其进行设备信息无关的优化，此时的优化并不考虑程序执行的底层硬件信息。编译器后端的主要职责是对前端下发的IR做进一步的计算图优化，让其更加贴合硬件，并为IR中的计算节点选择在硬件上执行的算子，然后为每个算子的输入输出分配硬件内存，最终生成一个可以在硬件上执行的任务序列。</li>
+<li>运行时系统层：运行时系统设计一般均有一个虚拟机VM用以支持调度和快速部署（IREE架构的VM和Relay VM）。其输入是编译层生成的可在硬件上执行的任务序列，<strong>如果考虑跨硬件部署，则需要考虑使用函数类型擦除技术统一接口</strong>。然后，VM将任务序列转换成硬件设备api和host端代码，最终分别生成可执行。</li>
+</ul>
+<p>后续会详细解读每一层的流程，以及可参考文献。</p>
+<h3 id="编译器后端"><a href="#编译器后端" class="headerlink" title="编译器后端"></a><font color = green>编译器后端</font></h3><h4 id="后端优化定位"><a href="#后端优化定位" class="headerlink" title="后端优化定位"></a>后端优化定位</h4><p>重点参考<a href="https://www.bilibili.com/video/BV1K84y1x7Be?spm_id_from=333.788.videopod.sections&vd_source=7cc24e214309f4db17f1dda017fc6683">zomi编译后端视频</a>。声明：如下内容以及图片slides基本来源于该视频。</p>
+<img src="/images/image-20250502160730282.png" alt="image-20250502160730282" style="zoom:50%;" />
+
+<p>上图是编译后端在整个AI编译框架的位置。大致总结一下前端优化和后端优化的区别：前端优化输入是计算图，关注计算图整体拓扑结构，而不关心算子的具体实现。其优化手段主要有对于算子节点进行融合、消除、化简等操作，是计算图计算和存储开销小。后端优化则专注于算子节点的内部具体实现，针对具体实现使得性能达到最优，重点关心节点的输入，输出内存循环方式和计算的逻辑。</p>
+<h4 id="后端优化干了什么？"><a href="#后端优化干了什么？" class="headerlink" title="后端优化干了什么？"></a>后端优化干了什么？</h4><p><img src="/images/image-20250502173731704.png" alt="image-20250502173731704"></p>
+<p>后端优化主要做了三件事：</p>
+<ul>
+<li><p>低级代码生成</p>
+<p>如上图所示，是TVM的架构流程。Tensor IR是将计算图用张量表示。低级代码生成阶段是将该张量表示进一步降级。</p>
+</li>
+<li><p>后端优化</p>
+<p>底层硬件不同，对于conv等算子的排布优化也会不同。后端优化主要针对各个算子做循环优化排布。</p>
+</li>
+<li><p>代码生成</p>
+<p>针对不同backend生成机器码。在AI编译器中，以GPU为例，一种思路是GPU端直接生成cuda代码，CPU端生成LLVM，并由llvm基础设施编译可执行。另一个思路是生成NVVM IR，交由nvvm进行编译。</p>
+</li>
+</ul>
+<p>所以，后端优化其实本质就是对于算子的编译优化。目前算子编译优化的挑战如下：</p>
+<p><img src="/images/image-20250502174157055.png" alt="image-20250502174157055"></p>
+<p>算子库因此应允而生：</p>
+<p><img src="/images/image-20250502174216690.png" alt="image-20250502174216690"></p>
+<p>算子库能够很好地压榨硬件性能，但是上层模型的变动和底层硬件的变动，算子库无法快速适配这些变化。因此AI编译器和算子库协作开发，由AI编译器提供灵活性，减少一部分算子库开发的人力投入。编译角度的后端优化可以分为两个路线：</p>
+<ul>
+<li>使用机器学习等模型进行auto tuning</li>
+<li>利用数学表达式，做多面体优化</li>
+</ul>
+<p>这两个部分后续会专门开专题来解读。</p>
+<h3 id="运行时系统"><a href="#运行时系统" class="headerlink" title="运行时系统"></a><font color = green>运行时系统</font></h3><p>这一章节关于运行时系统的描述，主要参考<a href="https://www.lei.chat/posts/single-node-ml-runtime-foundation/">Lei chat blog</a>，本章的描述均基于单节点来讨论，服务器等多节点暂不涉及。</p>
+<p>首先，我们需要明确，什么是机器学习系统的runtime system。runtime system的主要工作有两点：</p>
+<ul>
+<li>管理资源（内存资源等）</li>
+<li>调度执行</li>
+</ul>
+<p>根据实际语义，runtime亦有不同。多卡分布式训练场景下，runtime负责将训练任务分配调度到数据中心的不同节点。单节点上，runtime负责派发张量计算到特定的加速器。<strong>本章节关注单节点runtime系统，其一般运行在CPU上来管理资源并调度机器学习任务负载到一个或多个加速器上。</strong></p>
+<h4 id="运行时抽象"><a href="#运行时抽象" class="headerlink" title="运行时抽象"></a>运行时抽象</h4><p>运行时系统给用户提供了三个抽象：</p>
+<ul>
+<li><p>主机设备分离</p>
+<blockquote>
+<p>摘自博客的解释：</p>
+<p><img src="/images/image-20250421103410716.png" alt="image-20250421103410716"></p>
+<p><img src="/images/image-20250421103520060.png" alt="image-20250421103520060"></p>
+</blockquote>
+</li>
+<li><p>虚拟机抽象</p>
+<p>这一部分是我们理解整个runtime的重点，具体的实际例子可以参考<a href="https://github.com/iree-org/iree">IREE </a>和<a href="https://zhuanlan.zhihu.com/p/504066888">tvm runtime</a>设计细节。针对机器学习系统以及我们的cpu加速器协同架构，我们会有如下insights：</p>
+<ul>
+<li>首先我们观察主机设备架构，会发现相比设备端，主机端的系统架构是比较统一的（ARM64， x86_64和RISC-V）。</li>
+<li>观察机器学习的任务，发现机器学习任务一般是<a href="https://llvm.org/doxygen/classllvm_1_1LoopNest.html">完美循环</a>（定义见llvm官方文档）。因此<strong>访存方面用逻辑偏移即可，而非物理指针</strong>。</li>
+<li>机器学习模型部署在端侧，因此轻量化也是一大考量。</li>
+</ul>
+<p>基于上述insights，主流ai编译器均定义一套主机端虚拟指令集和虚拟机来实现调度。计算密集任务放在加速器上，存储资源追踪管理以及维度形状计算等逻辑（适合cpu端计算的逻辑）放在虚拟机上。如下图所示是IREE的虚拟机架构图：</p>
+<p><img src="/images/image-20250421105323107.png" alt="image-20250421105323107"></p>
+<p>上述虚拟机设计，还有一大好处，那就是可以很自然的完成从mlir系统到虚拟机指令ISA的编译转换。因此整个调度控制流程可以自然地通过编译器来控制，进一步提供可优化点。</p>
+</li>
+<li><p>HAL硬件抽象层</p>
+<p>针对边缘&#x2F;客户端设备的多样化硬件生态，最佳实践是基于现代图形&#x2F;计算API（如Vulkan、DirectX 12、Metal）构建硬件抽象层（HAL）。这些API提供低开销、跨平台支持、显式控制等优势，能统一管理不同厂商的GPU&#x2F;加速器（如NVIDIA&#x2F;AMD&#x2F;Apple）。虽然这些API直接使用复杂（如代码冗长），但通过编译器自动生成调用逻辑，可绕过开发难度，同时保留底层控制权。这种设计既能满足高性能需求（通过低层级优化），又能覆盖多平台&#x2F;硬件的兼容性（如Windows&#x2F;iOS&#x2F;Android），为碎片化设备提供统一且高效的计算支持。如下是iree的HAL，VM架构图。</p>
+<p><img src="/images/image-20250421110831028.png" alt="image-20250421110831028"></p>
+</li>
+</ul>
+<p>上述是runtime system的三个抽象，而实际生产中，runtime系统也要充分考虑性能问题：</p>
+<blockquote>
+<p>在GPU资源管理与同步中，核心挑战在于平衡计算吞吐量与系统整体效率。由于GPU内存性能常落后于算力提升，单纯优化单内核代码（如矩阵乘法）难以发挥理论峰值，需避免运行时因频繁创建&#x2F;销毁资源（如缓冲区、同步对象）或跨组件数据拷贝&#x2F;强制等待导致的性能损耗。为此，可借鉴图形应用（如游戏引擎）的成熟实践：<strong>预分配资源池</strong>减少动态开销、<strong>预录异步命令链</strong>最大化GPU并行度、<strong>细粒度同步</strong>基于资源生命周期。这些策略可通过编译器自动化实现（如依赖分析与指令提升）。IREE运行时采用<strong>异步优先</strong>设计，支持跨组件无缝传递缓冲区与同步原语，利用操作系统底层机制（如Linux的dma_fence）避免硬性边界，既保障ML模型的高效执行，又能嵌入复杂应用（如图像处理管线）而不成为性能瓶颈，兼顾性能与系统协同。</p>
+</blockquote>
+<p>上述关于运行时系统的描述，是比较普遍的，下面结合Open MLsys一书，详细解读不同运行时系统的分类。</p>
+<blockquote>
+<p>经过算子选择与内存分配之后，计算任务可以通过运行时完成计算的调度与在硬件上的执行。根据是否将算子编译为计算图，计算的调度可以分为单算子调度与计算图调度两种方式，例如在MindSpore中分别提供了PyNative模式和Graph模式。而根据硬件提供的能力差异，计算图的执行方式又可以分为逐算子下发执行的交互式执行以及将整个计算图或者部分子图一次性下发到硬件的下沉式执行两种模式。                                                                                                                                                                      —- 《Open Mlysy》</p>
+</blockquote>
+<h4 id="单算子调度"><a href="#单算子调度" class="headerlink" title="单算子调度"></a>单算子调度</h4><p>一行行算子line by line的交由python运行时执行，好处是方便debug和看到即时效果，坏处是只能顺序执行，丧失很多并行性，同时也无法支持编译优化。</p>
+<h4 id="计算图调度"><a href="#计算图调度" class="headerlink" title="计算图调度"></a>计算图调度</h4><p>在一个典型的异构计算环境中，主要存在CPU、GPU以及NPU等多种计算设备，因此一张计算图可以由运行在不同设备上的算子组成为异构计算图。</p>
+<p><img src="/images/image-20250418182641748.png" alt="image-20250418182641748"></p>
+<p>所述计算图由如下几类异构硬件对应的算子组成：</p>
+<ul>
+<li><strong>CPU算子</strong>：由C++语言编写实现并在主机上通过CPU执行的算子，CPU计算的性能取决于是否能够充分利用CPU多核心的计算能力。</li>
+<li><strong>GPU算子</strong>：以英伟达GPU芯片为例，通过在主机侧将GPU Kernel逐个下发到GPU设备上，由GPU芯片执行算子的计算逻辑，由于芯片上具备大量的并行执行单元，可以为高度并行的算法提供强大的加速能力。</li>
+<li><strong>NPU算子</strong>：以华为Ascend芯片为例， Ascend是一个高度集成的SoC芯片，NPU的优势是支持将部分或整个计算图下沉到芯片中完成计算，计算过程中不与Host发生交互，因此具备较高的计算性能。</li>
+<li><strong>Python算子</strong>：在执行模式上与CPU算子类似，都是由主机上的CPU执行计算，区别在于计算逻辑是由Python语言的运行时通过Python解释器解释执行。</li>
+</ul>
+<p>一般主流架构均提供了指定算子所在运行设备的能力，此处可以参考mindspore的具体实现。</p>
+<p>完成计算图中算子对应设备的标记以后，计算图已经准备好被调度与执行，根据硬件能力的差异，可以将异构计算图的执行分为三种模式，分别是逐算子交互式执行，整图下沉执行与子图下沉执行。</p>
+<ul>
+<li>交互式执行主要针对CPU和GPU的场景，计算图中的算子按照输入和输出的依赖关系被逐个调度与执行；</li>
+<li>而整图下沉执行模式主要是针对NPU芯片而言，这类芯片主要的优势是能够将整个神经网络的计算图一次性下发到设备上，无需借助主机的CPU能力而独立完成计算图中所有算子的调度与执行，减少了主机和芯片的交互次数，借助NPU的张量加速能力，提高了计算效率和性能；</li>
+<li>子图下沉执行模式是前面两种执行模式的结合，由于计算图自身表达的灵活性，对于复杂场景的计算图在NPU芯片上进行整图下沉执行的效率不一定能达到最优，因此可以将对于NPU芯片执行效率低下的部分分离出来，交给CPU或者GPU等执行效率更高的设备处理，而将部分更适合NPU计算的子图下沉到NPU进行计算，这样可以兼顾性能和灵活性两方面。</li>
+</ul>
+<blockquote>
+<p>虽然在计算图上可以充分表达算子间的并发关系，在实际代码中会产生由于并发而引起的一些不预期的副作用场景</p>
+<img src="/images/image-20250418183157655.png" alt="image-20250418183157655" style="zoom: 50%;" />
+
+<p>如上图所示，虚线是operator之间的隐含依赖关系，但是在计算图中难以表示。因此在实际执行计算图的过程中，会分为交互式下发和下沉式（执行方式区分）。</p>
+</blockquote>
+<h4 id="算子交互执行"><a href="#算子交互执行" class="headerlink" title="算子交互执行"></a>算子交互执行</h4><p>框架的运行时根据计算图中算子的依赖关系，按照某种执行序（例如广度优先序）逐个将算子下发到硬件上执行。我们处理的计算图一般为异构计算图（计算图中的硬件有多种）。解读异构计算图交互执行之前，先解读同构计算图，异构计算图需要先通过子图切分为同构计算图。</p>
+<p>同构计算图有两种执行方式，如下表所示：</p>
+<table>
+<thead>
+<tr>
+<th align="right">执行方式</th>
+<th align="right">串行执行</th>
+<th align="right">并行执行</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="right">算子执行顺序</td>
+<td align="right">固定</td>
+<td align="right">不固定</td>
+</tr>
+<tr>
+<td align="right">算子执行线程</td>
+<td align="right">单线程</td>
+<td align="right">多线程</td>
+</tr>
+<tr>
+<td align="right">所需执行资源</td>
+<td align="right">较低</td>
+<td align="right">较高</td>
+</tr>
+</tbody></table>
+<p>而对于异构计算图，<font color = red>一般来说计算图的优化都是基于非异构计算图来实现的，要求计算图中的算子为同一设备上的，方便算子间的融合替换等优化操作，因此需要将一张异构计算图切分为多个非异构计算图，这里切分就比较灵活了，可以定义各种切分规则，一般按照产生尽量少的子图的切分规则来切分，尽量将多的同一设备上的算子放在一张子图中。</font>如下图是一种可能的子图切分方式：</p>
+<img src="/images/image-20250418185356799.png" alt="image-20250418185356799" style="zoom:50%;" />
+
+<p>切分出子图后，下一步需要考虑的是子图执行。共可以分为两种策略：</p>
+<ul>
+<li><p><strong>子图拆分执行</strong>：将切分后的多个子图分开执行，即一个子图执行完再执行另一个子图，上一个子图的输出数据会传输给下一个子图的输入数据，并且下一个子图需要将输入数据拷贝为本图的device数据，如Graph_2_GPU需要将Graph_1_CPU的输出数据从CPU拷贝到GPU，反过来Graph_3_CPU需要将Graph2GPU的输出数据从GPU拷贝到CPU，子图之间互相切换执行有一定的开销。</p>
+<img src="/images/image-20250418185513957.png" alt="image-20250418185513957" style="zoom: 50%;" />
+</li>
+<li><p><strong>子图合并执行</strong>：将切分后的多个子图进行合并，合并为一个整体的DAG执行，如 <a href="https://openmlsys.github.io/chapter_backend_and_runtime/compute_schedule_and_execute.html#graph-exec-7">图7.5.12</a>所示，通过算子的设备属性来插入拷贝算子以实现不同设备上的算子数据传输，并且拷贝算子也是进入整图中的，从而形成一个大的整图执行，减少子图之间的切换执行开销。</p>
+<img src="/images/image-20250418185549176.png" alt="image-20250418185549176" style="zoom:50%;" /></li>
+</ul>
+<p>下表中对于这两种执行方式进行了对比：</p>
+<table>
+<thead>
+<tr>
+<th align="right">执行方式</th>
+<th align="right">子图拆分</th>
+<th align="right">子图合并</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="right">异构数据传输</td>
+<td align="right">子图之间拷贝</td>
+<td align="right">算子之间拷贝</td>
+</tr>
+<tr>
+<td align="right">执行额外开销</td>
+<td align="right">子图切换执行开销</td>
+<td align="right">无</td>
+</tr>
+<tr>
+<td align="right">执行并发粒度</td>
+<td align="right">子图并发</td>
+<td align="right">算子原生并发</td>
+</tr>
+</tbody></table>
+<p>总结一下，主要是并发粒度的区别。<strong>子图切换执行开销是比较大的，因此子图合并是比较普适的做法。</strong></p>
+<blockquote>
+<p>mindspore的异构执行是子图合并，而非异构执行是并行执行，因此为子图合并并行执行（任意计算架构都有两个象限）。</p>
+</blockquote>
+<h4 id="下沉式执行"><a href="#下沉式执行" class="headerlink" title="下沉式执行"></a>下沉式执行</h4><p>下沉式执行是通过专用芯片的SoC架构，将整个或部分计算图一次性调度到芯片上以完成全量数据的计算。</p>
+<h2 id="计算图编译器"><a href="#计算图编译器" class="headerlink" title="计算图编译器"></a><font color = brown>计算图编译器</font></h2><blockquote>
+<p>先前一章节阐述的是目前主流成熟的AI编译器后端和运行时架构，而面向FPGA或是AIE这样的可重构硬件，往往无法直接复用ASIC NPU的编译流程（缺乏成熟的runtime系统）。本章节结合Efficient processing for DNN的chapter6，讲解如何将一个dataflow graph映射到这些硬件上去。</p>
+</blockquote>
+<p><img src="/images/image-20250419141303976.png" alt="image-20250419141303976"></p>
+<p>上图摘自cornell的机器学习硬件课程slides。在众多参考资料中，将dataflow映射到FPGA或是特定NPU（如AIE），被称为Mapping，而不是Compiler。如下引用Efficient processing for DNN一书中的一段话，讲明两者的类比关系：</p>
+<blockquote>
+<p>In conventional computer systems, the compiler translates the program into machine-readable binary codes for execution; in the processing of DNNs, the mapper translates the desired DNN layer computation (i.e., problem specification) along with its shape and size4 into a hardwarecompatible mapping for execution. While the compiler usually optimizes just for performance, the mapper will typically optimize for performance and&#x2F;or energy efficiency.</p>
+<img src="/images/image-20250419154151487.png" alt="image-20250419154151487" style="zoom:50%;" />
+
+<img src="/images/image-20250419154218830.png" alt="image-20250419154218830" style="zoom:50%;" />
+
+<p>总结一下，有如下异同点：</p>
+<ul>
+<li>输入方面，传统编译是程序，而DNN加速器映射是问题特性以及输入的shape。</li>
+<li>Compiler的结果是可执行程序，而mapper是硬件的配置文件。</li>
+<li>需要的硬件信息方面，编译器需要知道处理器的架构和微架构，而mapper需要知道DNN加速器的数据流和约束。</li>
+</ul>
+</blockquote>
+<p><img src="/images/image-20250419141926408.png" alt="image-20250419141926408"></p>
+<p>上图是计算图编译器的一个典型架构。</p>
+<p><img src="/images/image-20250419143546984.png" alt="image-20250419143546984"></p>
+<h2 id="典型编译器解读"><a href="#典型编译器解读" class="headerlink" title="典型编译器解读"></a><font color = brown>典型编译器解读</font></h2><h3 id="TVM-后端架构-Runtime"><a href="#TVM-后端架构-Runtime" class="headerlink" title="TVM 后端架构&amp;Runtime"></a><font color = green>TVM 后端架构&amp;Runtime</font></h3><h4 id="运行时框架图"><a href="#运行时框架图" class="headerlink" title="运行时框架图"></a>运行时框架图</h4><p>TVM编译器的一大优势是支持多硬件平台&#x2F;设备部署，因此其运行时系统设计是重中之重。其运行时系统可以大体拆解为两个部分：</p>
+<ul>
+<li>每个硬件继承自ModuleNode类，利用<a href="https://zhuanlan.zhihu.com/p/363991566">PackedFunc技术</a>将特定device的设备API封装成统一格式的指令（类似bladeDISC等编译器的类型擦除设计）。</li>
+<li>一个Executor调度每一个指令并运行。该Executor分为GraphExecutor（针对静态图）和Relay VM（针对动态图）。</li>
+</ul>
+<p>如下图所示分别是TVM运行时框架和Relay VM示意图：</p>
+<p><img src="/images/image-20250416230058925.png" alt="image-20250416230058925"></p>
+<img src="/images/image-20250416231046705.png" alt="image-20250416231046705" style="zoom: 67%;" />
+
+<h3 id="IREE-runtime设计"><a href="#IREE-runtime设计" class="headerlink" title="IREE runtime设计"></a><font color = green>IREE runtime设计</font></h3><p>这部分内容主要参考<a href="https://drive.google.com/file/d/1ikgOdZxnMz1ExqwrAiuTY9exbe3yMWbB/view">IREE runtime 设计slides</a>。IREE项目整体的设计思路十分完整庞大，设计巧妙，需要单独开一章节讲解。</p>
+<h3 id="BladeDISC后端架构-Runtime"><a href="#BladeDISC后端架构-Runtime" class="headerlink" title="BladeDISC后端架构&amp;Runtime"></a><font color = green>BladeDISC后端架构&amp;Runtime</font></h3><h4 id="BladeDISC的key-feature"><a href="#BladeDISC的key-feature" class="headerlink" title="BladeDISC的key feature"></a>BladeDISC的key feature</h4><blockquote>
+<p><img src="/images/image-20250427220408720.png" alt="image-20250427220408720"></p>
+</blockquote>
+<p>BladeDISC项目在编译后端和runtime上，有许多巧思（动态shape引发的编译和运行时协作代码生成）。具体地参考<a href="https://dl.acm.org/doi/10.1145/3617327">BladeDISC papaer</a>和<a href="https://github.com/alibaba/BladeDISC">BladeDISC github project</a>，以及<a href="https://bladedisc.oss-cn-hangzhou.aliyuncs.com/docs/bladedisc-intro-for-intel.pdf">BladeDISC内部分享</a>。</p>
+<h4 id="后端代码生成"><a href="#后端代码生成" class="headerlink" title="后端代码生成"></a>后端代码生成</h4><blockquote>
+<p>BladeDISC是tensorflow的backend来使用，因此其代码生成是针对融合后的算子做代码生成即可。运行时可以依赖于tensorflow的runtime调度器，launch 代码生成的kernel。</p>
+</blockquote>
+<p>在后端代码生成过程中，由于动态shape问题，主要有如下考虑：</p>
+<ul>
+<li><p>针对存储密集子图，考虑指令重排和重叠来减少存储overhead。由于shape是动态的，传统的unroll操作可以抵消动态shape的部分影响。</p>
+</li>
+<li><p>针对存储密集子图，<strong>多代码生成</strong>和<strong>运行时预测机制</strong>，来确保针对特定shape选择到最合适的生成代码。</p>
+<p><img src="/images/image-20250427212344275.png" alt="image-20250427212344275"></p>
+<p>如上图所示，CPU端在做GPU kernel launch的时候，由于需要运行时speculation，所以会有一定延迟（microsecond），该时间GPU kernel可以overlap掉。多代码生成会考虑如下三个因素：</p>
+<ol>
+<li>向量化版本 or 非向量化版本</li>
+<li>隐藏broadcast删除 or 不删除</li>
+<li>针对行归约操作，one block one row（行少列多，高并行，低tail latency） 或是 one warp one row（行多列少，低调度开销，高吞吐）的选择</li>
+</ol>
+</li>
+<li><p>针对计算密集子图，有如下insight：</p>
+<blockquote>
+<p>计算密集操作后续一般紧跟elementwise操作，称elementwise为epilog。计算密集算子计算量相对更大，内存获取也更多，因此针对这种组合，主要针对计算密集做代码生成策略选择，epilog沿用即可。</p>
+</blockquote>
+<p>计算密集算子的<strong>bottleneck</strong>是动态shape下，不同shape的算子编写性能区别很大，因此编译时做面向不同类型shape多代码生成，运行时预测选择。其流程如图所示：</p>
+<p><img src="/images/image-20250427214740408.png" alt="image-20250427214740408"></p>
+</li>
+</ul>
+<p>​	可以看到，BladeDISC基于CUTLASS构建数据集，训练一个决策树模型，运行时决策出选用哪个生成代码。</p>
+<h4 id="Runtime设计：RAL"><a href="#Runtime设计：RAL" class="headerlink" title="Runtime设计：RAL"></a>Runtime设计：RAL</h4><p><img src="/images/image-20250427215219613.png" alt="image-20250427215219613"></p>
+<p>上图是RAL的完整设计，有如下特点：</p>
+<ul>
+<li>有别于其他AI编译器（TVM和IREE），BladeDISC通过整体代码生成（张量计算生成device代码，运行调度生成主机host代码），减少虚拟机的解释执行开销，同时也增加了编译和运行时协同优化可能。</li>
+<li>前端，tensorflow和pytorch都有对应的IO来接入。后端，每个设备都有抽象，能够支持内存管理，任务调度同步等api。</li>
+<li>不论是主机端还是设备端，最后都依靠llvm来生成对应架构的二进制文件。</li>
+</ul>
+<p>根据阿里PAI团队的slides做进一步理解：</p>
+<blockquote>
+<p><img src="/images/image-20250427220909637.png" alt="image-20250427220909637"></p>
+</blockquote>
+<blockquote>
+<p><img src="/images/image-20250427221352121.png" alt="image-20250427221352121"></p>
+</blockquote>
+<p>上述slides阐述了如何对于编译生成的.exe做runtime，后续会结合代码进一步挖掘。</p>
+<h4 id="整体流程"><a href="#整体流程" class="headerlink" title="整体流程"></a>整体流程</h4><p><img src="/images/image-20250427221149589.png" alt="image-20250427221149589"></p>
+<p>可以清晰看到，分为独立模式和插件模式（深度集成Tensorflow和pytorch框架）。</p>
+<h2 id="References"><a href="#References" class="headerlink" title="References"></a><font color = brown>References</font></h2><ol>
+<li><a href="https://www.iteye.com/blog/rednaxelafx-492667">虚拟机技术解读</a></li>
+<li><a href="https://zhuanlan.zhihu.com/p/504066888">TVM runtime系统讲解</a></li>
+<li><a href="https://abdelfattah-class.github.io/ece5545/">Cornell: Machine learning hardware and system课程</a></li>
+<li><a href="https://drive.google.com/file/d/1ikgOdZxnMz1ExqwrAiuTY9exbe3yMWbB/view">IREE运行时系统设计</a></li>
+</ol>
+]]></content>
+      <categories>
+        <category>编译技术</category>
+        <category>机器学习编译</category>
+        <category>后端</category>
+        <category>运行时</category>
+      </categories>
+      <tags>
+        <tag>机器学习编译器</tag>
+        <tag>后端</tag>
+        <tag>运行时</tag>
+      </tags>
+  </entry>
+  <entry>
     <title>Allo项目初探</title>
     <url>/2025/03/29/Allo%E9%A1%B9%E7%9B%AE%E5%88%9D%E6%8E%A2/</url>
     <content><![CDATA[<p><img src="/images/image-20250330205827771.png" alt="image-20250330205827771"></p>
@@ -708,9 +979,223 @@
       </tags>
   </entry>
   <entry>
+    <title>ByteIR 初探</title>
+    <url>/2025/05/06/ByteIR-%E5%88%9D%E6%8E%A2/</url>
+    <content><![CDATA[<p><img src="/images/image-20250506220408172.png" alt="image-20250506220408172"></p>
+<span id="more"></span>
+
+<h2 id="Why-ByteIR？"><a href="#Why-ByteIR？" class="headerlink" title="Why ByteIR？"></a><font color = brown>Why ByteIR？</font></h2><p>看了这么多端到端机器学习编译器（IREE，BladeDISC），为什么选择研究一下ByteIR？这个<a href="https://github.com/bytedance/byteir/issues/9">ByteIR issue9</a>的回答很好地指明了ByteIR相比成熟端到端编译器的区别：</p>
+<ul>
+<li>ByteIR有十分清晰的Frontend，Compiler和runtime，而且三者可以分离编译构建。</li>
+<li>ByteIR在字节内部不同的开发人员都在使用。</li>
+<li>ByteIR是十分简洁的，单纯的是一堆passes集合，辅助开发者完成端到端流程。</li>
+</ul>
+<p>上述三个特点，使得ByteIR十分适合针对性学习。</p>
+<h2 id="源码构建"><a href="#源码构建" class="headerlink" title="源码构建"></a><font color = brown>源码构建</font></h2><h3 id="Frontend构建"><a href="#Frontend构建" class="headerlink" title="Frontend构建"></a><font color = green>Frontend构建</font></h3><p>ByteIR的前端支持pytorch，onnx和tensorflow三种框架。其流程都是将框架接入stableHLO再合法化到MHLO 方言中。笔者先前构建过torch-mlir和iree等项目，原本想省去构建前端，复用torch-mlir的前端，但是</p>
+<h3 id="Compiler部分构建"><a href="#Compiler部分构建" class="headerlink" title="Compiler部分构建"></a><font color = green>Compiler部分构建</font></h3><ol>
+<li><p>clone项目</p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">git clone git@github.com:bytedance/byteir.git</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>构建虚拟环境</p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line"><span class="meta prompt_"># </span><span class="language-bash">构建虚拟环境</span></span><br><span class="line">pip install pybind11</span><br><span class="line">pip install nanobind</span><br><span class="line">pip install numpy</span><br><span class="line">pip install lit</span><br><span class="line">pip install filecheck</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>Build LLVM</p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">cd /path_to_byteir</span><br><span class="line">git submodule update --init external/llvm-project</span><br></pre></td></tr></table></figure>
+
+<p>构建脚本如下：</p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line"><span class="meta prompt_"># </span><span class="language-bash">build llvm</span></span><br><span class="line">cd external/llvm-project</span><br><span class="line">cmake -H./llvm \</span><br><span class="line">      -B./build \</span><br><span class="line">      -GNinja \</span><br><span class="line">      -DLLVM_ENABLE_PROJECTS=mlir \</span><br><span class="line">      -DLLVM_TARGETS_TO_BUILD=&quot;X86;NVPTX&quot; \</span><br><span class="line">      -DCMAKE_BUILD_TYPE=Release \</span><br><span class="line">      -DLLVM_ENABLE_ASSERTIONS=ON \</span><br><span class="line">      -DLLVM_INSTALL_UTILS=ON \</span><br><span class="line">      -DLLVM_CCACHE_BUILD=OFF \</span><br><span class="line">      -DLLVM_ENABLE_TERMINFO=OFF \</span><br><span class="line">      -DMLIR_ENABLE_BINDINGS_PYTHON=ON \</span><br><span class="line">      -DCMAKE_INSTALL_PREFIX=$(pwd)/build/install</span><br><span class="line"><span class="meta prompt_"># </span><span class="language-bash">via -DCMAKE_C_COMPILER=gcc/clang and -DCMAKE_CXX_COMPILER=g++/clang++</span></span><br><span class="line"><span class="meta prompt_"># </span><span class="language-bash">to specify gcc&gt;=8.5 or clang&gt;=7</span> </span><br><span class="line"><span class="meta prompt_"># </span><span class="language-bash"><span class="keyword">for</span> Mac <span class="built_in">users</span>, <span class="built_in">set</span> -DLLVM_TARGETS_TO_BUILD=<span class="string">&quot;AArch64;NVPTX&quot;</span></span></span><br><span class="line"></span><br><span class="line">cmake --build ./build --target all --target install</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>Build ByteIR compiler</p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">cmake -B./compiler/build \</span><br><span class="line">      -H./compiler/cmake \</span><br><span class="line">      -GNinja \</span><br><span class="line">      -DCMAKE_BUILD_TYPE=Release \</span><br><span class="line">      -DPython3_EXECUTABLE=/mnt/home/douliyang/mlir-workspace/byteir/venv/bin/python \</span><br><span class="line">      -DLLVM_INSTALL_PATH=$(pwd)/external/llvm-project/build/install \</span><br><span class="line">      -DLLVM_EXTERNAL_LIT=/mnt/home/douliyang/mlir-workspace/byteir/venv/bin/lit \</span><br><span class="line">      -Dpybind11_DIR=/mnt/home/douliyang/mlir-workspace/byteir/venv/lib/python3.11/site-packages/pybind11/share/cmake/pybind11 \</span><br><span class="line">      -Dnanobind_DIR=/mnt/home/douliyang/mlir-workspace/byteir/venv/lib/python3.11/site-packages/nanobind/cmake \</span><br><span class="line">      -DBYTEIR_ENABLE_BINDINGS_PYTHON=ON</span><br><span class="line"></span><br><span class="line">cmake --build ./compiler/build --target check-byteir</span><br><span class="line">cmake --build ./compiler/build --target byteir-python-pack</span><br></pre></td></tr></table></figure>
+
+<p>上述一定要构建两个测试，第一个测试compiler的pipeline正确性，第二个测试python wrapper api正确性。</p>
+<p>这里构建过程中有几处坑：lit测试由于我使用了虚拟环境，所以需要cmake中显示指定python3的可执行路径。pybind11和nanobind也是同理，需要显示指定路径。</p>
+</li>
+<li><p>测试正确性（一个端到端的测试case）</p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">BYTEIR=&quot;/home/douliyang/large/mlir-workspace/byteir&quot;</span><br><span class="line"></span><br><span class="line">export PYTHONPATH=&quot;$&#123;BYTEIR&#125;/compiler/build/python_packages/byteir&quot;</span><br><span class="line"></span><br><span class="line">python3 -m byteir.tools.compiler -v \</span><br><span class="line">  &quot;$&#123;BYTEIR&#125;/compiler/test/E2E/CUDA/MLPInference/input.mlir&quot; \</span><br><span class="line">  -o out.mlir \</span><br><span class="line">  --entry_func forward \</span><br><span class="line"><span class="meta prompt_">  2&gt;</span><span class="language-bash">&amp;1 | <span class="built_in">tee</span> pipeline.log</span></span><br></pre></td></tr></table></figure></li>
+</ol>
+<p>​	<font color = red>注意，最终的wheel包生成在<code>build/python/dist</code>中，pip isntall即可。</font></p>
+<h3 id="Runtime部分构建"><a href="#Runtime部分构建" class="headerlink" title="Runtime部分构建"></a><font color = green>Runtime部分构建</font></h3><p>首先确保compiler部分构建成功，runtime部分依赖compiler部分构建的LLVM项目。</p>
+<ol>
+<li><p>获取runtime的依赖</p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">git submodule update --init --recursive -f external/mlir-hlo external/cutlass external/date external/googletest external/pybind11</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>构建runtime项目</p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">cmake -H./runtime/cmake \</span><br><span class="line">      -B./runtime/build \</span><br><span class="line">      -G Ninja \</span><br><span class="line">      -DCMAKE_BUILD_TYPE=Release \</span><br><span class="line">      -DLLVM_INSTALL_PATH=$(pwd)/external/llvm-project/build/install \</span><br><span class="line">      -DCMAKE_INSTALL_PREFIX=&quot;$(pwd)/runtime/build/install&quot; \</span><br><span class="line">      -Dbrt_ENABLE_PYTHON_BINDINGS=ON \</span><br><span class="line">      -Dbrt_USE_CUDA=ON</span><br><span class="line"></span><br><span class="line">cmake --build ./runtime/build --target all --target install</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>构建python wheel包，具体打包过程如下：</p>
+<p>运行<code>python3 setup.py</code></p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">(base) root@leondou-y1fkbccpmlrb-main:/openbayes/home/byteir/byteir/runtime/python# python3 setup.py bdist_wheel</span><br><span class="line">running bdist_wheel</span><br><span class="line">running build</span><br><span class="line">running build_py</span><br><span class="line">creating build</span><br><span class="line">creating build/lib.linux-x86_64-cpython-38</span><br><span class="line">creating build/lib.linux-x86_64-cpython-38/brt</span><br><span class="line">copying /output/byteir/byteir/runtime/python/brt/backend.py -&gt; build/lib.linux-x86_64-cpython-38/brt</span><br><span class="line">copying /output/byteir/byteir/runtime/python/brt/__init__.py -&gt; build/lib.linux-x86_64-cpython-38/brt</span><br><span class="line">copying /output/byteir/byteir/runtime/python/brt/version.py -&gt; build/lib.linux-x86_64-cpython-38/brt</span><br><span class="line">copying /output/byteir/byteir/runtime/python/brt/utils.py -&gt; build/lib.linux-x86_64-cpython-38/brt</span><br><span class="line">running build_ext</span><br><span class="line">/usr/local/lib/python3.8/site-packages/setuptools/_distutils/cmd.py:66: SetuptoolsDeprecationWarning: setup.py install is deprecated.</span><br><span class="line">!!</span><br><span class="line"></span><br><span class="line">        ********************************************************************************</span><br><span class="line">        Please avoid running ``setup.py`` directly.</span><br><span class="line">        Instead, use pypa/build, pypa/installer or other</span><br><span class="line">        standards-based tools.</span><br><span class="line"></span><br><span class="line">        See https://blog.ganssle.io/articles/2021/10/setup-py-deprecated.html for details.</span><br><span class="line">        ********************************************************************************</span><br><span class="line"></span><br><span class="line">!!</span><br><span class="line">  self.initialize_options()</span><br><span class="line">installing to build/bdist.linux-x86_64/wheel</span><br><span class="line">running install</span><br><span class="line">running install_lib</span><br><span class="line">creating build/bdist.linux-x86_64</span><br><span class="line">creating build/bdist.linux-x86_64/wheel</span><br><span class="line">creating build/bdist.linux-x86_64/wheel/brt</span><br><span class="line">copying build/lib.linux-x86_64-cpython-38/brt/backend.py -&gt; build/bdist.linux-x86_64/wheel/brt</span><br><span class="line">copying build/lib.linux-x86_64-cpython-38/brt/__init__.py -&gt; build/bdist.linux-x86_64/wheel/brt</span><br><span class="line">copying build/lib.linux-x86_64-cpython-38/brt/_brt.cpython-38-x86_64-linux-gnu.so -&gt; build/bdist.linux-x86_64/wheel/brt</span><br><span class="line">creating build/bdist.linux-x86_64/wheel/brt/lib</span><br><span class="line">copying build/lib.linux-x86_64-cpython-38/brt/lib/libbrt.so -&gt; build/bdist.linux-x86_64/wheel/brt/lib</span><br><span class="line">copying build/lib.linux-x86_64-cpython-38/brt/version.py -&gt; build/bdist.linux-x86_64/wheel/brt</span><br><span class="line">copying build/lib.linux-x86_64-cpython-38/brt/utils.py -&gt; build/bdist.linux-x86_64/wheel/brt</span><br><span class="line">running install_egg_info</span><br><span class="line">running egg_info</span><br><span class="line">creating /output/byteir/byteir/runtime/python/brt.egg-info</span><br><span class="line">writing /output/byteir/byteir/runtime/python/brt.egg-info/PKG-INFO</span><br><span class="line">writing dependency_links to /output/byteir/byteir/runtime/python/brt.egg-info/dependency_links.txt</span><br><span class="line">writing top-level names to /output/byteir/byteir/runtime/python/brt.egg-info/top_level.txt</span><br><span class="line">writing manifest file &#x27;/output/byteir/byteir/runtime/python/brt.egg-info/SOURCES.txt&#x27;</span><br><span class="line">reading manifest file &#x27;/output/byteir/byteir/runtime/python/brt.egg-info/SOURCES.txt&#x27;</span><br><span class="line">writing manifest file &#x27;/output/byteir/byteir/runtime/python/brt.egg-info/SOURCES.txt&#x27;</span><br><span class="line">Copying /output/byteir/byteir/runtime/python/brt.egg-info to build/bdist.linux-x86_64/wheel/brt-1.9.3.0+cpu-py3.8.egg-info</span><br><span class="line">running install_scripts</span><br><span class="line">creating build/bdist.linux-x86_64/wheel/brt-1.9.3.0+cpu.dist-info/WHEEL</span><br><span class="line">creating &#x27;dist/brt-1.9.3.0+cpu-cp38-cp38-linux_x86_64.whl&#x27; and adding &#x27;build/bdist.linux-x86_64/wheel&#x27; to it</span><br><span class="line">adding &#x27;brt/__init__.py&#x27;</span><br><span class="line">adding &#x27;brt/_brt.cpython-38-x86_64-linux-gnu.so&#x27;</span><br><span class="line">adding &#x27;brt/backend.py&#x27;</span><br><span class="line">adding &#x27;brt/utils.py&#x27;</span><br><span class="line">adding &#x27;brt/version.py&#x27;</span><br><span class="line">adding &#x27;brt/lib/libbrt.so&#x27;</span><br><span class="line">adding &#x27;brt-1.9.3.0+cpu.dist-info/METADATA&#x27;</span><br><span class="line">adding &#x27;brt-1.9.3.0+cpu.dist-info/WHEEL&#x27;</span><br><span class="line">adding &#x27;brt-1.9.3.0+cpu.dist-info/top_level.txt&#x27;</span><br><span class="line">adding &#x27;brt-1.9.3.0+cpu.dist-info/RECORD&#x27;</span><br><span class="line">removing build/bdist.linux-x86_64/wheel</span><br></pre></td></tr></table></figure></li>
+</ol>
+<p>​	<font color = red>注意：</font>最终的wheel包在&#x2F;openbayes&#x2F;home&#x2F;byteir&#x2F;byteir&#x2F;runtime&#x2F;python&#x2F;dist下，需要pip install一下才能使用。</p>
+<blockquote>
+<p>在组内服务器构建遇到的问题是，组内服务器没有cudnn，因此会报错<code>cudnn.h</code>头文件没有找到。目前暂时选择租服务器来完成构建流程，还没有解决这个问题（后续填坑）。</p>
+</blockquote>
+<p>至此成功构建好compiler部分和runtime部分（frontend部分不是研究重点，后续结合模型测试性能再研究）。</p>
+<h2 id="参考资料"><a href="#参考资料" class="headerlink" title="参考资料"></a><font color = brown>参考资料</font></h2><ol>
+<li><a href="https://byteir.ai/">ByteIR官方资料</a></li>
+<li><a href="https://github.com/bytedance/byteir?tab=readme-ov-file">ByteIR github</a></li>
+</ol>
+]]></content>
+      <categories>
+        <category>编译技术</category>
+        <category>机器学习编译</category>
+      </categories>
+      <tags>
+        <tag>机器学习编译器</tag>
+        <tag>mlir</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>BladeDISC初探</title>
+    <url>/2025/04/01/BladeDISC%E5%88%9D%E6%8E%A2/</url>
+    <content><![CDATA[<p><img src="/images/image-20250401195537142.png" alt="image-20250401195537142"></p>
+<span id="more"></span>
+
+<blockquote>
+<p>在大模型训练推理场景中，一个十分大的瓶颈是动态shape问题。比如nlp领域，处理的句子长短不一，tensor的shape是动态变化的，到runtime才能确定。这给机器学习编译器带来很大的困扰，以XLA为首的sota编译器均是静态shape的，在性能上会有一定损失。BladeDISC是阿里提出的针对动态shape的机器学习编译器，并且经过大量实验和实际生产检验。本文重点关注BladeDISC的构建，pytorch使用方式以及基础架构解读。后续文章会讲解优化流程和论文解读。</p>
+</blockquote>
+<h2 id="源码构建"><a href="#源码构建" class="headerlink" title="源码构建"></a><font color = brown>源码构建</font></h2><h4 id="Build-from-source"><a href="#Build-from-source" class="headerlink" title="Build from source"></a>Build from source</h4><ul>
+<li><p>下载<a href="https://hub.docker.com/r/bladedisc/bladedisc/tags?page=1&name=devel">BladeDisc</a>镜像</p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">docker pull bladedisc/bladedisc:latest-devel-cu118</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>使用cu118版本</li>
+</ul>
+</li>
+<li><p>运行该镜像</p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">docker run --gpus all -it -v $PWD:/disc bladedisc/bladedisc:latest-devel-cu118 bash</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>修改一下<code>pytorch_blade/scripts/build_pytorch_blade.sh</code>里面的<code>TORCH_BLADE_CI_BUILD_TORCH_VERSION</code>。修改为存在的<code>requirements.txt</code>即可。</p>
+<blockquote>
+<p>构建过程中，onnx由于带宽等问题，可能会报error，添加-i <a href="https://pypi.tuna.tsinghua.edu.cn/simple%E6%8C%87%E5%AE%9Apypi%E9%95%9C%E5%83%8F%E5%8D%B3%E5%8F%AF%E3%80%82">https://pypi.tuna.tsinghua.edu.cn/simple指定pypi镜像即可。</a></p>
+</blockquote>
+</li>
+<li><p>pytorch版本构建</p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">cd pytorch_blade &amp;&amp; bash ./scripts/build_pytorch_blade.sh</span><br><span class="line">python setup.py bdist_wheel</span><br><span class="line">pip install ./pytorch_blade/dist/torch_blade-0.2.0+2.0.1.cu118-cp38-cp38-linux_x86_64.whl</span><br></pre></td></tr></table></figure></li>
+</ul>
+<h3 id="错误处理"><a href="#错误处理" class="headerlink" title="错误处理"></a><font color = green>错误处理</font></h3><p>如果报错没有安全git，在docker中用：</p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">git config --global --add safe.directory /disc</span><br></pre></td></tr></table></figure>
+
+<h4 id="quick-install"><a href="#quick-install" class="headerlink" title="quick install"></a>quick install</h4><p>参考<a href="https://github.com/alibaba/BladeDISC/blob/main/docs/install_with_docker.md">docker install</a></p>
+<h2 id="Pytorch部署BERT模型"><a href="#Pytorch部署BERT模型" class="headerlink" title="Pytorch部署BERT模型"></a><font color = brown>Pytorch部署BERT模型</font></h2><h3 id="Hugging-Face模型下载"><a href="#Hugging-Face模型下载" class="headerlink" title="Hugging Face模型下载"></a><font color = green>Hugging Face模型下载</font></h3><ul>
+<li><p>手动下载模型（适合服务器联网不稳定的情况使用）</p>
+<p>找到<a href="https://huggingface.co/nlptown/bert-base-multilingual-uncased-sentiment/tree/main">Bert sentiment inference 模型</a>，主要手动下载如下几个文件：</p>
+<p><img src="/images/image-20250306203839463.png" alt="image-20250306203839463"></p>
+<p>在python代码中使用离线下载的模型：</p>
+<figure class="highlight python"><table><tr><td class="code"><pre><span class="line">model_path = <span class="string">&quot;./model&quot;</span></span><br><span class="line">tokenizer = AutoTokenizer.from_pretrained(model_path)</span><br><span class="line">model = AutoModelForSequenceClassification.from_pretrained(model_path).cuda().<span class="built_in">eval</span>()</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>直接通过transformers 包下载，该下载方式通过huggingface对应模型网页的<code>use this model</code>获取</p>
+<figure class="highlight python"><table><tr><td class="code"><pre><span class="line"><span class="comment"># Load model directly</span></span><br><span class="line"><span class="keyword">from</span> transformers <span class="keyword">import</span> AutoTokenizer, AutoModelForSequenceClassification</span><br><span class="line"></span><br><span class="line">tokenizer = AutoTokenizer.from_pretrained(<span class="string">&quot;nlptown/bert-base-multilingual-uncased-sentiment&quot;</span>)</span><br><span class="line">model = AutoModelForSequenceClassification.from_pretrained(<span class="string">&quot;nlptown/bert-base-multilingual-uncased-sentiment&quot;</span>)</span><br></pre></td></tr></table></figure>
+
+<p>确保环境有transformers包即可</p>
+</li>
+<li><p>通过<code>huggingface-cli</code>下载</p>
+<figure class="highlight python"><table><tr><td class="code"><pre><span class="line">huggingface-cli download nlptown/bert-base-multilingual-uncased-sentiment</span><br></pre></td></tr></table></figure></li>
+</ul>
+<h3 id="做BERT-Inference的testbench"><a href="#做BERT-Inference的testbench" class="headerlink" title="做BERT Inference的testbench"></a><font color = green>做BERT Inference的testbench</font></h3><p>我的测试codes如下：</p>
+<figure class="highlight python"><table><tr><td class="code"><pre><span class="line"><span class="keyword">import</span> torch</span><br><span class="line"><span class="keyword">import</span> torch_blade</span><br><span class="line"><span class="keyword">import</span> time</span><br><span class="line"></span><br><span class="line"><span class="keyword">from</span> transformers <span class="keyword">import</span> (</span><br><span class="line">    pipeline,</span><br><span class="line">    AutoTokenizer,</span><br><span class="line">    AutoModelForSequenceClassification,</span><br><span class="line">    TextClassificationPipeline,</span><br><span class="line">)</span><br><span class="line"></span><br><span class="line"><span class="comment">############################################# download model from huggingface #############################################</span></span><br><span class="line">model_path = <span class="string">&quot;./model&quot;</span></span><br><span class="line"></span><br><span class="line">tokenizer = AutoTokenizer.from_pretrained(model_path)</span><br><span class="line"></span><br><span class="line">model = AutoModelForSequenceClassification.from_pretrained(model_path).cuda().<span class="built_in">eval</span>()</span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">plain_tokenizer</span>(<span class="params">inputs_str, return_tensors</span>):</span><br><span class="line">    inputs = tokenizer(inputs_str, return_tensors=return_tensors, padding=<span class="literal">True</span>)</span><br><span class="line">    inputs = &#123;key: value.cuda() <span class="keyword">for</span> key, value <span class="keyword">in</span> inputs.items()&#125;</span><br><span class="line">    </span><br><span class="line">    <span class="comment"># torch_blade.optimize 不支持 None 作为输入</span></span><br><span class="line">    <span class="keyword">if</span> <span class="string">&quot;token_type_ids&quot;</span> <span class="keyword">in</span> inputs <span class="keyword">and</span> inputs[<span class="string">&quot;token_type_ids&quot;</span>] <span class="keyword">is</span> <span class="literal">None</span>:</span><br><span class="line">        <span class="keyword">del</span> inputs[<span class="string">&quot;token_type_ids&quot;</span>]</span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> (inputs[<span class="string">&#x27;input_ids&#x27;</span>], inputs[<span class="string">&#x27;attention_mask&#x27;</span>], inputs.get(<span class="string">&#x27;token_type_ids&#x27;</span>, <span class="literal">None</span>))</span><br><span class="line"></span><br><span class="line"><span class="keyword">class</span> <span class="title class_">PlainTextClassificationPipeline</span>(<span class="title class_ inherited__">TextClassificationPipeline</span>):</span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">_forward</span>(<span class="params">self, model_inputs</span>):</span><br><span class="line">        <span class="keyword">return</span> <span class="variable language_">self</span>.model(*model_inputs)</span><br><span class="line"></span><br><span class="line">classifier = pipeline(</span><br><span class="line">    <span class="string">&#x27;sentiment-analysis&#x27;</span>,</span><br><span class="line">    model=model,</span><br><span class="line">    tokenizer=plain_tokenizer,</span><br><span class="line">    pipeline_class=PlainTextClassificationPipeline,</span><br><span class="line">    device=<span class="number">0</span></span><br><span class="line">)</span><br><span class="line"></span><br><span class="line">input_strs = [</span><br><span class="line">    <span class="string">&quot;We are very happy to show you the story.&quot;</span>,</span><br><span class="line">    <span class="string">&quot;We hope you don&#x27;t hate it.&quot;</span></span><br><span class="line">]</span><br><span class="line"></span><br><span class="line">results = classifier(input_strs)</span><br><span class="line"></span><br><span class="line"><span class="keyword">for</span> inp_str, result <span class="keyword">in</span> <span class="built_in">zip</span>(input_strs, results):</span><br><span class="line">    <span class="built_in">print</span>(inp_str)</span><br><span class="line">    <span class="built_in">print</span>(<span class="string">f&quot; label: <span class="subst">&#123;result[<span class="string">&#x27;label&#x27;</span>]&#125;</span>, with a score: <span class="subst">&#123;<span class="built_in">round</span>(result[<span class="string">&#x27;score&#x27;</span>], <span class="number">4</span>)&#125;</span>&quot;</span>)</span><br><span class="line"></span><br><span class="line"><span class="comment">############################################# Use BladeDISC for optimization #############################################</span></span><br><span class="line">inputs_str = <span class="string">&quot;Hey, the cat is cute.&quot;</span></span><br><span class="line">inputs = plain_tokenizer(inputs_str, return_tensors=<span class="string">&quot;pt&quot;</span>)</span><br><span class="line"></span><br><span class="line">torch_config = torch_blade.config.Config()</span><br><span class="line">torch_config.enable_mlir_amp = <span class="literal">False</span>  <span class="comment"># disable mix-precision</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># Ensure inputs are properly formatted for optimization</span></span><br><span class="line">model_inputs = <span class="built_in">tuple</span>(i <span class="keyword">for</span> i <span class="keyword">in</span> inputs <span class="keyword">if</span> i <span class="keyword">is</span> <span class="keyword">not</span> <span class="literal">None</span>)</span><br><span class="line"></span><br><span class="line"><span class="keyword">with</span> torch.no_grad(), torch_config:</span><br><span class="line">    optimized_ts = torch_blade.optimize(model, allow_tracing=<span class="literal">True</span>, model_inputs=model_inputs)</span><br><span class="line"></span><br><span class="line"><span class="comment"># Move optimized model to CUDA</span></span><br><span class="line">optimized_ts = optimized_ts.cuda()</span><br><span class="line"></span><br><span class="line"><span class="comment"># Save the optimized TorchScript model</span></span><br><span class="line">torch.jit.save(optimized_ts, <span class="string">&quot;opt.disc.pt&quot;</span>)</span><br><span class="line"></span><br><span class="line"><span class="comment">############################################# testbench #############################################</span></span><br><span class="line"><span class="meta">@torch.no_grad()</span></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">benchmark</span>(<span class="params">model, inputs, num_iters=<span class="number">1000</span></span>):</span><br><span class="line">    <span class="keyword">for</span> _ <span class="keyword">in</span> <span class="built_in">range</span>(<span class="number">10</span>):</span><br><span class="line">        model(*inputs)</span><br><span class="line">    torch.cuda.synchronize()</span><br><span class="line"></span><br><span class="line">    start = time.time()</span><br><span class="line">    <span class="keyword">for</span> _ <span class="keyword">in</span> <span class="built_in">range</span>(num_iters):</span><br><span class="line">        model(*inputs)</span><br><span class="line">    torch.cuda.synchronize()</span><br><span class="line">    end = time.time()</span><br><span class="line">    <span class="keyword">return</span> (end - start) / num_iters * <span class="number">1000.0</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">bench_and_report</span>(<span class="params">input_strs</span>):</span><br><span class="line">    inputs = plain_tokenizer(input_strs, return_tensors=<span class="string">&quot;pt&quot;</span>)</span><br><span class="line">    model_inputs = <span class="built_in">tuple</span>(i <span class="keyword">for</span> i <span class="keyword">in</span> inputs <span class="keyword">if</span> i <span class="keyword">is</span> <span class="keyword">not</span> <span class="literal">None</span>)</span><br><span class="line"></span><br><span class="line">    avg_latency_baseline = benchmark(model, model_inputs)</span><br><span class="line">    avg_latency_bladedisc = benchmark(optimized_ts, model_inputs)</span><br><span class="line"></span><br><span class="line">    <span class="built_in">print</span>(<span class="string">f&quot;Seqlen: <span class="subst">&#123;[<span class="built_in">len</span>(s) <span class="keyword">for</span> s <span class="keyword">in</span> input_strs]&#125;</span>&quot;</span>)</span><br><span class="line">    <span class="built_in">print</span>(<span class="string">f&quot;Baseline: <span class="subst">&#123;avg_latency_baseline:<span class="number">.4</span>f&#125;</span> ms&quot;</span>)</span><br><span class="line">    <span class="built_in">print</span>(<span class="string">f&quot;BladeDISC: <span class="subst">&#123;avg_latency_bladedisc:<span class="number">.4</span>f&#125;</span> ms&quot;</span>)</span><br><span class="line">    <span class="built_in">print</span>(<span class="string">f&quot;BladeDISC speedup: <span class="subst">&#123;avg_latency_baseline / avg_latency_bladedisc:<span class="number">.4</span>f&#125;</span>&quot;</span>)</span><br><span class="line"></span><br><span class="line">input_strs = [</span><br><span class="line">    <span class="string">&quot;We are very happy to show you the story.&quot;</span>,</span><br><span class="line">    <span class="string">&quot;We hope you don&#x27;t hate it.&quot;</span></span><br><span class="line">]</span><br><span class="line"></span><br><span class="line">bench_and_report(input_strs)</span><br></pre></td></tr></table></figure>
+
+<p>上述codes中，BladeDISC的核心如下：</p>
+<figure class="highlight python"><table><tr><td class="code"><pre><span class="line"><span class="keyword">with</span> torch.no_grad(), torch_config:</span><br><span class="line">    optimized_ts = torch_blade.optimize(model, allow_tracing=<span class="literal">True</span>, model_inputs=model_inputs)</span><br></pre></td></tr></table></figure>
+
+<p>通过编译手段，生成优化后的pytorch script，注意：<strong>目前pytorch仅仅支持inference，尚不支持train</strong>。对于<code>HuggingFace</code>模型的pipeline有更深层兴趣的，参考<a href="https://huggingface.co/docs/transformers/quicktour">HuggingFace quick tour</a>。</p>
+<p><img src="F:\LeonBlog\source\images\image-20250427225534818.png" alt="image-20250427225534818"></p>
+<p>可以看到对比pytorch，有1.7倍左右的加速。</p>
+<h3 id="Pytorch-WorkFlow"><a href="#Pytorch-WorkFlow" class="headerlink" title="Pytorch WorkFlow"></a><font color = green>Pytorch WorkFlow</font></h3><p><img src="/images/image-20250311211223452.png" alt="image-20250311211223452"></p>
+<p><img src="/images/image-20250311220823276.png" alt="image-20250311220823276"></p>
+<p>参考<a href="https://github.com/alibaba/BladeDISC/blob/main/docs/developers/bladedisc_torch_overview.md">Torch-Blade教程</a>即可。</p>
+<h2 id="参考资料"><a href="#参考资料" class="headerlink" title="参考资料"></a><font color = brown>参考资料</font></h2><ol>
+<li><a href="https://github.com/alibaba/BladeDISC">BladeDisc github</a></li>
+</ol>
+]]></content>
+      <categories>
+        <category>编译技术</category>
+        <category>机器学习编译</category>
+        <category>动态shape</category>
+      </categories>
+      <tags>
+        <tag>机器学习编译器</tag>
+        <tag>mlir</tag>
+        <tag>动态shape</tag>
+      </tags>
+  </entry>
+  <entry>
     <title>ByteIR初探：Runtime系统设计与实现</title>
     <url>/2025/05/08/ByteIR%E5%88%9D%E6%8E%A2%EF%BC%9ARuntime%E7%B3%BB%E7%BB%9F%E8%AE%BE%E8%AE%A1%E4%B8%8E%E5%AE%9E%E7%8E%B0/</url>
     <content><![CDATA[]]></content>
+  </entry>
+  <entry>
+    <title>GPU 后端优化（一）</title>
+    <url>/2025/05/11/GPU-%E5%90%8E%E7%AB%AF%E4%BC%98%E5%8C%96%EF%BC%88%E4%B8%80%EF%BC%89/</url>
+    <content><![CDATA[<p><img src="/images/image-20250511230828794.png" alt="image-20250511230828794"></p>
+<span id="more"></span>
+
+<blockquote>
+<p>为什么会有GPU后端优化博客？在阅读BladeDISC以及IREE等源码的过程中，发现当逐步接触后端代码生成&#x2F;运行时系统调度时，由于本人没有深入接触过GPU体系架构（基础太差），很多优化pass难以理解。这一过程使我认识到对于底层系统架构的深入理解往往比具体的编译技术，编译框架（MLIR&#x2F;LLVM）而言更为重要。本系列主要记录我补习GPU架构知识的学习历程（开个坑，主要用于激励我自学CUDA，不然太摆了）。目前初步的计划，该系列会有如下几篇博客：</p>
+<ol>
+<li>GPU后端优化（一）：主要包括GPU后端优化基础知识</li>
+<li>GPU后端优化（二）：结合<a href="http://arxiv.org/abs/2108.13191">MLIR生成高性能GPU算子</a>论文，以及<a href="https://siboehm.com/articles/22/CUDA-MMM">CUDA算子优化博客</a>，学习CUDA算子开发过程和对应算子编译手段</li>
+<li>GPU后端优化（三）：机器学习编译实战部分，包括IREE和BladeDISC代码分析</li>
+<li>GPU后端优化（四）：高阶GPU体系结构，结合GPU架构书籍进行解读</li>
+</ol>
+</blockquote>
+<h2 id="GPU后端优化基础知识"><a href="#GPU后端优化基础知识" class="headerlink" title="GPU后端优化基础知识"></a><font color = brown>GPU后端优化基础知识</font></h2><p>在日常学习中，由于我的工作和编译器关联度较大，因此一般都是在阅读开源项目的pass源码。这其中如果涉及GPU相关的优化pass，遇到不懂的可能直接询问chatgpt或是一些博客寻找答案。久而久之发现自己虽然好像能够读懂编译器的后端生成pass，但往深处探讨，为什么这些pass是这样的顺序，为什么GPU需要这些pass，很多问题其实都回答不上来。归根结底，是对于GPU优化的原理知识以及优化之间的关联细节没有真正去仔细思考和学习。</p>
+<p>印度理工的学者的一篇利用MLIR搭建高性能GPU算子自动生成的文章，使我们开始的很好的起点。这篇<a href="http://arxiv.org/abs/2108.13191">文章</a>完全基于MLIR基础设施，并做少量修改，同时是一个完整的GPU优化生成流程，是十分值得学习的。本章节的目的就是尽量扫盲，使一些原本不那么清晰或是没涉及过的优化概念尽量明晰，为读懂该文章做好准备工作。</p>
+<p><img src="/images/image-20250511233238659.png" alt="image-20250511233238659"></p>
+<p>如上图所示是论文中的GPU算子生成流水线，也是我们补足GPU后端编译优化基础知识的概览。后续内容按照流水线展开，大体内容划分如下：</p>
+<ul>
+<li>Loop Tiling优化</li>
+<li>存储优化（共享内存开辟，padding，coalesce内存）</li>
+<li>WMMA tensor core</li>
+<li>latency hiding</li>
+</ul>
+<h3 id="Loop-Tiling优化"><a href="#Loop-Tiling优化" class="headerlink" title="Loop Tiling优化"></a><font color = green>Loop Tiling优化</font></h3><p>这一章节主要参考<a href="https://zhuanlan.zhihu.com/p/477023757">一篇文章了解 Loop Tiling 优化</a>，这篇博客讲解非常到位，强烈建议有兴趣的读者仔细阅读。本篇文章的解读顺序和原博客不太一致，选择先列出tiling算法步骤，然后以一个具体例子带着大家走一遍算法步骤，解读每一步原理。</p>
+<h4 id="Tiling算法步骤"><a href="#Tiling算法步骤" class="headerlink" title="Tiling算法步骤"></a>Tiling算法步骤</h4><blockquote>
+<p>算法：</p>
+<p>设总共有 <code>N</code> 层循环，从外向内分别是 <code>0,1,...,N-1</code></p>
+<ul>
+<li><strong>从内向外</strong>，逐步分析 <code>N-2,N-3,...,0</code>（先排除掉最内层循环）</li>
+<li>对于每层循环 <code>L</code> ，<strong>看其 <code>idx=0,1,...</code> 时，是否有 array 可能被反复读取</strong>。<ul>
+<li>若有，则 tile 第 <code>L+1</code> 层循环。</li>
+</ul>
+</li>
+</ul>
+<p>都做完之后，再分析 <strong>基于新循环是否仍然有可 tile 的部分</strong></p>
+</blockquote>
+<p>上述算法初看比较抽象，选择通过一个矩阵乘法例子来走一遍该规则，以简化算法理解。</p>
+<p>首先我们要tiling的计算任务是NxNxN的矩阵乘（现实场景由于矩阵的维度，cache的维度有很多dirty work和边界trick，这里默认矩阵是“完美的”）。伪代码如下图所示：</p>
+<figure class="highlight python"><table><tr><td class="code"><pre><span class="line"><span class="keyword">for</span> i <span class="keyword">in</span> <span class="built_in">range</span>(<span class="number">0</span>, N):            <span class="comment"># i,k,j，访问符合行优先原则</span></span><br><span class="line">  <span class="keyword">for</span> k <span class="keyword">in</span> <span class="built_in">range</span>(<span class="number">0</span>, N): </span><br><span class="line">    <span class="keyword">for</span> j <span class="keyword">in</span> <span class="built_in">range</span>(<span class="number">0</span>, N):</span><br><span class="line">      C[i][j] += A[i][k] * B[k][j]</span><br></pre></td></tr></table></figure>
+
+<p>根据算法描述，首先分析k维度遍历过程中是否有array反复读取（k维度对应N-2维度）。发现<code>c[i][j]</code>的遍历和k维度无关，因此可以tile j这个维度，得到如下伪代码：</p>
+<figure class="highlight python"><table><tr><td class="code"><pre><span class="line"><span class="keyword">for</span> j_o <span class="keyword">in</span> <span class="built_in">range</span>(<span class="number">0</span>, N, T_j):                           <span class="comment"># j_i 对应j维度的外层维度，从0到N，步长为T</span></span><br><span class="line">    <span class="keyword">for</span> i <span class="keyword">in</span> <span class="built_in">range</span>(<span class="number">0</span>, N):</span><br><span class="line">        <span class="keyword">for</span> k <span class="keyword">in</span> <span class="built_in">range</span>(<span class="number">0</span>, N):</span><br><span class="line">            <span class="keyword">for</span> j_i <span class="keyword">in</span> <span class="built_in">range</span>(j_o, j_o+T_j):            <span class="comment"># j_o 对应j维度的内层循环</span></span><br><span class="line">                c[i][j_i] += A[i][k] * B[k][j_i]</span><br></pre></td></tr></table></figure>
+
+<p>分析tiling后伪代码，通过选取合适的T（适配L1缓存大小），则<code>c[i][j_i]</code>可以做到在k迭代过程中一直缓存在cache中。继续我们的tiling算法，该尝试k的上一层维度，i维度。发现<code>B[k][j_i]</code>在遍历过程中和i的值无关，因此可以对下一层，即k做优化，使得<code>B[k][j_i]</code>适配缓存。如下是伪代码：</p>
+<figure class="highlight python"><table><tr><td class="code"><pre><span class="line"><span class="keyword">for</span> k_o <span class="keyword">in</span> <span class="built_in">range</span>(<span class="number">0</span>, N, T_k):</span><br><span class="line">  <span class="keyword">for</span> j_o <span class="keyword">in</span> <span class="built_in">range</span>(<span class="number">0</span>, N, T_j):</span><br><span class="line">    <span class="keyword">for</span> i <span class="keyword">in</span> <span class="built_in">range</span>(<span class="number">0</span>, N):</span><br><span class="line">      <span class="keyword">for</span> k_i <span class="keyword">in</span> <span class="built_in">range</span>(k_o, k_o+T_k):</span><br><span class="line">        <span class="keyword">for</span> j_i <span class="keyword">in</span> <span class="built_in">range</span>(j_o, j_o+T_j):</span><br><span class="line">          C[i][j_i] += A[i][k_i] * B[k_i][j_i]</span><br><span class="line"><span class="comment"># 这样，k_i=0,1... 时，C[i_i][j] 始终在 cache 中；i=0,1.. 时，B[k_i][j_i] 也始终在 cache 中</span></span><br></pre></td></tr></table></figure>
+
+<p>至此，走完算法的第一部分流程，来到第二部分：需要分析 <strong>基于新循环是否仍然有可 tile 的部分</strong>。这部分的逻辑是，对于k维度和j维度做的tiling分块，对于最顶层（初始的顶层）i维度产生影响，目前i维度已不是顶层维度。i维度之上的j_o遍历过程中，下一层i的遍历跨度是N，比较大，是难以存入cache中的，因此需要对i也做tiling优化。伪代码如下：</p>
+<figure class="highlight python"><table><tr><td class="code"><pre><span class="line"><span class="comment"># 又因为循环 i 从最外层循环变成了内循环，对于其上层循环 j_o 来说，当 j_o=0,1,...时，A[i][k_i] 是被反复读取的，因此也可以 tile 循环 i</span></span><br><span class="line"><span class="keyword">for</span> i_o <span class="keyword">in</span> <span class="built_in">range</span>(<span class="number">0</span>, N, T_i):</span><br><span class="line">  <span class="keyword">for</span> k_o <span class="keyword">in</span> <span class="built_in">range</span>(<span class="number">0</span>, N, T_k):</span><br><span class="line">    <span class="keyword">for</span> j_o <span class="keyword">in</span> <span class="built_in">range</span>(<span class="number">0</span>, N, T_j):</span><br><span class="line">      <span class="keyword">for</span> i_i <span class="keyword">in</span> <span class="built_in">range</span>(i_o, i_o + T_i):</span><br><span class="line">        <span class="keyword">for</span> k_i <span class="keyword">in</span> <span class="built_in">range</span>(k_o, k_o + T_k):</span><br><span class="line">          <span class="keyword">for</span> j_i <span class="keyword">in</span> <span class="built_in">range</span>(j_o, j_o + T_j):</span><br><span class="line">            C[i_i][j_i] += A[i_i][k_i] * B[k_i][j_i]</span><br><span class="line"><span class="comment"># 注意，内三层循环仍然是按照 i_i,k_i,j_i 的顺序，因此仍然满足 RowMajor 的顺序读取</span></span><br></pre></td></tr></table></figure>
+
+<p>至此，完成L1的tiling优化。可以看到，目前我的变换出的代码，在i_i，k_i和j_i维度都已经是tiling分块的。</p>
+<p>结束了？Too Naive！！！:fire:</p>
+<p>现代体系结构（从CPU到GPU到ASIC），均有多层级缓存体系。让我们继续研究一下代码，思考一下如果有L2 cache，该如何继续tiling？目前的矩阵乘运算已经适配L1缓存，可以看到j_o维度的循环，已经是完美缓存的。但是对于k_o循环而言，下一层j_o循环则成了严重的性能瓶颈。j_o循环总步长为N，这之间又是大量的cache miss。这一部分就需要L2缓存来加速存储交互了。继续我们的算法，以k_o维度为新的起点<strong>由内向外</strong>，分块的大小按照L2缓存来，继续一轮迭代，最终的结果：</p>
+<figure class="highlight python"><table><tr><td class="code"><pre><span class="line"><span class="keyword">for</span> j_oo <span class="keyword">in</span> <span class="built_in">range</span>(<span class="number">0</span>, N, T2_j):</span><br><span class="line">  <span class="keyword">for</span> i_o <span class="keyword">in</span> <span class="built_in">range</span>(<span class="number">0</span>, N, T_i):</span><br><span class="line">    <span class="keyword">for</span> k_o <span class="keyword">in</span> <span class="built_in">range</span>(<span class="number">0</span>, N, T_k):</span><br><span class="line">      <span class="keyword">for</span> j_oi <span class="keyword">in</span> <span class="built_in">range</span>(j_oo, j_oo + T2_j, T_j):</span><br><span class="line">        <span class="keyword">for</span> i_i <span class="keyword">in</span> <span class="built_in">range</span>(<span class="number">0</span>, N, T_i):</span><br><span class="line">          <span class="keyword">for</span> k_i <span class="keyword">in</span> <span class="built_in">range</span>(k_o, k_o + T_k):</span><br><span class="line">            <span class="keyword">for</span> j_i <span class="keyword">in</span> <span class="built_in">range</span>(j_oi, j_oi + T_j):</span><br><span class="line">              C[i_i][j_i] += A[i_i][k_i] * B[k_i][j_i]</span><br><span class="line"><span class="comment"># 这样的话，内三层循环 i_i, k_i, j_i （对应的 Tile size 为 T_i, T_j, T_k）放到 L1 Cache 里。</span></span><br><span class="line"><span class="comment"># 外层循环 j_oi （对应Tile size 为 T2_j） 就可以放到更大的 L2 Cache 里。于是便在 L2 里形成了对 C[i_i][j_i] 的复用</span></span><br></pre></td></tr></table></figure>
+
+<p>同理，可以继续向上，做k_o和i_o的分块，不再详细阐述了。</p>
+<h2 id="参考资料"><a href="#参考资料" class="headerlink" title="参考资料"></a><font color = brown>参考资料</font></h2><ol>
+<li><a href="https://zhuanlan.zhihu.com/p/477023757">博客：Loop Tiling优化</a></li>
+<li><a href="https://siboehm.com/articles/22/CUDA-MMM">博客：CUDA手写算子教程</a></li>
+<li><a href="http://arxiv.org/abs/2108.13191">论文：MLIR 优化GEMM算子</a></li>
+</ol>
+]]></content>
+      <categories>
+        <category>GPU</category>
+        <category>编译</category>
+      </categories>
+      <tags>
+        <tag>GPU</tag>
+        <tag>编译</tag>
+      </tags>
   </entry>
   <entry>
     <title>MLIR basics: deepdive part1</title>
@@ -826,181 +1311,6 @@
       </tags>
   </entry>
   <entry>
-    <title>BladeDISC初探</title>
-    <url>/2025/04/01/BladeDISC%E5%88%9D%E6%8E%A2/</url>
-    <content><![CDATA[<p><img src="/images/image-20250401195537142.png" alt="image-20250401195537142"></p>
-<span id="more"></span>
-
-<blockquote>
-<p>在大模型训练推理场景中，一个十分大的瓶颈是动态shape问题。比如nlp领域，处理的句子长短不一，tensor的shape是动态变化的，到runtime才能确定。这给机器学习编译器带来很大的困扰，以XLA为首的sota编译器均是静态shape的，在性能上会有一定损失。BladeDISC是阿里提出的针对动态shape的机器学习编译器，并且经过大量实验和实际生产检验。本文重点关注BladeDISC的构建，pytorch使用方式以及基础架构解读。后续文章会讲解优化流程和论文解读。</p>
-</blockquote>
-<h2 id="源码构建"><a href="#源码构建" class="headerlink" title="源码构建"></a><font color = brown>源码构建</font></h2><h4 id="Build-from-source"><a href="#Build-from-source" class="headerlink" title="Build from source"></a>Build from source</h4><ul>
-<li><p>下载<a href="https://hub.docker.com/r/bladedisc/bladedisc/tags?page=1&name=devel">BladeDisc</a>镜像</p>
-<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">docker pull bladedisc/bladedisc:latest-devel-cu118</span><br></pre></td></tr></table></figure>
-
-<ul>
-<li>使用cu118版本</li>
-</ul>
-</li>
-<li><p>运行该镜像</p>
-<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">docker run --gpus all -it -v $PWD:/disc bladedisc/bladedisc:latest-devel-cu118 bash</span><br></pre></td></tr></table></figure>
-</li>
-<li><p>修改一下<code>pytorch_blade/scripts/build_pytorch_blade.sh</code>里面的<code>TORCH_BLADE_CI_BUILD_TORCH_VERSION</code>。修改为存在的<code>requirements.txt</code>即可。</p>
-<blockquote>
-<p>构建过程中，onnx由于带宽等问题，可能会报error，添加-i <a href="https://pypi.tuna.tsinghua.edu.cn/simple%E6%8C%87%E5%AE%9Apypi%E9%95%9C%E5%83%8F%E5%8D%B3%E5%8F%AF%E3%80%82">https://pypi.tuna.tsinghua.edu.cn/simple指定pypi镜像即可。</a></p>
-</blockquote>
-</li>
-<li><p>pytorch版本构建</p>
-<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">cd pytorch_blade &amp;&amp; bash ./scripts/build_pytorch_blade.sh</span><br><span class="line">python setup.py bdist_wheel</span><br><span class="line">pip install ./pytorch_blade/dist/torch_blade-0.2.0+2.0.1.cu118-cp38-cp38-linux_x86_64.whl</span><br></pre></td></tr></table></figure></li>
-</ul>
-<h3 id="错误处理"><a href="#错误处理" class="headerlink" title="错误处理"></a><font color = green>错误处理</font></h3><p>如果报错没有安全git，在docker中用：</p>
-<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">git config --global --add safe.directory /disc</span><br></pre></td></tr></table></figure>
-
-<h4 id="quick-install"><a href="#quick-install" class="headerlink" title="quick install"></a>quick install</h4><p>参考<a href="https://github.com/alibaba/BladeDISC/blob/main/docs/install_with_docker.md">docker install</a></p>
-<h2 id="Pytorch部署BERT模型"><a href="#Pytorch部署BERT模型" class="headerlink" title="Pytorch部署BERT模型"></a><font color = brown>Pytorch部署BERT模型</font></h2><h3 id="Hugging-Face模型下载"><a href="#Hugging-Face模型下载" class="headerlink" title="Hugging Face模型下载"></a><font color = green>Hugging Face模型下载</font></h3><ul>
-<li><p>手动下载模型（适合服务器联网不稳定的情况使用）</p>
-<p>找到<a href="https://huggingface.co/nlptown/bert-base-multilingual-uncased-sentiment/tree/main">Bert sentiment inference 模型</a>，主要手动下载如下几个文件：</p>
-<p><img src="/images/image-20250306203839463.png" alt="image-20250306203839463"></p>
-<p>在python代码中使用离线下载的模型：</p>
-<figure class="highlight python"><table><tr><td class="code"><pre><span class="line">model_path = <span class="string">&quot;./model&quot;</span></span><br><span class="line">tokenizer = AutoTokenizer.from_pretrained(model_path)</span><br><span class="line">model = AutoModelForSequenceClassification.from_pretrained(model_path).cuda().<span class="built_in">eval</span>()</span><br></pre></td></tr></table></figure>
-</li>
-<li><p>直接通过transformers 包下载，该下载方式通过huggingface对应模型网页的<code>use this model</code>获取</p>
-<figure class="highlight python"><table><tr><td class="code"><pre><span class="line"><span class="comment"># Load model directly</span></span><br><span class="line"><span class="keyword">from</span> transformers <span class="keyword">import</span> AutoTokenizer, AutoModelForSequenceClassification</span><br><span class="line"></span><br><span class="line">tokenizer = AutoTokenizer.from_pretrained(<span class="string">&quot;nlptown/bert-base-multilingual-uncased-sentiment&quot;</span>)</span><br><span class="line">model = AutoModelForSequenceClassification.from_pretrained(<span class="string">&quot;nlptown/bert-base-multilingual-uncased-sentiment&quot;</span>)</span><br></pre></td></tr></table></figure>
-
-<p>确保环境有transformers包即可</p>
-</li>
-<li><p>通过<code>huggingface-cli</code>下载</p>
-<figure class="highlight python"><table><tr><td class="code"><pre><span class="line">huggingface-cli download nlptown/bert-base-multilingual-uncased-sentiment</span><br></pre></td></tr></table></figure></li>
-</ul>
-<h3 id="做BERT-Inference的testbench"><a href="#做BERT-Inference的testbench" class="headerlink" title="做BERT Inference的testbench"></a><font color = green>做BERT Inference的testbench</font></h3><p>我的测试codes如下：</p>
-<figure class="highlight python"><table><tr><td class="code"><pre><span class="line"><span class="keyword">import</span> torch</span><br><span class="line"><span class="keyword">import</span> torch_blade</span><br><span class="line"><span class="keyword">import</span> time</span><br><span class="line"></span><br><span class="line"><span class="keyword">from</span> transformers <span class="keyword">import</span> (</span><br><span class="line">    pipeline,</span><br><span class="line">    AutoTokenizer,</span><br><span class="line">    AutoModelForSequenceClassification,</span><br><span class="line">    TextClassificationPipeline,</span><br><span class="line">)</span><br><span class="line"></span><br><span class="line"><span class="comment">############################################# download model from huggingface #############################################</span></span><br><span class="line">model_path = <span class="string">&quot;./model&quot;</span></span><br><span class="line"></span><br><span class="line">tokenizer = AutoTokenizer.from_pretrained(model_path)</span><br><span class="line"></span><br><span class="line">model = AutoModelForSequenceClassification.from_pretrained(model_path).cuda().<span class="built_in">eval</span>()</span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">plain_tokenizer</span>(<span class="params">inputs_str, return_tensors</span>):</span><br><span class="line">    inputs = tokenizer(inputs_str, return_tensors=return_tensors, padding=<span class="literal">True</span>)</span><br><span class="line">    inputs = &#123;key: value.cuda() <span class="keyword">for</span> key, value <span class="keyword">in</span> inputs.items()&#125;</span><br><span class="line">    </span><br><span class="line">    <span class="comment"># torch_blade.optimize 不支持 None 作为输入</span></span><br><span class="line">    <span class="keyword">if</span> <span class="string">&quot;token_type_ids&quot;</span> <span class="keyword">in</span> inputs <span class="keyword">and</span> inputs[<span class="string">&quot;token_type_ids&quot;</span>] <span class="keyword">is</span> <span class="literal">None</span>:</span><br><span class="line">        <span class="keyword">del</span> inputs[<span class="string">&quot;token_type_ids&quot;</span>]</span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> (inputs[<span class="string">&#x27;input_ids&#x27;</span>], inputs[<span class="string">&#x27;attention_mask&#x27;</span>], inputs.get(<span class="string">&#x27;token_type_ids&#x27;</span>, <span class="literal">None</span>))</span><br><span class="line"></span><br><span class="line"><span class="keyword">class</span> <span class="title class_">PlainTextClassificationPipeline</span>(<span class="title class_ inherited__">TextClassificationPipeline</span>):</span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">_forward</span>(<span class="params">self, model_inputs</span>):</span><br><span class="line">        <span class="keyword">return</span> <span class="variable language_">self</span>.model(*model_inputs)</span><br><span class="line"></span><br><span class="line">classifier = pipeline(</span><br><span class="line">    <span class="string">&#x27;sentiment-analysis&#x27;</span>,</span><br><span class="line">    model=model,</span><br><span class="line">    tokenizer=plain_tokenizer,</span><br><span class="line">    pipeline_class=PlainTextClassificationPipeline,</span><br><span class="line">    device=<span class="number">0</span></span><br><span class="line">)</span><br><span class="line"></span><br><span class="line">input_strs = [</span><br><span class="line">    <span class="string">&quot;We are very happy to show you the story.&quot;</span>,</span><br><span class="line">    <span class="string">&quot;We hope you don&#x27;t hate it.&quot;</span></span><br><span class="line">]</span><br><span class="line"></span><br><span class="line">results = classifier(input_strs)</span><br><span class="line"></span><br><span class="line"><span class="keyword">for</span> inp_str, result <span class="keyword">in</span> <span class="built_in">zip</span>(input_strs, results):</span><br><span class="line">    <span class="built_in">print</span>(inp_str)</span><br><span class="line">    <span class="built_in">print</span>(<span class="string">f&quot; label: <span class="subst">&#123;result[<span class="string">&#x27;label&#x27;</span>]&#125;</span>, with a score: <span class="subst">&#123;<span class="built_in">round</span>(result[<span class="string">&#x27;score&#x27;</span>], <span class="number">4</span>)&#125;</span>&quot;</span>)</span><br><span class="line"></span><br><span class="line"><span class="comment">############################################# Use BladeDISC for optimization #############################################</span></span><br><span class="line">inputs_str = <span class="string">&quot;Hey, the cat is cute.&quot;</span></span><br><span class="line">inputs = plain_tokenizer(inputs_str, return_tensors=<span class="string">&quot;pt&quot;</span>)</span><br><span class="line"></span><br><span class="line">torch_config = torch_blade.config.Config()</span><br><span class="line">torch_config.enable_mlir_amp = <span class="literal">False</span>  <span class="comment"># disable mix-precision</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># Ensure inputs are properly formatted for optimization</span></span><br><span class="line">model_inputs = <span class="built_in">tuple</span>(i <span class="keyword">for</span> i <span class="keyword">in</span> inputs <span class="keyword">if</span> i <span class="keyword">is</span> <span class="keyword">not</span> <span class="literal">None</span>)</span><br><span class="line"></span><br><span class="line"><span class="keyword">with</span> torch.no_grad(), torch_config:</span><br><span class="line">    optimized_ts = torch_blade.optimize(model, allow_tracing=<span class="literal">True</span>, model_inputs=model_inputs)</span><br><span class="line"></span><br><span class="line"><span class="comment"># Move optimized model to CUDA</span></span><br><span class="line">optimized_ts = optimized_ts.cuda()</span><br><span class="line"></span><br><span class="line"><span class="comment"># Save the optimized TorchScript model</span></span><br><span class="line">torch.jit.save(optimized_ts, <span class="string">&quot;opt.disc.pt&quot;</span>)</span><br><span class="line"></span><br><span class="line"><span class="comment">############################################# testbench #############################################</span></span><br><span class="line"><span class="meta">@torch.no_grad()</span></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">benchmark</span>(<span class="params">model, inputs, num_iters=<span class="number">1000</span></span>):</span><br><span class="line">    <span class="keyword">for</span> _ <span class="keyword">in</span> <span class="built_in">range</span>(<span class="number">10</span>):</span><br><span class="line">        model(*inputs)</span><br><span class="line">    torch.cuda.synchronize()</span><br><span class="line"></span><br><span class="line">    start = time.time()</span><br><span class="line">    <span class="keyword">for</span> _ <span class="keyword">in</span> <span class="built_in">range</span>(num_iters):</span><br><span class="line">        model(*inputs)</span><br><span class="line">    torch.cuda.synchronize()</span><br><span class="line">    end = time.time()</span><br><span class="line">    <span class="keyword">return</span> (end - start) / num_iters * <span class="number">1000.0</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">bench_and_report</span>(<span class="params">input_strs</span>):</span><br><span class="line">    inputs = plain_tokenizer(input_strs, return_tensors=<span class="string">&quot;pt&quot;</span>)</span><br><span class="line">    model_inputs = <span class="built_in">tuple</span>(i <span class="keyword">for</span> i <span class="keyword">in</span> inputs <span class="keyword">if</span> i <span class="keyword">is</span> <span class="keyword">not</span> <span class="literal">None</span>)</span><br><span class="line"></span><br><span class="line">    avg_latency_baseline = benchmark(model, model_inputs)</span><br><span class="line">    avg_latency_bladedisc = benchmark(optimized_ts, model_inputs)</span><br><span class="line"></span><br><span class="line">    <span class="built_in">print</span>(<span class="string">f&quot;Seqlen: <span class="subst">&#123;[<span class="built_in">len</span>(s) <span class="keyword">for</span> s <span class="keyword">in</span> input_strs]&#125;</span>&quot;</span>)</span><br><span class="line">    <span class="built_in">print</span>(<span class="string">f&quot;Baseline: <span class="subst">&#123;avg_latency_baseline:<span class="number">.4</span>f&#125;</span> ms&quot;</span>)</span><br><span class="line">    <span class="built_in">print</span>(<span class="string">f&quot;BladeDISC: <span class="subst">&#123;avg_latency_bladedisc:<span class="number">.4</span>f&#125;</span> ms&quot;</span>)</span><br><span class="line">    <span class="built_in">print</span>(<span class="string">f&quot;BladeDISC speedup: <span class="subst">&#123;avg_latency_baseline / avg_latency_bladedisc:<span class="number">.4</span>f&#125;</span>&quot;</span>)</span><br><span class="line"></span><br><span class="line">input_strs = [</span><br><span class="line">    <span class="string">&quot;We are very happy to show you the story.&quot;</span>,</span><br><span class="line">    <span class="string">&quot;We hope you don&#x27;t hate it.&quot;</span></span><br><span class="line">]</span><br><span class="line"></span><br><span class="line">bench_and_report(input_strs)</span><br></pre></td></tr></table></figure>
-
-<p>上述codes中，BladeDISC的核心如下：</p>
-<figure class="highlight python"><table><tr><td class="code"><pre><span class="line"><span class="keyword">with</span> torch.no_grad(), torch_config:</span><br><span class="line">    optimized_ts = torch_blade.optimize(model, allow_tracing=<span class="literal">True</span>, model_inputs=model_inputs)</span><br></pre></td></tr></table></figure>
-
-<p>通过编译手段，生成优化后的pytorch script，注意：<strong>目前pytorch仅仅支持inference，尚不支持train</strong>。对于<code>HuggingFace</code>模型的pipeline有更深层兴趣的，参考<a href="https://huggingface.co/docs/transformers/quicktour">HuggingFace quick tour</a>。</p>
-<p><img src="F:\LeonBlog\source\images\image-20250427225534818.png" alt="image-20250427225534818"></p>
-<p>可以看到对比pytorch，有1.7倍左右的加速。</p>
-<h3 id="Pytorch-WorkFlow"><a href="#Pytorch-WorkFlow" class="headerlink" title="Pytorch WorkFlow"></a><font color = green>Pytorch WorkFlow</font></h3><p><img src="/images/image-20250311211223452.png" alt="image-20250311211223452"></p>
-<p><img src="/images/image-20250311220823276.png" alt="image-20250311220823276"></p>
-<p>参考<a href="https://github.com/alibaba/BladeDISC/blob/main/docs/developers/bladedisc_torch_overview.md">Torch-Blade教程</a>即可。</p>
-<h2 id="参考资料"><a href="#参考资料" class="headerlink" title="参考资料"></a><font color = brown>参考资料</font></h2><ol>
-<li><a href="https://github.com/alibaba/BladeDISC">BladeDisc github</a></li>
-</ol>
-]]></content>
-      <categories>
-        <category>编译技术</category>
-        <category>机器学习编译</category>
-        <category>动态shape</category>
-      </categories>
-      <tags>
-        <tag>机器学习编译器</tag>
-        <tag>mlir</tag>
-        <tag>动态shape</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>MLIR debug tips</title>
-    <url>/2025/04/20/MLIR-debug-tips/</url>
-    <content><![CDATA[<p><img src="/images/image-20250421225330748.png" alt="image-20250421225330748"></p>
-<span id="more"></span>
-
-<blockquote>
-<p>本篇文章主要汇总debug mlir时候的一些tips，方便后续查找使用。</p>
-</blockquote>
-<h2 id="VS-Code-Debugger"><a href="#VS-Code-Debugger" class="headerlink" title="VS Code Debugger"></a><font color = brown>VS Code Debugger</font></h2><h3 id="有用的命令合集"><a href="#有用的命令合集" class="headerlink" title="有用的命令合集"></a><font color = green>有用的命令合集</font></h3><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">-exec set scheduler-locking step    # 冻结其他线程</span><br></pre></td></tr></table></figure>
-
-
-
-<h2 id="MLIR-Debug-Practice"><a href="#MLIR-Debug-Practice" class="headerlink" title="MLIR Debug Practice"></a><font color = brown>MLIR Debug Practice</font></h2><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">Legalizing operation : &#x27;vector.transfer_read&#x27;(0x62c0434198a0) &#123;</span><br><span class="line"><span class="meta prompt_">  %</span><span class="language-bash">6 = <span class="string">&quot;vector.transfer_read&quot;</span>(%0, %arg3, %5) &#123;operand_segment_sizes = dense&lt;[1, 1, 1, 0]&gt; : vector&lt;4xi32&gt;, permutation_map = affine_map&lt;(d0) -&gt; (d0)&gt;&#125; : (memref&lt;32xf32&gt;, index, f32) -&gt; vector&lt;8xf32&gt;</span></span><br><span class="line"></span><br><span class="line">  * Fold &#123;</span><br><span class="line">  &#125; -&gt; FAILURE : unable to fold</span><br><span class="line"></span><br><span class="line">  * Pattern : &#x27;vector.transfer_read -&gt; ()&#x27; &#123;</span><br><span class="line">    ** Insert  : &#x27;arith.constant&#x27;(0x62c0433289e0)</span><br><span class="line">    ** Insert  : &#x27;arith.constant&#x27;(0x62c04332a260)</span><br><span class="line">    ** Insert  : &#x27;arith.subi&#x27;(0x62c0432f4b50)</span><br><span class="line">    ** Insert  : &#x27;vector.create_mask&#x27;(0x62c043329e30)</span><br><span class="line"></span><br><span class="line">    //===-------------------------------------------===//</span><br><span class="line">    Legalizing operation : &#x27;vector.transfer_read&#x27;(0x62c0434198a0) &#123;</span><br><span class="line">      // -----// IR Dump After AffineScalarReplacement //----- //</span><br><span class="line"><span class="meta prompt_">%</span><span class="language-bash">10 = <span class="string">&quot;vector.transfer_read&quot;</span>(%0, %arg3, %5, %9) &#123;in_bounds = [<span class="literal">true</span>], operand_segment_sizes = dense&lt;1&gt; : vector&lt;4xi32&gt;, permutation_map = affine_map&lt;(d0) -&gt; (d0)&gt;&#125; : (memref&lt;32xf32&gt;, index, f32, vector&lt;8xi1&gt;) -&gt; vector&lt;8xf32&gt;</span></span><br><span class="line"></span><br><span class="line">      * Fold &#123;</span><br><span class="line">      &#125; -&gt; FAILURE : unable to fold</span><br><span class="line"></span><br><span class="line">      * Pattern : &#x27;vector.transfer_read -&gt; ()&#x27; &#123;</span><br><span class="line">      &#125; -&gt; FAILURE : pattern was already applied</span><br><span class="line"></span><br><span class="line">      * Pattern : &#x27;vector.transfer_read -&gt; ()&#x27; &#123;</span><br><span class="line">        ** Insert  : &#x27;vector.splat&#x27;(0x62c04332a5b0)</span><br><span class="line">        ** Insert  : &#x27;vector.maskedload&#x27;(0x62c04329aad0)</span><br><span class="line">        ** Replace : &#x27;vector.transfer_read&#x27;(0x62c0434198a0)</span><br><span class="line"></span><br><span class="line">        //===-------------------------------------------===//</span><br><span class="line">        Legalizing operation : &#x27;vector.splat&#x27;(0x62c04332a5b0) &#123;</span><br><span class="line">          %10 = &quot;vector.splat&quot;(%5) : (f32) -&gt; vector&lt;8xf32&gt;</span><br><span class="line"></span><br><span class="line">          * Fold &#123;</span><br><span class="line">            ** Insert  : &#x27;arith.constant&#x27;(0x62c043420680)</span><br><span class="line">            ** Replace : &#x27;vector.splat&#x27;(0x62c04332a5b0)</span><br><span class="line"></span><br><span class="line">            //===-------------------------------------------===//</span><br><span class="line">            Legalizing operation : &#x27;arith.constant&#x27;(0x62c043420680) &#123;</span><br><span class="line">              %10 = &quot;arith.constant&quot;() &#123;value = dense&lt;0.000000e+00&gt; : vector&lt;8xf32&gt;&#125; : () -&gt; vector&lt;8xf32&gt;</span><br><span class="line"></span><br><span class="line">              * Fold &#123;</span><br><span class="line">              &#125; -&gt; FAILURE : unable to fold</span><br><span class="line">            &#125; -&gt; FAILURE : no matched legalization pattern</span><br><span class="line">            //===-------------------------------------------===//</span><br><span class="line">          &#125; -&gt; FAILURE : failed to legalize generated constant &#x27;arith.constant&#x27;</span><br><span class="line">        &#125; -&gt; FAILURE : no matched legalization pattern</span><br><span class="line">        //===-------------------------------------------===//</span><br><span class="line">      &#125; -&gt; FAILURE : failed to legalize generated operation &#x27;vector.splat&#x27;(0x000062C04332A5B0)</span><br><span class="line">    &#125; -&gt; FAILURE : pattern failed to match</span><br><span class="line">  &#125; -&gt; FAILURE : no matched legalization pattern</span><br><span class="line">  //===-------------------------------------------===//</span><br><span class="line">&#125; -&gt; FAILURE : failed to legalize operation updated in-place &#x27;vector.transfer_read&#x27;</span><br><span class="line">&#125; -&gt; FAILURE : pattern failed to match</span><br><span class="line"></span><br><span class="line">* Pattern : &#x27;vector.transfer_read -&gt; ()&#x27; &#123;</span><br><span class="line">&#125; -&gt; FAILURE : pattern failed to match</span><br><span class="line">&#125; -&gt; FAILURE : no matched legalization pattern</span><br><span class="line">//===-------------------------------------------===//</span><br></pre></td></tr></table></figure>
-
-
-
-
-
-<h2 id="参考资料"><a href="#参考资料" class="headerlink" title="参考资料"></a><font color = brown>参考资料</font></h2><ol>
-<li><a href="https://vscode.js.cn/docs/debugtest/debugging">vscode debug文档</a></li>
-</ol>
-]]></content>
-      <categories>
-        <category>编译技术</category>
-        <category>mlir</category>
-        <category>debug</category>
-      </categories>
-      <tags>
-        <tag>mlir</tag>
-        <tag>vscode debug</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>ByteIR 初探</title>
-    <url>/2025/05/06/ByteIR-%E5%88%9D%E6%8E%A2/</url>
-    <content><![CDATA[<p><img src="/images/image-20250506220408172.png" alt="image-20250506220408172"></p>
-<span id="more"></span>
-
-<h2 id="Why-ByteIR？"><a href="#Why-ByteIR？" class="headerlink" title="Why ByteIR？"></a><font color = brown>Why ByteIR？</font></h2><p>看了这么多端到端机器学习编译器（IREE，BladeDISC），为什么选择研究一下ByteIR？这个<a href="https://github.com/bytedance/byteir/issues/9">ByteIR issue9</a>的回答很好地指明了ByteIR相比成熟端到端编译器的区别：</p>
-<ul>
-<li>ByteIR有十分清晰的Frontend，Compiler和runtime，而且三者可以分离编译构建。</li>
-<li>ByteIR在字节内部不同的开发人员都在使用。</li>
-<li>ByteIR是十分简洁的，单纯的是一堆passes集合，辅助开发者完成端到端流程。</li>
-</ul>
-<p>上述三个特点，使得ByteIR十分适合针对性学习。</p>
-<h2 id="源码构建"><a href="#源码构建" class="headerlink" title="源码构建"></a><font color = brown>源码构建</font></h2><h3 id="Frontend构建"><a href="#Frontend构建" class="headerlink" title="Frontend构建"></a><font color = green>Frontend构建</font></h3><p>ByteIR的前端支持pytorch，onnx和tensorflow三种框架。其流程都是将框架接入stableHLO再合法化到MHLO 方言中。笔者先前构建过torch-mlir和iree等项目，原本想省去构建前端，复用torch-mlir的前端，但是</p>
-<h3 id="Compiler部分构建"><a href="#Compiler部分构建" class="headerlink" title="Compiler部分构建"></a><font color = green>Compiler部分构建</font></h3><ol>
-<li><p>clone项目</p>
-<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">git clone git@github.com:bytedance/byteir.git</span><br></pre></td></tr></table></figure>
-</li>
-<li><p>构建虚拟环境</p>
-<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line"><span class="meta prompt_"># </span><span class="language-bash">构建虚拟环境</span></span><br><span class="line">pip install pybind11</span><br><span class="line">pip install nanobind</span><br><span class="line">pip install numpy</span><br><span class="line">pip install lit</span><br><span class="line">pip install filecheck</span><br></pre></td></tr></table></figure>
-</li>
-<li><p>Build LLVM</p>
-<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">cd /path_to_byteir</span><br><span class="line">git submodule update --init external/llvm-project</span><br></pre></td></tr></table></figure>
-
-<p>构建脚本如下：</p>
-<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line"><span class="meta prompt_"># </span><span class="language-bash">build llvm</span></span><br><span class="line">cd external/llvm-project</span><br><span class="line">cmake -H./llvm \</span><br><span class="line">      -B./build \</span><br><span class="line">      -GNinja \</span><br><span class="line">      -DLLVM_ENABLE_PROJECTS=mlir \</span><br><span class="line">      -DLLVM_TARGETS_TO_BUILD=&quot;X86;NVPTX&quot; \</span><br><span class="line">      -DCMAKE_BUILD_TYPE=Release \</span><br><span class="line">      -DLLVM_ENABLE_ASSERTIONS=ON \</span><br><span class="line">      -DLLVM_INSTALL_UTILS=ON \</span><br><span class="line">      -DLLVM_CCACHE_BUILD=OFF \</span><br><span class="line">      -DLLVM_ENABLE_TERMINFO=OFF \</span><br><span class="line">      -DMLIR_ENABLE_BINDINGS_PYTHON=ON \</span><br><span class="line">      -DCMAKE_INSTALL_PREFIX=$(pwd)/build/install</span><br><span class="line"><span class="meta prompt_"># </span><span class="language-bash">via -DCMAKE_C_COMPILER=gcc/clang and -DCMAKE_CXX_COMPILER=g++/clang++</span></span><br><span class="line"><span class="meta prompt_"># </span><span class="language-bash">to specify gcc&gt;=8.5 or clang&gt;=7</span> </span><br><span class="line"><span class="meta prompt_"># </span><span class="language-bash"><span class="keyword">for</span> Mac <span class="built_in">users</span>, <span class="built_in">set</span> -DLLVM_TARGETS_TO_BUILD=<span class="string">&quot;AArch64;NVPTX&quot;</span></span></span><br><span class="line"></span><br><span class="line">cmake --build ./build --target all --target install</span><br></pre></td></tr></table></figure>
-</li>
-<li><p>Build ByteIR compiler</p>
-<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">cmake -B./compiler/build \</span><br><span class="line">      -H./compiler/cmake \</span><br><span class="line">      -GNinja \</span><br><span class="line">      -DCMAKE_BUILD_TYPE=Release \</span><br><span class="line">      -DPython3_EXECUTABLE=/mnt/home/douliyang/mlir-workspace/byteir/venv/bin/python \</span><br><span class="line">      -DLLVM_INSTALL_PATH=$(pwd)/external/llvm-project/build/install \</span><br><span class="line">      -DLLVM_EXTERNAL_LIT=/mnt/home/douliyang/mlir-workspace/byteir/venv/bin/lit \</span><br><span class="line">      -Dpybind11_DIR=/mnt/home/douliyang/mlir-workspace/byteir/venv/lib/python3.11/site-packages/pybind11/share/cmake/pybind11 \</span><br><span class="line">      -Dnanobind_DIR=/mnt/home/douliyang/mlir-workspace/byteir/venv/lib/python3.11/site-packages/nanobind/cmake \</span><br><span class="line">      -DBYTEIR_ENABLE_BINDINGS_PYTHON=ON</span><br><span class="line"></span><br><span class="line">cmake --build ./compiler/build --target check-byteir</span><br><span class="line">cmake --build ./compiler/build --target byteir-python-pack</span><br></pre></td></tr></table></figure>
-
-<p>上述一定要构建两个测试，第一个测试compiler的pipeline正确性，第二个测试python wrapper api正确性。</p>
-<p>这里构建过程中有几处坑：lit测试由于我使用了虚拟环境，所以需要cmake中显示指定python3的可执行路径。pybind11和nanobind也是同理，需要显示指定路径。</p>
-</li>
-<li><p>测试正确性（一个端到端的测试case）</p>
-<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">BYTEIR=&quot;/home/douliyang/large/mlir-workspace/byteir&quot;</span><br><span class="line"></span><br><span class="line">export PYTHONPATH=&quot;$&#123;BYTEIR&#125;/compiler/build/python_packages/byteir&quot;</span><br><span class="line"></span><br><span class="line">python3 -m byteir.tools.compiler -v \</span><br><span class="line">  &quot;$&#123;BYTEIR&#125;/compiler/test/E2E/CUDA/MLPInference/input.mlir&quot; \</span><br><span class="line">  -o out.mlir \</span><br><span class="line">  --entry_func forward \</span><br><span class="line"><span class="meta prompt_">  2&gt;</span><span class="language-bash">&amp;1 | <span class="built_in">tee</span> pipeline.log</span></span><br></pre></td></tr></table></figure></li>
-</ol>
-<p>​	<font color = red>注意，最终的wheel包生成在<code>build/python/dist</code>中，pip isntall即可。</font></p>
-<h3 id="Runtime部分构建"><a href="#Runtime部分构建" class="headerlink" title="Runtime部分构建"></a><font color = green>Runtime部分构建</font></h3><p>首先确保compiler部分构建成功，runtime部分依赖compiler部分构建的LLVM项目。</p>
-<ol>
-<li><p>获取runtime的依赖</p>
-<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">git submodule update --init --recursive -f external/mlir-hlo external/cutlass external/date external/googletest external/pybind11</span><br></pre></td></tr></table></figure>
-</li>
-<li><p>构建runtime项目</p>
-<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">cmake -H./runtime/cmake \</span><br><span class="line">      -B./runtime/build \</span><br><span class="line">      -G Ninja \</span><br><span class="line">      -DCMAKE_BUILD_TYPE=Release \</span><br><span class="line">      -DLLVM_INSTALL_PATH=$(pwd)/external/llvm-project/build/install \</span><br><span class="line">      -DCMAKE_INSTALL_PREFIX=&quot;$(pwd)/runtime/build/install&quot; \</span><br><span class="line">      -Dbrt_ENABLE_PYTHON_BINDINGS=ON \</span><br><span class="line">      -Dbrt_USE_CUDA=ON</span><br><span class="line"></span><br><span class="line">cmake --build ./runtime/build --target all --target install</span><br></pre></td></tr></table></figure>
-</li>
-<li><p>构建python wheel包，具体打包过程如下：</p>
-<p>运行<code>python3 setup.py</code></p>
-<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">(base) root@leondou-y1fkbccpmlrb-main:/openbayes/home/byteir/byteir/runtime/python# python3 setup.py bdist_wheel</span><br><span class="line">running bdist_wheel</span><br><span class="line">running build</span><br><span class="line">running build_py</span><br><span class="line">creating build</span><br><span class="line">creating build/lib.linux-x86_64-cpython-38</span><br><span class="line">creating build/lib.linux-x86_64-cpython-38/brt</span><br><span class="line">copying /output/byteir/byteir/runtime/python/brt/backend.py -&gt; build/lib.linux-x86_64-cpython-38/brt</span><br><span class="line">copying /output/byteir/byteir/runtime/python/brt/__init__.py -&gt; build/lib.linux-x86_64-cpython-38/brt</span><br><span class="line">copying /output/byteir/byteir/runtime/python/brt/version.py -&gt; build/lib.linux-x86_64-cpython-38/brt</span><br><span class="line">copying /output/byteir/byteir/runtime/python/brt/utils.py -&gt; build/lib.linux-x86_64-cpython-38/brt</span><br><span class="line">running build_ext</span><br><span class="line">/usr/local/lib/python3.8/site-packages/setuptools/_distutils/cmd.py:66: SetuptoolsDeprecationWarning: setup.py install is deprecated.</span><br><span class="line">!!</span><br><span class="line"></span><br><span class="line">        ********************************************************************************</span><br><span class="line">        Please avoid running ``setup.py`` directly.</span><br><span class="line">        Instead, use pypa/build, pypa/installer or other</span><br><span class="line">        standards-based tools.</span><br><span class="line"></span><br><span class="line">        See https://blog.ganssle.io/articles/2021/10/setup-py-deprecated.html for details.</span><br><span class="line">        ********************************************************************************</span><br><span class="line"></span><br><span class="line">!!</span><br><span class="line">  self.initialize_options()</span><br><span class="line">installing to build/bdist.linux-x86_64/wheel</span><br><span class="line">running install</span><br><span class="line">running install_lib</span><br><span class="line">creating build/bdist.linux-x86_64</span><br><span class="line">creating build/bdist.linux-x86_64/wheel</span><br><span class="line">creating build/bdist.linux-x86_64/wheel/brt</span><br><span class="line">copying build/lib.linux-x86_64-cpython-38/brt/backend.py -&gt; build/bdist.linux-x86_64/wheel/brt</span><br><span class="line">copying build/lib.linux-x86_64-cpython-38/brt/__init__.py -&gt; build/bdist.linux-x86_64/wheel/brt</span><br><span class="line">copying build/lib.linux-x86_64-cpython-38/brt/_brt.cpython-38-x86_64-linux-gnu.so -&gt; build/bdist.linux-x86_64/wheel/brt</span><br><span class="line">creating build/bdist.linux-x86_64/wheel/brt/lib</span><br><span class="line">copying build/lib.linux-x86_64-cpython-38/brt/lib/libbrt.so -&gt; build/bdist.linux-x86_64/wheel/brt/lib</span><br><span class="line">copying build/lib.linux-x86_64-cpython-38/brt/version.py -&gt; build/bdist.linux-x86_64/wheel/brt</span><br><span class="line">copying build/lib.linux-x86_64-cpython-38/brt/utils.py -&gt; build/bdist.linux-x86_64/wheel/brt</span><br><span class="line">running install_egg_info</span><br><span class="line">running egg_info</span><br><span class="line">creating /output/byteir/byteir/runtime/python/brt.egg-info</span><br><span class="line">writing /output/byteir/byteir/runtime/python/brt.egg-info/PKG-INFO</span><br><span class="line">writing dependency_links to /output/byteir/byteir/runtime/python/brt.egg-info/dependency_links.txt</span><br><span class="line">writing top-level names to /output/byteir/byteir/runtime/python/brt.egg-info/top_level.txt</span><br><span class="line">writing manifest file &#x27;/output/byteir/byteir/runtime/python/brt.egg-info/SOURCES.txt&#x27;</span><br><span class="line">reading manifest file &#x27;/output/byteir/byteir/runtime/python/brt.egg-info/SOURCES.txt&#x27;</span><br><span class="line">writing manifest file &#x27;/output/byteir/byteir/runtime/python/brt.egg-info/SOURCES.txt&#x27;</span><br><span class="line">Copying /output/byteir/byteir/runtime/python/brt.egg-info to build/bdist.linux-x86_64/wheel/brt-1.9.3.0+cpu-py3.8.egg-info</span><br><span class="line">running install_scripts</span><br><span class="line">creating build/bdist.linux-x86_64/wheel/brt-1.9.3.0+cpu.dist-info/WHEEL</span><br><span class="line">creating &#x27;dist/brt-1.9.3.0+cpu-cp38-cp38-linux_x86_64.whl&#x27; and adding &#x27;build/bdist.linux-x86_64/wheel&#x27; to it</span><br><span class="line">adding &#x27;brt/__init__.py&#x27;</span><br><span class="line">adding &#x27;brt/_brt.cpython-38-x86_64-linux-gnu.so&#x27;</span><br><span class="line">adding &#x27;brt/backend.py&#x27;</span><br><span class="line">adding &#x27;brt/utils.py&#x27;</span><br><span class="line">adding &#x27;brt/version.py&#x27;</span><br><span class="line">adding &#x27;brt/lib/libbrt.so&#x27;</span><br><span class="line">adding &#x27;brt-1.9.3.0+cpu.dist-info/METADATA&#x27;</span><br><span class="line">adding &#x27;brt-1.9.3.0+cpu.dist-info/WHEEL&#x27;</span><br><span class="line">adding &#x27;brt-1.9.3.0+cpu.dist-info/top_level.txt&#x27;</span><br><span class="line">adding &#x27;brt-1.9.3.0+cpu.dist-info/RECORD&#x27;</span><br><span class="line">removing build/bdist.linux-x86_64/wheel</span><br></pre></td></tr></table></figure></li>
-</ol>
-<p>​	<font color = red>注意：</font>最终的wheel包在&#x2F;openbayes&#x2F;home&#x2F;byteir&#x2F;byteir&#x2F;runtime&#x2F;python&#x2F;dist下，需要pip install一下才能使用。</p>
-<blockquote>
-<p>在组内服务器构建遇到的问题是，组内服务器没有cudnn，因此会报错<code>cudnn.h</code>头文件没有找到。目前暂时选择租服务器来完成构建流程，还没有解决这个问题（后续填坑）。</p>
-</blockquote>
-<p>至此成功构建好compiler部分和runtime部分（frontend部分不是研究重点，后续结合模型测试性能再研究）。</p>
-<h2 id="参考资料"><a href="#参考资料" class="headerlink" title="参考资料"></a><font color = brown>参考资料</font></h2><ol>
-<li><a href="https://byteir.ai/">ByteIR官方资料</a></li>
-<li><a href="https://github.com/bytedance/byteir?tab=readme-ov-file">ByteIR github</a></li>
-</ol>
-]]></content>
-      <categories>
-        <category>编译技术</category>
-        <category>机器学习编译</category>
-      </categories>
-      <tags>
-        <tag>机器学习编译器</tag>
-        <tag>mlir</tag>
-      </tags>
-  </entry>
-  <entry>
     <title>MLIR-basics-deepdive-part2</title>
     <url>/2025/04/24/MLIR-basics-deepdive-part2/</url>
     <content><![CDATA[<p><img src="/images/image-20250422105012239.png" alt="image-20250422105012239"></p>
@@ -1083,355 +1393,37 @@
       </tags>
   </entry>
   <entry>
-    <title>GPU 后端优化（一）</title>
-    <url>/2025/05/11/GPU-%E5%90%8E%E7%AB%AF%E4%BC%98%E5%8C%96%EF%BC%88%E4%B8%80%EF%BC%89/</url>
-    <content><![CDATA[<p><img src="/images/image-20250511230828794.png" alt="image-20250511230828794"></p>
+    <title>MLIR debug tips</title>
+    <url>/2025/04/20/MLIR-debug-tips/</url>
+    <content><![CDATA[<p><img src="/images/image-20250421225330748.png" alt="image-20250421225330748"></p>
 <span id="more"></span>
 
 <blockquote>
-<p>为什么会有GPU后端优化博客？在阅读BladeDISC以及IREE等源码的过程中，发现当逐步接触后端代码生成&#x2F;运行时系统调度时，由于本人没有深入接触过GPU体系架构（基础太差），很多优化pass难以理解。这一过程使我认识到对于底层系统架构的深入理解往往比具体的编译技术，编译框架（MLIR&#x2F;LLVM）而言更为重要。本系列主要记录我补习GPU架构知识的学习历程（开个坑，主要用于激励我自学CUDA，不然太摆了）。目前初步的计划，该系列会有如下几篇博客：</p>
-<ol>
-<li>GPU后端优化（一）：主要包括GPU后端优化基础知识</li>
-<li>GPU后端优化（二）：结合<a href="http://arxiv.org/abs/2108.13191">MLIR生成高性能GPU算子</a>论文，以及<a href="https://siboehm.com/articles/22/CUDA-MMM">CUDA算子优化博客</a>，学习CUDA算子开发过程和对应算子编译手段</li>
-<li>GPU后端优化（三）：机器学习编译实战部分，包括IREE和BladeDISC代码分析</li>
-<li>GPU后端优化（四）：高阶GPU体系结构，结合GPU架构书籍进行解读</li>
-</ol>
+<p>本篇文章主要汇总debug mlir时候的一些tips，方便后续查找使用。</p>
 </blockquote>
-<h2 id="GPU后端优化基础知识"><a href="#GPU后端优化基础知识" class="headerlink" title="GPU后端优化基础知识"></a><font color = brown>GPU后端优化基础知识</font></h2><p>在日常学习中，由于我的工作和编译器关联度较大，因此一般都是在阅读开源项目的pass源码。这其中如果涉及GPU相关的优化pass，遇到不懂的可能直接询问chatgpt或是一些博客寻找答案。久而久之发现自己虽然好像能够读懂编译器的后端生成pass，但往深处探讨，为什么这些pass是这样的顺序，为什么GPU需要这些pass，很多问题其实都回答不上来。归根结底，是对于GPU优化的原理知识以及优化之间的关联细节没有真正去仔细思考和学习。</p>
-<p>印度理工的学者的一篇利用MLIR搭建高性能GPU算子自动生成的文章，使我们开始的很好的起点。这篇<a href="http://arxiv.org/abs/2108.13191">文章</a>完全基于MLIR基础设施，并做少量修改，同时是一个完整的GPU优化生成流程，是十分值得学习的。本章节的目的就是尽量扫盲，使一些原本不那么清晰或是没涉及过的优化概念尽量明晰，为读懂该文章做好准备工作。</p>
-<p><img src="/images/image-20250511233238659.png" alt="image-20250511233238659"></p>
-<p>如上图所示是论文中的GPU算子生成流水线，也是我们补足GPU后端编译优化基础知识的概览。后续内容按照流水线展开，大体内容划分如下：</p>
-<ul>
-<li>Loop Tiling优化</li>
-<li>存储优化（共享内存开辟，padding，coalesce内存）</li>
-<li>WMMA tensor core</li>
-<li>latency hiding</li>
-</ul>
-<h3 id="Loop-Tiling优化"><a href="#Loop-Tiling优化" class="headerlink" title="Loop Tiling优化"></a><font color = green>Loop Tiling优化</font></h3><p>这一章节主要参考<a href="https://zhuanlan.zhihu.com/p/477023757">一篇文章了解 Loop Tiling 优化</a>，这篇博客讲解非常到位，强烈建议有兴趣的读者仔细阅读。本篇文章的解读顺序和原博客不太一致，选择先列出tiling算法步骤，然后以一个具体例子带着大家走一遍算法步骤，解读每一步原理。</p>
-<h4 id="Tiling算法步骤"><a href="#Tiling算法步骤" class="headerlink" title="Tiling算法步骤"></a>Tiling算法步骤</h4><blockquote>
-<p>算法：</p>
-<p>设总共有 <code>N</code> 层循环，从外向内分别是 <code>0,1,...,N-1</code></p>
-<ul>
-<li><strong>从内向外</strong>，逐步分析 <code>N-2,N-3,...,0</code>（先排除掉最内层循环）</li>
-<li>对于每层循环 <code>L</code> ，<strong>看其 <code>idx=0,1,...</code> 时，是否有 array 可能被反复读取</strong>。<ul>
-<li>若有，则 tile 第 <code>L+1</code> 层循环。</li>
-</ul>
-</li>
-</ul>
-<p>都做完之后，再分析 <strong>基于新循环是否仍然有可 tile 的部分</strong></p>
-</blockquote>
-<p>上述算法初看比较抽象，选择通过一个矩阵乘法例子来走一遍该规则，以简化算法理解。</p>
-<p>首先我们要tiling的计算任务是NxNxN的矩阵乘（现实场景由于矩阵的维度，cache的维度有很多dirty work和边界trick，这里默认矩阵是“完美的”）。伪代码如下图所示：</p>
-<figure class="highlight python"><table><tr><td class="code"><pre><span class="line"><span class="keyword">for</span> i <span class="keyword">in</span> <span class="built_in">range</span>(<span class="number">0</span>, N):            <span class="comment"># i,k,j，访问符合行优先原则</span></span><br><span class="line">  <span class="keyword">for</span> k <span class="keyword">in</span> <span class="built_in">range</span>(<span class="number">0</span>, N): </span><br><span class="line">    <span class="keyword">for</span> j <span class="keyword">in</span> <span class="built_in">range</span>(<span class="number">0</span>, N):</span><br><span class="line">      C[i][j] += A[i][k] * B[k][j]</span><br></pre></td></tr></table></figure>
+<h2 id="VS-Code-Debugger"><a href="#VS-Code-Debugger" class="headerlink" title="VS Code Debugger"></a><font color = brown>VS Code Debugger</font></h2><h3 id="有用的命令合集"><a href="#有用的命令合集" class="headerlink" title="有用的命令合集"></a><font color = green>有用的命令合集</font></h3><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">-exec set scheduler-locking step    # 冻结其他线程</span><br></pre></td></tr></table></figure>
 
-<p>根据算法描述，首先分析k维度遍历过程中是否有array反复读取（k维度对应N-2维度）。发现<code>c[i][j]</code>的遍历和k维度无关，因此可以tile j这个维度，得到如下伪代码：</p>
-<figure class="highlight python"><table><tr><td class="code"><pre><span class="line"><span class="keyword">for</span> j_o <span class="keyword">in</span> <span class="built_in">range</span>(<span class="number">0</span>, N, T_j):                           <span class="comment"># j_i 对应j维度的外层维度，从0到N，步长为T</span></span><br><span class="line">    <span class="keyword">for</span> i <span class="keyword">in</span> <span class="built_in">range</span>(<span class="number">0</span>, N):</span><br><span class="line">        <span class="keyword">for</span> k <span class="keyword">in</span> <span class="built_in">range</span>(<span class="number">0</span>, N):</span><br><span class="line">            <span class="keyword">for</span> j_i <span class="keyword">in</span> <span class="built_in">range</span>(j_o, j_o+T_j):            <span class="comment"># j_o 对应j维度的内层循环</span></span><br><span class="line">                c[i][j_i] += A[i][k] * B[k][j_i]</span><br></pre></td></tr></table></figure>
 
-<p>分析tiling后伪代码，通过选取合适的T（适配L1缓存大小），则<code>c[i][j_i]</code>可以做到在k迭代过程中一直缓存在cache中。继续我们的tiling算法，该尝试k的上一层维度，i维度。发现<code>B[k][j_i]</code>在遍历过程中和i的值无关，因此可以对下一层，即k做优化，使得<code>B[k][j_i]</code>适配缓存。如下是伪代码：</p>
-<figure class="highlight python"><table><tr><td class="code"><pre><span class="line"><span class="keyword">for</span> k_o <span class="keyword">in</span> <span class="built_in">range</span>(<span class="number">0</span>, N, T_k):</span><br><span class="line">  <span class="keyword">for</span> j_o <span class="keyword">in</span> <span class="built_in">range</span>(<span class="number">0</span>, N, T_j):</span><br><span class="line">    <span class="keyword">for</span> i <span class="keyword">in</span> <span class="built_in">range</span>(<span class="number">0</span>, N):</span><br><span class="line">      <span class="keyword">for</span> k_i <span class="keyword">in</span> <span class="built_in">range</span>(k_o, k_o+T_k):</span><br><span class="line">        <span class="keyword">for</span> j_i <span class="keyword">in</span> <span class="built_in">range</span>(j_o, j_o+T_j):</span><br><span class="line">          C[i][j_i] += A[i][k_i] * B[k_i][j_i]</span><br><span class="line"><span class="comment"># 这样，k_i=0,1... 时，C[i_i][j] 始终在 cache 中；i=0,1.. 时，B[k_i][j_i] 也始终在 cache 中</span></span><br></pre></td></tr></table></figure>
 
-<p>至此，走完算法的第一部分流程，来到第二部分：需要分析 <strong>基于新循环是否仍然有可 tile 的部分</strong>。这部分的逻辑是，对于k维度和j维度做的tiling分块，对于最顶层（初始的顶层）i维度产生影响，目前i维度已不是顶层维度。i维度之上的j_o遍历过程中，下一层i的遍历跨度是N，比较大，是难以存入cache中的，因此需要对i也做tiling优化。伪代码如下：</p>
-<figure class="highlight python"><table><tr><td class="code"><pre><span class="line"><span class="comment"># 又因为循环 i 从最外层循环变成了内循环，对于其上层循环 j_o 来说，当 j_o=0,1,...时，A[i][k_i] 是被反复读取的，因此也可以 tile 循环 i</span></span><br><span class="line"><span class="keyword">for</span> i_o <span class="keyword">in</span> <span class="built_in">range</span>(<span class="number">0</span>, N, T_i):</span><br><span class="line">  <span class="keyword">for</span> k_o <span class="keyword">in</span> <span class="built_in">range</span>(<span class="number">0</span>, N, T_k):</span><br><span class="line">    <span class="keyword">for</span> j_o <span class="keyword">in</span> <span class="built_in">range</span>(<span class="number">0</span>, N, T_j):</span><br><span class="line">      <span class="keyword">for</span> i_i <span class="keyword">in</span> <span class="built_in">range</span>(i_o, i_o + T_i):</span><br><span class="line">        <span class="keyword">for</span> k_i <span class="keyword">in</span> <span class="built_in">range</span>(k_o, k_o + T_k):</span><br><span class="line">          <span class="keyword">for</span> j_i <span class="keyword">in</span> <span class="built_in">range</span>(j_o, j_o + T_j):</span><br><span class="line">            C[i_i][j_i] += A[i_i][k_i] * B[k_i][j_i]</span><br><span class="line"><span class="comment"># 注意，内三层循环仍然是按照 i_i,k_i,j_i 的顺序，因此仍然满足 RowMajor 的顺序读取</span></span><br></pre></td></tr></table></figure>
+<h2 id="MLIR-Debug-Practice"><a href="#MLIR-Debug-Practice" class="headerlink" title="MLIR Debug Practice"></a><font color = brown>MLIR Debug Practice</font></h2><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">Legalizing operation : &#x27;vector.transfer_read&#x27;(0x62c0434198a0) &#123;</span><br><span class="line"><span class="meta prompt_">  %</span><span class="language-bash">6 = <span class="string">&quot;vector.transfer_read&quot;</span>(%0, %arg3, %5) &#123;operand_segment_sizes = dense&lt;[1, 1, 1, 0]&gt; : vector&lt;4xi32&gt;, permutation_map = affine_map&lt;(d0) -&gt; (d0)&gt;&#125; : (memref&lt;32xf32&gt;, index, f32) -&gt; vector&lt;8xf32&gt;</span></span><br><span class="line"></span><br><span class="line">  * Fold &#123;</span><br><span class="line">  &#125; -&gt; FAILURE : unable to fold</span><br><span class="line"></span><br><span class="line">  * Pattern : &#x27;vector.transfer_read -&gt; ()&#x27; &#123;</span><br><span class="line">    ** Insert  : &#x27;arith.constant&#x27;(0x62c0433289e0)</span><br><span class="line">    ** Insert  : &#x27;arith.constant&#x27;(0x62c04332a260)</span><br><span class="line">    ** Insert  : &#x27;arith.subi&#x27;(0x62c0432f4b50)</span><br><span class="line">    ** Insert  : &#x27;vector.create_mask&#x27;(0x62c043329e30)</span><br><span class="line"></span><br><span class="line">    //===-------------------------------------------===//</span><br><span class="line">    Legalizing operation : &#x27;vector.transfer_read&#x27;(0x62c0434198a0) &#123;</span><br><span class="line">      // -----// IR Dump After AffineScalarReplacement //----- //</span><br><span class="line"><span class="meta prompt_">%</span><span class="language-bash">10 = <span class="string">&quot;vector.transfer_read&quot;</span>(%0, %arg3, %5, %9) &#123;in_bounds = [<span class="literal">true</span>], operand_segment_sizes = dense&lt;1&gt; : vector&lt;4xi32&gt;, permutation_map = affine_map&lt;(d0) -&gt; (d0)&gt;&#125; : (memref&lt;32xf32&gt;, index, f32, vector&lt;8xi1&gt;) -&gt; vector&lt;8xf32&gt;</span></span><br><span class="line"></span><br><span class="line">      * Fold &#123;</span><br><span class="line">      &#125; -&gt; FAILURE : unable to fold</span><br><span class="line"></span><br><span class="line">      * Pattern : &#x27;vector.transfer_read -&gt; ()&#x27; &#123;</span><br><span class="line">      &#125; -&gt; FAILURE : pattern was already applied</span><br><span class="line"></span><br><span class="line">      * Pattern : &#x27;vector.transfer_read -&gt; ()&#x27; &#123;</span><br><span class="line">        ** Insert  : &#x27;vector.splat&#x27;(0x62c04332a5b0)</span><br><span class="line">        ** Insert  : &#x27;vector.maskedload&#x27;(0x62c04329aad0)</span><br><span class="line">        ** Replace : &#x27;vector.transfer_read&#x27;(0x62c0434198a0)</span><br><span class="line"></span><br><span class="line">        //===-------------------------------------------===//</span><br><span class="line">        Legalizing operation : &#x27;vector.splat&#x27;(0x62c04332a5b0) &#123;</span><br><span class="line">          %10 = &quot;vector.splat&quot;(%5) : (f32) -&gt; vector&lt;8xf32&gt;</span><br><span class="line"></span><br><span class="line">          * Fold &#123;</span><br><span class="line">            ** Insert  : &#x27;arith.constant&#x27;(0x62c043420680)</span><br><span class="line">            ** Replace : &#x27;vector.splat&#x27;(0x62c04332a5b0)</span><br><span class="line"></span><br><span class="line">            //===-------------------------------------------===//</span><br><span class="line">            Legalizing operation : &#x27;arith.constant&#x27;(0x62c043420680) &#123;</span><br><span class="line">              %10 = &quot;arith.constant&quot;() &#123;value = dense&lt;0.000000e+00&gt; : vector&lt;8xf32&gt;&#125; : () -&gt; vector&lt;8xf32&gt;</span><br><span class="line"></span><br><span class="line">              * Fold &#123;</span><br><span class="line">              &#125; -&gt; FAILURE : unable to fold</span><br><span class="line">            &#125; -&gt; FAILURE : no matched legalization pattern</span><br><span class="line">            //===-------------------------------------------===//</span><br><span class="line">          &#125; -&gt; FAILURE : failed to legalize generated constant &#x27;arith.constant&#x27;</span><br><span class="line">        &#125; -&gt; FAILURE : no matched legalization pattern</span><br><span class="line">        //===-------------------------------------------===//</span><br><span class="line">      &#125; -&gt; FAILURE : failed to legalize generated operation &#x27;vector.splat&#x27;(0x000062C04332A5B0)</span><br><span class="line">    &#125; -&gt; FAILURE : pattern failed to match</span><br><span class="line">  &#125; -&gt; FAILURE : no matched legalization pattern</span><br><span class="line">  //===-------------------------------------------===//</span><br><span class="line">&#125; -&gt; FAILURE : failed to legalize operation updated in-place &#x27;vector.transfer_read&#x27;</span><br><span class="line">&#125; -&gt; FAILURE : pattern failed to match</span><br><span class="line"></span><br><span class="line">* Pattern : &#x27;vector.transfer_read -&gt; ()&#x27; &#123;</span><br><span class="line">&#125; -&gt; FAILURE : pattern failed to match</span><br><span class="line">&#125; -&gt; FAILURE : no matched legalization pattern</span><br><span class="line">//===-------------------------------------------===//</span><br></pre></td></tr></table></figure>
 
-<p>至此，完成L1的tiling优化。可以看到，目前我的变换出的代码，在i_i，k_i和j_i维度都已经是tiling分块的。</p>
-<p>结束了？Too Naive！！！:fire:</p>
-<p>现代体系结构（从CPU到GPU到ASIC），均有多层级缓存体系。让我们继续研究一下代码，思考一下如果有L2 cache，该如何继续tiling？目前的矩阵乘运算已经适配L1缓存，可以看到j_o维度的循环，已经是完美缓存的。但是对于k_o循环而言，下一层j_o循环则成了严重的性能瓶颈。j_o循环总步长为N，这之间又是大量的cache miss。这一部分就需要L2缓存来加速存储交互了。继续我们的算法，以k_o维度为新的起点<strong>由内向外</strong>，分块的大小按照L2缓存来，继续一轮迭代，最终的结果：</p>
-<figure class="highlight python"><table><tr><td class="code"><pre><span class="line"><span class="keyword">for</span> j_oo <span class="keyword">in</span> <span class="built_in">range</span>(<span class="number">0</span>, N, T2_j):</span><br><span class="line">  <span class="keyword">for</span> i_o <span class="keyword">in</span> <span class="built_in">range</span>(<span class="number">0</span>, N, T_i):</span><br><span class="line">    <span class="keyword">for</span> k_o <span class="keyword">in</span> <span class="built_in">range</span>(<span class="number">0</span>, N, T_k):</span><br><span class="line">      <span class="keyword">for</span> j_oi <span class="keyword">in</span> <span class="built_in">range</span>(j_oo, j_oo + T2_j, T_j):</span><br><span class="line">        <span class="keyword">for</span> i_i <span class="keyword">in</span> <span class="built_in">range</span>(<span class="number">0</span>, N, T_i):</span><br><span class="line">          <span class="keyword">for</span> k_i <span class="keyword">in</span> <span class="built_in">range</span>(k_o, k_o + T_k):</span><br><span class="line">            <span class="keyword">for</span> j_i <span class="keyword">in</span> <span class="built_in">range</span>(j_oi, j_oi + T_j):</span><br><span class="line">              C[i_i][j_i] += A[i_i][k_i] * B[k_i][j_i]</span><br><span class="line"><span class="comment"># 这样的话，内三层循环 i_i, k_i, j_i （对应的 Tile size 为 T_i, T_j, T_k）放到 L1 Cache 里。</span></span><br><span class="line"><span class="comment"># 外层循环 j_oi （对应Tile size 为 T2_j） 就可以放到更大的 L2 Cache 里。于是便在 L2 里形成了对 C[i_i][j_i] 的复用</span></span><br></pre></td></tr></table></figure>
 
-<p>同理，可以继续向上，做k_o和i_o的分块，不再详细阐述了。</p>
+
+
+
 <h2 id="参考资料"><a href="#参考资料" class="headerlink" title="参考资料"></a><font color = brown>参考资料</font></h2><ol>
-<li><a href="https://zhuanlan.zhihu.com/p/477023757">博客：Loop Tiling优化</a></li>
-<li><a href="https://siboehm.com/articles/22/CUDA-MMM">博客：CUDA手写算子教程</a></li>
-<li><a href="http://arxiv.org/abs/2108.13191">论文：MLIR 优化GEMM算子</a></li>
+<li><a href="https://vscode.js.cn/docs/debugtest/debugging">vscode debug文档</a></li>
 </ol>
 ]]></content>
       <categories>
         <category>编译技术</category>
-        <category>机器学习编译</category>
-        <category>后端</category>
-        <category>运行时</category>
+        <category>mlir</category>
+        <category>debug</category>
       </categories>
       <tags>
-        <tag>机器学习编译器</tag>
-        <tag>后端</tag>
-        <tag>运行时</tag>
+        <tag>mlir</tag>
+        <tag>vscode debug</tag>
       </tags>
-  </entry>
-  <entry>
-    <title>AI编译器后端&amp;运行时</title>
-    <url>/2025/04/16/AI%E7%BC%96%E8%AF%91%E5%99%A8%E5%90%8E%E7%AB%AF-%E8%BF%90%E8%A1%8C%E6%97%B6/</url>
-    <content><![CDATA[<p><img src="/images/image-20250420234716898.png" alt="image-20250420234716898"></p>
-<span id="more"></span>
-
-<blockquote>
-<p>在尝试将pytorch接入aie平台的过程中，发现自己对于AI编译器在机器学习系统中的定位所知甚少。由于先前经验大多只停留在将高级语言转换成硬件相关的ir代码，而忽略了后端以及运行时系统协作方面的知识，遇到瓶颈。因此本博客通过参考机器学习系统书籍，以及目前主流AI编译器的后端和运行时系统的协作，查漏补缺，补全自己的知识盲点。</p>
-</blockquote>
-<h2 id="AI编译器后端和运行时架构"><a href="#AI编译器后端和运行时架构" class="headerlink" title="AI编译器后端和运行时架构"></a><font color = brown>AI编译器后端和运行时架构</font></h2><p>通过参考<a href="https://openmlsys.github.io/chapter_backend_and_runtime/index.html">mlsys open book</a>和<a href="https://zhuanlan.zhihu.com/p/651036523">tensorflow xla解读</a>，对机器学习编译有了新的理解。机器学习编译技术需要与运行时系统相互写作，才能将一个机器学习模型完整的跑在GPU&#x2F;NPU上。下图是AI系统的一个软件栈示意图：</p>
-<img src="/images/image-20250418172339205.png" alt="image-20250418172339205" style="zoom: 80%;" />
-
-<p>上述优化流程，是针对静态图的全图编译运行流程（tensorflow XLA这种动态圈图有一定区别）。按照软件栈层级关系，可以分为编译层和运行时系统层。</p>
-<ul>
-<li>编译层：编译层的输入是整个静态计算图或是部分子图，因此首先需要编译器前端用户代码进行解析翻译得到计算图IR，并对其进行设备信息无关的优化，此时的优化并不考虑程序执行的底层硬件信息。编译器后端的主要职责是对前端下发的IR做进一步的计算图优化，让其更加贴合硬件，并为IR中的计算节点选择在硬件上执行的算子，然后为每个算子的输入输出分配硬件内存，最终生成一个可以在硬件上执行的任务序列。</li>
-<li>运行时系统层：运行时系统设计一般均有一个虚拟机VM用以支持调度和快速部署（IREE架构的VM和Relay VM）。其输入是编译层生成的可在硬件上执行的任务序列，<strong>如果考虑跨硬件部署，则需要考虑使用函数类型擦除技术统一接口</strong>。然后，VM将任务序列转换成硬件设备api和host端代码，最终分别生成可执行。</li>
-</ul>
-<p>后续会详细解读每一层的流程，以及可参考文献。</p>
-<h3 id="编译器后端"><a href="#编译器后端" class="headerlink" title="编译器后端"></a><font color = green>编译器后端</font></h3><h4 id="后端优化定位"><a href="#后端优化定位" class="headerlink" title="后端优化定位"></a>后端优化定位</h4><p>重点参考<a href="https://www.bilibili.com/video/BV1K84y1x7Be?spm_id_from=333.788.videopod.sections&vd_source=7cc24e214309f4db17f1dda017fc6683">zomi编译后端视频</a>。声明：如下内容以及图片slides基本来源于该视频。</p>
-<img src="/images/image-20250502160730282.png" alt="image-20250502160730282" style="zoom:50%;" />
-
-<p>上图是编译后端在整个AI编译框架的位置。大致总结一下前端优化和后端优化的区别：前端优化输入是计算图，关注计算图整体拓扑结构，而不关心算子的具体实现。其优化手段主要有对于算子节点进行融合、消除、化简等操作，是计算图计算和存储开销小。后端优化则专注于算子节点的内部具体实现，针对具体实现使得性能达到最优，重点关心节点的输入，输出内存循环方式和计算的逻辑。</p>
-<h4 id="后端优化干了什么？"><a href="#后端优化干了什么？" class="headerlink" title="后端优化干了什么？"></a>后端优化干了什么？</h4><p><img src="/images/image-20250502173731704.png" alt="image-20250502173731704"></p>
-<p>后端优化主要做了三件事：</p>
-<ul>
-<li><p>低级代码生成</p>
-<p>如上图所示，是TVM的架构流程。Tensor IR是将计算图用张量表示。低级代码生成阶段是将该张量表示进一步降级。</p>
-</li>
-<li><p>后端优化</p>
-<p>底层硬件不同，对于conv等算子的排布优化也会不同。后端优化主要针对各个算子做循环优化排布。</p>
-</li>
-<li><p>代码生成</p>
-<p>针对不同backend生成机器码。在AI编译器中，以GPU为例，一种思路是GPU端直接生成cuda代码，CPU端生成LLVM，并由llvm基础设施编译可执行。另一个思路是生成NVVM IR，交由nvvm进行编译。</p>
-</li>
-</ul>
-<p>所以，后端优化其实本质就是对于算子的编译优化。目前算子编译优化的挑战如下：</p>
-<p><img src="/images/image-20250502174157055.png" alt="image-20250502174157055"></p>
-<p>算子库因此应允而生：</p>
-<p><img src="/images/image-20250502174216690.png" alt="image-20250502174216690"></p>
-<p>算子库能够很好地压榨硬件性能，但是上层模型的变动和底层硬件的变动，算子库无法快速适配这些变化。因此AI编译器和算子库协作开发，由AI编译器提供灵活性，减少一部分算子库开发的人力投入。编译角度的后端优化可以分为两个路线：</p>
-<ul>
-<li>使用机器学习等模型进行auto tuning</li>
-<li>利用数学表达式，做多面体优化</li>
-</ul>
-<p>这两个部分后续会专门开专题来解读。</p>
-<h3 id="运行时系统"><a href="#运行时系统" class="headerlink" title="运行时系统"></a><font color = green>运行时系统</font></h3><p>这一章节关于运行时系统的描述，主要参考<a href="https://www.lei.chat/posts/single-node-ml-runtime-foundation/">Lei chat blog</a>，本章的描述均基于单节点来讨论，服务器等多节点暂不涉及。</p>
-<p>首先，我们需要明确，什么是机器学习系统的runtime system。runtime system的主要工作有两点：</p>
-<ul>
-<li>管理资源（内存资源等）</li>
-<li>调度执行</li>
-</ul>
-<p>根据实际语义，runtime亦有不同。多卡分布式训练场景下，runtime负责将训练任务分配调度到数据中心的不同节点。单节点上，runtime负责派发张量计算到特定的加速器。<strong>本章节关注单节点runtime系统，其一般运行在CPU上来管理资源并调度机器学习任务负载到一个或多个加速器上。</strong></p>
-<h4 id="运行时抽象"><a href="#运行时抽象" class="headerlink" title="运行时抽象"></a>运行时抽象</h4><p>运行时系统给用户提供了三个抽象：</p>
-<ul>
-<li><p>主机设备分离</p>
-<blockquote>
-<p>摘自博客的解释：</p>
-<p><img src="/images/image-20250421103410716.png" alt="image-20250421103410716"></p>
-<p><img src="/images/image-20250421103520060.png" alt="image-20250421103520060"></p>
-</blockquote>
-</li>
-<li><p>虚拟机抽象</p>
-<p>这一部分是我们理解整个runtime的重点，具体的实际例子可以参考<a href="https://github.com/iree-org/iree">IREE </a>和<a href="https://zhuanlan.zhihu.com/p/504066888">tvm runtime</a>设计细节。针对机器学习系统以及我们的cpu加速器协同架构，我们会有如下insights：</p>
-<ul>
-<li>首先我们观察主机设备架构，会发现相比设备端，主机端的系统架构是比较统一的（ARM64， x86_64和RISC-V）。</li>
-<li>观察机器学习的任务，发现机器学习任务一般是<a href="https://llvm.org/doxygen/classllvm_1_1LoopNest.html">完美循环</a>（定义见llvm官方文档）。因此<strong>访存方面用逻辑偏移即可，而非物理指针</strong>。</li>
-<li>机器学习模型部署在端侧，因此轻量化也是一大考量。</li>
-</ul>
-<p>基于上述insights，主流ai编译器均定义一套主机端虚拟指令集和虚拟机来实现调度。计算密集任务放在加速器上，存储资源追踪管理以及维度形状计算等逻辑（适合cpu端计算的逻辑）放在虚拟机上。如下图所示是IREE的虚拟机架构图：</p>
-<p><img src="/images/image-20250421105323107.png" alt="image-20250421105323107"></p>
-<p>上述虚拟机设计，还有一大好处，那就是可以很自然的完成从mlir系统到虚拟机指令ISA的编译转换。因此整个调度控制流程可以自然地通过编译器来控制，进一步提供可优化点。</p>
-</li>
-<li><p>HAL硬件抽象层</p>
-<p>针对边缘&#x2F;客户端设备的多样化硬件生态，最佳实践是基于现代图形&#x2F;计算API（如Vulkan、DirectX 12、Metal）构建硬件抽象层（HAL）。这些API提供低开销、跨平台支持、显式控制等优势，能统一管理不同厂商的GPU&#x2F;加速器（如NVIDIA&#x2F;AMD&#x2F;Apple）。虽然这些API直接使用复杂（如代码冗长），但通过编译器自动生成调用逻辑，可绕过开发难度，同时保留底层控制权。这种设计既能满足高性能需求（通过低层级优化），又能覆盖多平台&#x2F;硬件的兼容性（如Windows&#x2F;iOS&#x2F;Android），为碎片化设备提供统一且高效的计算支持。如下是iree的HAL，VM架构图。</p>
-<p><img src="/images/image-20250421110831028.png" alt="image-20250421110831028"></p>
-</li>
-</ul>
-<p>上述是runtime system的三个抽象，而实际生产中，runtime系统也要充分考虑性能问题：</p>
-<blockquote>
-<p>在GPU资源管理与同步中，核心挑战在于平衡计算吞吐量与系统整体效率。由于GPU内存性能常落后于算力提升，单纯优化单内核代码（如矩阵乘法）难以发挥理论峰值，需避免运行时因频繁创建&#x2F;销毁资源（如缓冲区、同步对象）或跨组件数据拷贝&#x2F;强制等待导致的性能损耗。为此，可借鉴图形应用（如游戏引擎）的成熟实践：<strong>预分配资源池</strong>减少动态开销、<strong>预录异步命令链</strong>最大化GPU并行度、<strong>细粒度同步</strong>基于资源生命周期。这些策略可通过编译器自动化实现（如依赖分析与指令提升）。IREE运行时采用<strong>异步优先</strong>设计，支持跨组件无缝传递缓冲区与同步原语，利用操作系统底层机制（如Linux的dma_fence）避免硬性边界，既保障ML模型的高效执行，又能嵌入复杂应用（如图像处理管线）而不成为性能瓶颈，兼顾性能与系统协同。</p>
-</blockquote>
-<p>上述关于运行时系统的描述，是比较普遍的，下面结合Open MLsys一书，详细解读不同运行时系统的分类。</p>
-<blockquote>
-<p>经过算子选择与内存分配之后，计算任务可以通过运行时完成计算的调度与在硬件上的执行。根据是否将算子编译为计算图，计算的调度可以分为单算子调度与计算图调度两种方式，例如在MindSpore中分别提供了PyNative模式和Graph模式。而根据硬件提供的能力差异，计算图的执行方式又可以分为逐算子下发执行的交互式执行以及将整个计算图或者部分子图一次性下发到硬件的下沉式执行两种模式。                                                                                                                                                                      —- 《Open Mlysy》</p>
-</blockquote>
-<h4 id="单算子调度"><a href="#单算子调度" class="headerlink" title="单算子调度"></a>单算子调度</h4><p>一行行算子line by line的交由python运行时执行，好处是方便debug和看到即时效果，坏处是只能顺序执行，丧失很多并行性，同时也无法支持编译优化。</p>
-<h4 id="计算图调度"><a href="#计算图调度" class="headerlink" title="计算图调度"></a>计算图调度</h4><p>在一个典型的异构计算环境中，主要存在CPU、GPU以及NPU等多种计算设备，因此一张计算图可以由运行在不同设备上的算子组成为异构计算图。</p>
-<p><img src="/images/image-20250418182641748.png" alt="image-20250418182641748"></p>
-<p>所述计算图由如下几类异构硬件对应的算子组成：</p>
-<ul>
-<li><strong>CPU算子</strong>：由C++语言编写实现并在主机上通过CPU执行的算子，CPU计算的性能取决于是否能够充分利用CPU多核心的计算能力。</li>
-<li><strong>GPU算子</strong>：以英伟达GPU芯片为例，通过在主机侧将GPU Kernel逐个下发到GPU设备上，由GPU芯片执行算子的计算逻辑，由于芯片上具备大量的并行执行单元，可以为高度并行的算法提供强大的加速能力。</li>
-<li><strong>NPU算子</strong>：以华为Ascend芯片为例， Ascend是一个高度集成的SoC芯片，NPU的优势是支持将部分或整个计算图下沉到芯片中完成计算，计算过程中不与Host发生交互，因此具备较高的计算性能。</li>
-<li><strong>Python算子</strong>：在执行模式上与CPU算子类似，都是由主机上的CPU执行计算，区别在于计算逻辑是由Python语言的运行时通过Python解释器解释执行。</li>
-</ul>
-<p>一般主流架构均提供了指定算子所在运行设备的能力，此处可以参考mindspore的具体实现。</p>
-<p>完成计算图中算子对应设备的标记以后，计算图已经准备好被调度与执行，根据硬件能力的差异，可以将异构计算图的执行分为三种模式，分别是逐算子交互式执行，整图下沉执行与子图下沉执行。</p>
-<ul>
-<li>交互式执行主要针对CPU和GPU的场景，计算图中的算子按照输入和输出的依赖关系被逐个调度与执行；</li>
-<li>而整图下沉执行模式主要是针对NPU芯片而言，这类芯片主要的优势是能够将整个神经网络的计算图一次性下发到设备上，无需借助主机的CPU能力而独立完成计算图中所有算子的调度与执行，减少了主机和芯片的交互次数，借助NPU的张量加速能力，提高了计算效率和性能；</li>
-<li>子图下沉执行模式是前面两种执行模式的结合，由于计算图自身表达的灵活性，对于复杂场景的计算图在NPU芯片上进行整图下沉执行的效率不一定能达到最优，因此可以将对于NPU芯片执行效率低下的部分分离出来，交给CPU或者GPU等执行效率更高的设备处理，而将部分更适合NPU计算的子图下沉到NPU进行计算，这样可以兼顾性能和灵活性两方面。</li>
-</ul>
-<blockquote>
-<p>虽然在计算图上可以充分表达算子间的并发关系，在实际代码中会产生由于并发而引起的一些不预期的副作用场景</p>
-<img src="/images/image-20250418183157655.png" alt="image-20250418183157655" style="zoom: 50%;" />
-
-<p>如上图所示，虚线是operator之间的隐含依赖关系，但是在计算图中难以表示。因此在实际执行计算图的过程中，会分为交互式下发和下沉式（执行方式区分）。</p>
-</blockquote>
-<h4 id="算子交互执行"><a href="#算子交互执行" class="headerlink" title="算子交互执行"></a>算子交互执行</h4><p>框架的运行时根据计算图中算子的依赖关系，按照某种执行序（例如广度优先序）逐个将算子下发到硬件上执行。我们处理的计算图一般为异构计算图（计算图中的硬件有多种）。解读异构计算图交互执行之前，先解读同构计算图，异构计算图需要先通过子图切分为同构计算图。</p>
-<p>同构计算图有两种执行方式，如下表所示：</p>
-<table>
-<thead>
-<tr>
-<th align="right">执行方式</th>
-<th align="right">串行执行</th>
-<th align="right">并行执行</th>
-</tr>
-</thead>
-<tbody><tr>
-<td align="right">算子执行顺序</td>
-<td align="right">固定</td>
-<td align="right">不固定</td>
-</tr>
-<tr>
-<td align="right">算子执行线程</td>
-<td align="right">单线程</td>
-<td align="right">多线程</td>
-</tr>
-<tr>
-<td align="right">所需执行资源</td>
-<td align="right">较低</td>
-<td align="right">较高</td>
-</tr>
-</tbody></table>
-<p>而对于异构计算图，<font color = red>一般来说计算图的优化都是基于非异构计算图来实现的，要求计算图中的算子为同一设备上的，方便算子间的融合替换等优化操作，因此需要将一张异构计算图切分为多个非异构计算图，这里切分就比较灵活了，可以定义各种切分规则，一般按照产生尽量少的子图的切分规则来切分，尽量将多的同一设备上的算子放在一张子图中。</font>如下图是一种可能的子图切分方式：</p>
-<img src="/images/image-20250418185356799.png" alt="image-20250418185356799" style="zoom:50%;" />
-
-<p>切分出子图后，下一步需要考虑的是子图执行。共可以分为两种策略：</p>
-<ul>
-<li><p><strong>子图拆分执行</strong>：将切分后的多个子图分开执行，即一个子图执行完再执行另一个子图，上一个子图的输出数据会传输给下一个子图的输入数据，并且下一个子图需要将输入数据拷贝为本图的device数据，如Graph_2_GPU需要将Graph_1_CPU的输出数据从CPU拷贝到GPU，反过来Graph_3_CPU需要将Graph2GPU的输出数据从GPU拷贝到CPU，子图之间互相切换执行有一定的开销。</p>
-<img src="/images/image-20250418185513957.png" alt="image-20250418185513957" style="zoom: 50%;" />
-</li>
-<li><p><strong>子图合并执行</strong>：将切分后的多个子图进行合并，合并为一个整体的DAG执行，如 <a href="https://openmlsys.github.io/chapter_backend_and_runtime/compute_schedule_and_execute.html#graph-exec-7">图7.5.12</a>所示，通过算子的设备属性来插入拷贝算子以实现不同设备上的算子数据传输，并且拷贝算子也是进入整图中的，从而形成一个大的整图执行，减少子图之间的切换执行开销。</p>
-<img src="/images/image-20250418185549176.png" alt="image-20250418185549176" style="zoom:50%;" /></li>
-</ul>
-<p>下表中对于这两种执行方式进行了对比：</p>
-<table>
-<thead>
-<tr>
-<th align="right">执行方式</th>
-<th align="right">子图拆分</th>
-<th align="right">子图合并</th>
-</tr>
-</thead>
-<tbody><tr>
-<td align="right">异构数据传输</td>
-<td align="right">子图之间拷贝</td>
-<td align="right">算子之间拷贝</td>
-</tr>
-<tr>
-<td align="right">执行额外开销</td>
-<td align="right">子图切换执行开销</td>
-<td align="right">无</td>
-</tr>
-<tr>
-<td align="right">执行并发粒度</td>
-<td align="right">子图并发</td>
-<td align="right">算子原生并发</td>
-</tr>
-</tbody></table>
-<p>总结一下，主要是并发粒度的区别。<strong>子图切换执行开销是比较大的，因此子图合并是比较普适的做法。</strong></p>
-<blockquote>
-<p>mindspore的异构执行是子图合并，而非异构执行是并行执行，因此为子图合并并行执行（任意计算架构都有两个象限）。</p>
-</blockquote>
-<h4 id="下沉式执行"><a href="#下沉式执行" class="headerlink" title="下沉式执行"></a>下沉式执行</h4><p>下沉式执行是通过专用芯片的SoC架构，将整个或部分计算图一次性调度到芯片上以完成全量数据的计算。</p>
-<h2 id="计算图编译器"><a href="#计算图编译器" class="headerlink" title="计算图编译器"></a><font color = brown>计算图编译器</font></h2><blockquote>
-<p>先前一章节阐述的是目前主流成熟的AI编译器后端和运行时架构，而面向FPGA或是AIE这样的可重构硬件，往往无法直接复用ASIC NPU的编译流程（缺乏成熟的runtime系统）。本章节结合Efficient processing for DNN的chapter6，讲解如何将一个dataflow graph映射到这些硬件上去。</p>
-</blockquote>
-<p><img src="/images/image-20250419141303976.png" alt="image-20250419141303976"></p>
-<p>上图摘自cornell的机器学习硬件课程slides。在众多参考资料中，将dataflow映射到FPGA或是特定NPU（如AIE），被称为Mapping，而不是Compiler。如下引用Efficient processing for DNN一书中的一段话，讲明两者的类比关系：</p>
-<blockquote>
-<p>In conventional computer systems, the compiler translates the program into machine-readable binary codes for execution; in the processing of DNNs, the mapper translates the desired DNN layer computation (i.e., problem specification) along with its shape and size4 into a hardwarecompatible mapping for execution. While the compiler usually optimizes just for performance, the mapper will typically optimize for performance and&#x2F;or energy efficiency.</p>
-<img src="/images/image-20250419154151487.png" alt="image-20250419154151487" style="zoom:50%;" />
-
-<img src="/images/image-20250419154218830.png" alt="image-20250419154218830" style="zoom:50%;" />
-
-<p>总结一下，有如下异同点：</p>
-<ul>
-<li>输入方面，传统编译是程序，而DNN加速器映射是问题特性以及输入的shape。</li>
-<li>Compiler的结果是可执行程序，而mapper是硬件的配置文件。</li>
-<li>需要的硬件信息方面，编译器需要知道处理器的架构和微架构，而mapper需要知道DNN加速器的数据流和约束。</li>
-</ul>
-</blockquote>
-<p><img src="/images/image-20250419141926408.png" alt="image-20250419141926408"></p>
-<p>上图是计算图编译器的一个典型架构。</p>
-<p><img src="/images/image-20250419143546984.png" alt="image-20250419143546984"></p>
-<h2 id="典型编译器解读"><a href="#典型编译器解读" class="headerlink" title="典型编译器解读"></a><font color = brown>典型编译器解读</font></h2><h3 id="TVM-后端架构-Runtime"><a href="#TVM-后端架构-Runtime" class="headerlink" title="TVM 后端架构&amp;Runtime"></a><font color = green>TVM 后端架构&amp;Runtime</font></h3><h4 id="运行时框架图"><a href="#运行时框架图" class="headerlink" title="运行时框架图"></a>运行时框架图</h4><p>TVM编译器的一大优势是支持多硬件平台&#x2F;设备部署，因此其运行时系统设计是重中之重。其运行时系统可以大体拆解为两个部分：</p>
-<ul>
-<li>每个硬件继承自ModuleNode类，利用<a href="https://zhuanlan.zhihu.com/p/363991566">PackedFunc技术</a>将特定device的设备API封装成统一格式的指令（类似bladeDISC等编译器的类型擦除设计）。</li>
-<li>一个Executor调度每一个指令并运行。该Executor分为GraphExecutor（针对静态图）和Relay VM（针对动态图）。</li>
-</ul>
-<p>如下图所示分别是TVM运行时框架和Relay VM示意图：</p>
-<p><img src="/images/image-20250416230058925.png" alt="image-20250416230058925"></p>
-<img src="/images/image-20250416231046705.png" alt="image-20250416231046705" style="zoom: 67%;" />
-
-<h3 id="IREE-runtime设计"><a href="#IREE-runtime设计" class="headerlink" title="IREE runtime设计"></a><font color = green>IREE runtime设计</font></h3><p>这部分内容主要参考<a href="https://drive.google.com/file/d/1ikgOdZxnMz1ExqwrAiuTY9exbe3yMWbB/view">IREE runtime 设计slides</a>。IREE项目整体的设计思路十分完整庞大，设计巧妙，需要单独开一章节讲解。</p>
-<h3 id="BladeDISC后端架构-Runtime"><a href="#BladeDISC后端架构-Runtime" class="headerlink" title="BladeDISC后端架构&amp;Runtime"></a><font color = green>BladeDISC后端架构&amp;Runtime</font></h3><h4 id="BladeDISC的key-feature"><a href="#BladeDISC的key-feature" class="headerlink" title="BladeDISC的key feature"></a>BladeDISC的key feature</h4><blockquote>
-<p><img src="/images/image-20250427220408720.png" alt="image-20250427220408720"></p>
-</blockquote>
-<p>BladeDISC项目在编译后端和runtime上，有许多巧思（动态shape引发的编译和运行时协作代码生成）。具体地参考<a href="https://dl.acm.org/doi/10.1145/3617327">BladeDISC papaer</a>和<a href="https://github.com/alibaba/BladeDISC">BladeDISC github project</a>，以及<a href="https://bladedisc.oss-cn-hangzhou.aliyuncs.com/docs/bladedisc-intro-for-intel.pdf">BladeDISC内部分享</a>。</p>
-<h4 id="后端代码生成"><a href="#后端代码生成" class="headerlink" title="后端代码生成"></a>后端代码生成</h4><blockquote>
-<p>BladeDISC是tensorflow的backend来使用，因此其代码生成是针对融合后的算子做代码生成即可。运行时可以依赖于tensorflow的runtime调度器，launch 代码生成的kernel。</p>
-</blockquote>
-<p>在后端代码生成过程中，由于动态shape问题，主要有如下考虑：</p>
-<ul>
-<li><p>针对存储密集子图，考虑指令重排和重叠来减少存储overhead。由于shape是动态的，传统的unroll操作可以抵消动态shape的部分影响。</p>
-</li>
-<li><p>针对存储密集子图，<strong>多代码生成</strong>和<strong>运行时预测机制</strong>，来确保针对特定shape选择到最合适的生成代码。</p>
-<p><img src="/images/image-20250427212344275.png" alt="image-20250427212344275"></p>
-<p>如上图所示，CPU端在做GPU kernel launch的时候，由于需要运行时speculation，所以会有一定延迟（microsecond），该时间GPU kernel可以overlap掉。多代码生成会考虑如下三个因素：</p>
-<ol>
-<li>向量化版本 or 非向量化版本</li>
-<li>隐藏broadcast删除 or 不删除</li>
-<li>针对行归约操作，one block one row（行少列多，高并行，低tail latency） 或是 one warp one row（行多列少，低调度开销，高吞吐）的选择</li>
-</ol>
-</li>
-<li><p>针对计算密集子图，有如下insight：</p>
-<blockquote>
-<p>计算密集操作后续一般紧跟elementwise操作，称elementwise为epilog。计算密集算子计算量相对更大，内存获取也更多，因此针对这种组合，主要针对计算密集做代码生成策略选择，epilog沿用即可。</p>
-</blockquote>
-<p>计算密集算子的<strong>bottleneck</strong>是动态shape下，不同shape的算子编写性能区别很大，因此编译时做面向不同类型shape多代码生成，运行时预测选择。其流程如图所示：</p>
-<p><img src="/images/image-20250427214740408.png" alt="image-20250427214740408"></p>
-</li>
-</ul>
-<p>​	可以看到，BladeDISC基于CUTLASS构建数据集，训练一个决策树模型，运行时决策出选用哪个生成代码。</p>
-<h4 id="Runtime设计：RAL"><a href="#Runtime设计：RAL" class="headerlink" title="Runtime设计：RAL"></a>Runtime设计：RAL</h4><p><img src="/images/image-20250427215219613.png" alt="image-20250427215219613"></p>
-<p>上图是RAL的完整设计，有如下特点：</p>
-<ul>
-<li>有别于其他AI编译器（TVM和IREE），BladeDISC通过整体代码生成（张量计算生成device代码，运行调度生成主机host代码），减少虚拟机的解释执行开销，同时也增加了编译和运行时协同优化可能。</li>
-<li>前端，tensorflow和pytorch都有对应的IO来接入。后端，每个设备都有抽象，能够支持内存管理，任务调度同步等api。</li>
-<li>不论是主机端还是设备端，最后都依靠llvm来生成对应架构的二进制文件。</li>
-</ul>
-<p>根据阿里PAI团队的slides做进一步理解：</p>
-<blockquote>
-<p><img src="/images/image-20250427220909637.png" alt="image-20250427220909637"></p>
-</blockquote>
-<blockquote>
-<p><img src="/images/image-20250427221352121.png" alt="image-20250427221352121"></p>
-</blockquote>
-<p>上述slides阐述了如何对于编译生成的.exe做runtime，后续会结合代码进一步挖掘。</p>
-<h4 id="整体流程"><a href="#整体流程" class="headerlink" title="整体流程"></a>整体流程</h4><p><img src="/images/image-20250427221149589.png" alt="image-20250427221149589"></p>
-<p>可以清晰看到，分为独立模式和插件模式（深度集成Tensorflow和pytorch框架）。</p>
-<h2 id="References"><a href="#References" class="headerlink" title="References"></a><font color = brown>References</font></h2><ol>
-<li><a href="https://www.iteye.com/blog/rednaxelafx-492667">虚拟机技术解读</a></li>
-<li><a href="https://zhuanlan.zhihu.com/p/504066888">TVM runtime系统讲解</a></li>
-<li><a href="https://abdelfattah-class.github.io/ece5545/">Cornell: Machine learning hardware and system课程</a></li>
-<li><a href="https://drive.google.com/file/d/1ikgOdZxnMz1ExqwrAiuTY9exbe3yMWbB/view">IREE运行时系统设计</a></li>
-</ol>
-]]></content>
-      <categories>
-        <category>编译技术</category>
-        <category>机器学习编译</category>
-        <category>后端</category>
-        <category>运行时</category>
-      </categories>
-      <tags>
-        <tag>机器学习编译器</tag>
-        <tag>后端</tag>
-        <tag>运行时</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>Modern CPP: 条款1</title>
-    <url>/2025/05/09/Modern-CPP-%E6%9D%A1%E6%AC%BE1/</url>
-    <content><![CDATA[]]></content>
   </entry>
   <entry>
     <title>MLIR topic: Vectorization</title>
@@ -1545,6 +1537,11 @@
         <tag>mlir</tag>
         <tag>basics</tag>
       </tags>
+  </entry>
+  <entry>
+    <title>Modern CPP: 条款1</title>
+    <url>/2025/05/09/Modern-CPP-%E6%9D%A1%E6%AC%BE1/</url>
+    <content><![CDATA[]]></content>
   </entry>
   <entry>
     <title>Transform Dialect tutorial1</title>
@@ -1690,6 +1687,44 @@
       </tags>
   </entry>
   <entry>
+    <title>byteir初探：Compiler部分</title>
+    <url>/2025/05/08/byteir%E5%88%9D%E6%8E%A2%EF%BC%9ACompiler%E9%83%A8%E5%88%86/</url>
+    <content><![CDATA[<img src="/images/image-20250508125112166.png" alt="image-20250508125112166" style="zoom:50%;" />
+
+<span id="more"></span>
+
+<h2 id="Compiler部分概览"><a href="#Compiler部分概览" class="headerlink" title="Compiler部分概览"></a><font color = brown>Compiler部分概览</font></h2><p><img src="/images/image-20250508165752639.png" alt="image-20250508165752639"></p>
+<p>ByteIR的compiler部分设计遵循标准的mlir层级转换流程，上图所示是前端，中间compiler和后端runtime的架构图。compiler的输入是MHLO dialect（包含部分ByteIR针对特定算子的扩展），输出是mlir（host code）和ptx（默认的cuda device后端中间形式）。最终输出给到runtime做调度和GPU上执行。如下图所示是compiler的编译优化流水线架构图：</p>
+<pre class="mermaid">graph TD
+    A[Start: hlo-graph-opt] --> B[hlo-fusion-opt]
+    B --> C[linalg-tensor-opt]
+    C --> D[byre-tensor-opt]
+    D --> E[byteir-bufferize-opt]
+    E --> F[linalg-memref-opt]
+    F --> G[scf-opt]
+    G --> H[gpu-opt]
+    H --> I[inline + lccl-to-byre + gpu-launch-func-to-byre]
+    I --> J[set-op-space & set-arg-space]
+    J --> K[byre-opt]
+    K --> L[nvvm-codegenfor device]
+    K --> M[byre-hostfor host]
+    M --> N[remove-module-tag]
+    L --> O[translate_to_ptx]
+    N --> P[write host MLIR / MLIRBC]</pre>
+
+
+
+]]></content>
+      <categories>
+        <category>编译技术</category>
+        <category>机器学习编译</category>
+      </categories>
+      <tags>
+        <tag>机器学习编译器</tag>
+        <tag>mlir</tag>
+      </tags>
+  </entry>
+  <entry>
     <title>minitorch: 自动反向传播</title>
     <url>/2025/04/28/minitorch-%E8%87%AA%E5%8A%A8%E5%8F%8D%E5%90%91%E4%BC%A0%E6%92%AD/</url>
     <content><![CDATA[<p><img src="/images/image-20250428233640749.png" alt="image-20250428233640749"></p>
@@ -1763,44 +1798,6 @@
       <tags>
         <tag>机器学习</tag>
         <tag>机器学习系统</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>byteir初探：Compiler部分</title>
-    <url>/2025/05/08/byteir%E5%88%9D%E6%8E%A2%EF%BC%9ACompiler%E9%83%A8%E5%88%86/</url>
-    <content><![CDATA[<img src="/images/image-20250508125112166.png" alt="image-20250508125112166" style="zoom:50%;" />
-
-<span id="more"></span>
-
-<h2 id="Compiler部分概览"><a href="#Compiler部分概览" class="headerlink" title="Compiler部分概览"></a><font color = brown>Compiler部分概览</font></h2><p><img src="/images/image-20250508165752639.png" alt="image-20250508165752639"></p>
-<p>ByteIR的compiler部分设计遵循标准的mlir层级转换流程，上图所示是前端，中间compiler和后端runtime的架构图。compiler的输入是MHLO dialect（包含部分ByteIR针对特定算子的扩展），输出是mlir（host code）和ptx（默认的cuda device后端中间形式）。最终输出给到runtime做调度和GPU上执行。如下图所示是compiler的编译优化流水线架构图：</p>
-<pre class="mermaid">graph TD
-    A[Start: hlo-graph-opt] --> B[hlo-fusion-opt]
-    B --> C[linalg-tensor-opt]
-    C --> D[byre-tensor-opt]
-    D --> E[byteir-bufferize-opt]
-    E --> F[linalg-memref-opt]
-    F --> G[scf-opt]
-    G --> H[gpu-opt]
-    H --> I[inline + lccl-to-byre + gpu-launch-func-to-byre]
-    I --> J[set-op-space & set-arg-space]
-    J --> K[byre-opt]
-    K --> L[nvvm-codegenfor device]
-    K --> M[byre-hostfor host]
-    M --> N[remove-module-tag]
-    L --> O[translate_to_ptx]
-    N --> P[write host MLIR / MLIRBC]</pre>
-
-
-
-]]></content>
-      <categories>
-        <category>编译技术</category>
-        <category>机器学习编译</category>
-      </categories>
-      <tags>
-        <tag>机器学习编译器</tag>
-        <tag>mlir</tag>
       </tags>
   </entry>
   <entry>
