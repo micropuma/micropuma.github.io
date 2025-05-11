@@ -874,6 +874,80 @@
       </tags>
   </entry>
   <entry>
+    <title>BladeDISC初探</title>
+    <url>/2025/04/01/BladeDISC%E5%88%9D%E6%8E%A2/</url>
+    <content><![CDATA[<p><img src="/images/image-20250401195537142.png" alt="image-20250401195537142"></p>
+<span id="more"></span>
+
+<blockquote>
+<p>在大模型训练推理场景中，一个十分大的瓶颈是动态shape问题。比如nlp领域，处理的句子长短不一，tensor的shape是动态变化的，到runtime才能确定。这给机器学习编译器带来很大的困扰，以XLA为首的sota编译器均是静态shape的，在性能上会有一定损失。BladeDISC是阿里提出的针对动态shape的机器学习编译器，并且经过大量实验和实际生产检验。本文重点关注BladeDISC的构建，pytorch使用方式以及基础架构解读。后续文章会讲解优化流程和论文解读。</p>
+</blockquote>
+<h2 id="源码构建"><a href="#源码构建" class="headerlink" title="源码构建"></a><font color = brown>源码构建</font></h2><h4 id="Build-from-source"><a href="#Build-from-source" class="headerlink" title="Build from source"></a>Build from source</h4><ul>
+<li><p>下载<a href="https://hub.docker.com/r/bladedisc/bladedisc/tags?page=1&name=devel">BladeDisc</a>镜像</p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">docker pull bladedisc/bladedisc:latest-devel-cu118</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>使用cu118版本</li>
+</ul>
+</li>
+<li><p>运行该镜像</p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">docker run --gpus all -it -v $PWD:/disc bladedisc/bladedisc:latest-devel-cu118 bash</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>修改一下<code>pytorch_blade/scripts/build_pytorch_blade.sh</code>里面的<code>TORCH_BLADE_CI_BUILD_TORCH_VERSION</code>。修改为存在的<code>requirements.txt</code>即可。</p>
+<blockquote>
+<p>构建过程中，onnx由于带宽等问题，可能会报error，添加-i <a href="https://pypi.tuna.tsinghua.edu.cn/simple%E6%8C%87%E5%AE%9Apypi%E9%95%9C%E5%83%8F%E5%8D%B3%E5%8F%AF%E3%80%82">https://pypi.tuna.tsinghua.edu.cn/simple指定pypi镜像即可。</a></p>
+</blockquote>
+</li>
+<li><p>pytorch版本构建</p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">cd pytorch_blade &amp;&amp; bash ./scripts/build_pytorch_blade.sh</span><br><span class="line">python setup.py bdist_wheel</span><br><span class="line">pip install ./pytorch_blade/dist/torch_blade-0.2.0+2.0.1.cu118-cp38-cp38-linux_x86_64.whl</span><br></pre></td></tr></table></figure></li>
+</ul>
+<h3 id="错误处理"><a href="#错误处理" class="headerlink" title="错误处理"></a><font color = green>错误处理</font></h3><p>如果报错没有安全git，在docker中用：</p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">git config --global --add safe.directory /disc</span><br></pre></td></tr></table></figure>
+
+<h4 id="quick-install"><a href="#quick-install" class="headerlink" title="quick install"></a>quick install</h4><p>参考<a href="https://github.com/alibaba/BladeDISC/blob/main/docs/install_with_docker.md">docker install</a></p>
+<h2 id="Pytorch部署BERT模型"><a href="#Pytorch部署BERT模型" class="headerlink" title="Pytorch部署BERT模型"></a><font color = brown>Pytorch部署BERT模型</font></h2><h3 id="Hugging-Face模型下载"><a href="#Hugging-Face模型下载" class="headerlink" title="Hugging Face模型下载"></a><font color = green>Hugging Face模型下载</font></h3><ul>
+<li><p>手动下载模型（适合服务器联网不稳定的情况使用）</p>
+<p>找到<a href="https://huggingface.co/nlptown/bert-base-multilingual-uncased-sentiment/tree/main">Bert sentiment inference 模型</a>，主要手动下载如下几个文件：</p>
+<p><img src="/images/image-20250306203839463.png" alt="image-20250306203839463"></p>
+<p>在python代码中使用离线下载的模型：</p>
+<figure class="highlight python"><table><tr><td class="code"><pre><span class="line">model_path = <span class="string">&quot;./model&quot;</span></span><br><span class="line">tokenizer = AutoTokenizer.from_pretrained(model_path)</span><br><span class="line">model = AutoModelForSequenceClassification.from_pretrained(model_path).cuda().<span class="built_in">eval</span>()</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>直接通过transformers 包下载，该下载方式通过huggingface对应模型网页的<code>use this model</code>获取</p>
+<figure class="highlight python"><table><tr><td class="code"><pre><span class="line"><span class="comment"># Load model directly</span></span><br><span class="line"><span class="keyword">from</span> transformers <span class="keyword">import</span> AutoTokenizer, AutoModelForSequenceClassification</span><br><span class="line"></span><br><span class="line">tokenizer = AutoTokenizer.from_pretrained(<span class="string">&quot;nlptown/bert-base-multilingual-uncased-sentiment&quot;</span>)</span><br><span class="line">model = AutoModelForSequenceClassification.from_pretrained(<span class="string">&quot;nlptown/bert-base-multilingual-uncased-sentiment&quot;</span>)</span><br></pre></td></tr></table></figure>
+
+<p>确保环境有transformers包即可</p>
+</li>
+<li><p>通过<code>huggingface-cli</code>下载</p>
+<figure class="highlight python"><table><tr><td class="code"><pre><span class="line">huggingface-cli download nlptown/bert-base-multilingual-uncased-sentiment</span><br></pre></td></tr></table></figure></li>
+</ul>
+<h3 id="做BERT-Inference的testbench"><a href="#做BERT-Inference的testbench" class="headerlink" title="做BERT Inference的testbench"></a><font color = green>做BERT Inference的testbench</font></h3><p>我的测试codes如下：</p>
+<figure class="highlight python"><table><tr><td class="code"><pre><span class="line"><span class="keyword">import</span> torch</span><br><span class="line"><span class="keyword">import</span> torch_blade</span><br><span class="line"><span class="keyword">import</span> time</span><br><span class="line"></span><br><span class="line"><span class="keyword">from</span> transformers <span class="keyword">import</span> (</span><br><span class="line">    pipeline,</span><br><span class="line">    AutoTokenizer,</span><br><span class="line">    AutoModelForSequenceClassification,</span><br><span class="line">    TextClassificationPipeline,</span><br><span class="line">)</span><br><span class="line"></span><br><span class="line"><span class="comment">############################################# download model from huggingface #############################################</span></span><br><span class="line">model_path = <span class="string">&quot;./model&quot;</span></span><br><span class="line"></span><br><span class="line">tokenizer = AutoTokenizer.from_pretrained(model_path)</span><br><span class="line"></span><br><span class="line">model = AutoModelForSequenceClassification.from_pretrained(model_path).cuda().<span class="built_in">eval</span>()</span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">plain_tokenizer</span>(<span class="params">inputs_str, return_tensors</span>):</span><br><span class="line">    inputs = tokenizer(inputs_str, return_tensors=return_tensors, padding=<span class="literal">True</span>)</span><br><span class="line">    inputs = &#123;key: value.cuda() <span class="keyword">for</span> key, value <span class="keyword">in</span> inputs.items()&#125;</span><br><span class="line">    </span><br><span class="line">    <span class="comment"># torch_blade.optimize 不支持 None 作为输入</span></span><br><span class="line">    <span class="keyword">if</span> <span class="string">&quot;token_type_ids&quot;</span> <span class="keyword">in</span> inputs <span class="keyword">and</span> inputs[<span class="string">&quot;token_type_ids&quot;</span>] <span class="keyword">is</span> <span class="literal">None</span>:</span><br><span class="line">        <span class="keyword">del</span> inputs[<span class="string">&quot;token_type_ids&quot;</span>]</span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> (inputs[<span class="string">&#x27;input_ids&#x27;</span>], inputs[<span class="string">&#x27;attention_mask&#x27;</span>], inputs.get(<span class="string">&#x27;token_type_ids&#x27;</span>, <span class="literal">None</span>))</span><br><span class="line"></span><br><span class="line"><span class="keyword">class</span> <span class="title class_">PlainTextClassificationPipeline</span>(<span class="title class_ inherited__">TextClassificationPipeline</span>):</span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">_forward</span>(<span class="params">self, model_inputs</span>):</span><br><span class="line">        <span class="keyword">return</span> <span class="variable language_">self</span>.model(*model_inputs)</span><br><span class="line"></span><br><span class="line">classifier = pipeline(</span><br><span class="line">    <span class="string">&#x27;sentiment-analysis&#x27;</span>,</span><br><span class="line">    model=model,</span><br><span class="line">    tokenizer=plain_tokenizer,</span><br><span class="line">    pipeline_class=PlainTextClassificationPipeline,</span><br><span class="line">    device=<span class="number">0</span></span><br><span class="line">)</span><br><span class="line"></span><br><span class="line">input_strs = [</span><br><span class="line">    <span class="string">&quot;We are very happy to show you the story.&quot;</span>,</span><br><span class="line">    <span class="string">&quot;We hope you don&#x27;t hate it.&quot;</span></span><br><span class="line">]</span><br><span class="line"></span><br><span class="line">results = classifier(input_strs)</span><br><span class="line"></span><br><span class="line"><span class="keyword">for</span> inp_str, result <span class="keyword">in</span> <span class="built_in">zip</span>(input_strs, results):</span><br><span class="line">    <span class="built_in">print</span>(inp_str)</span><br><span class="line">    <span class="built_in">print</span>(<span class="string">f&quot; label: <span class="subst">&#123;result[<span class="string">&#x27;label&#x27;</span>]&#125;</span>, with a score: <span class="subst">&#123;<span class="built_in">round</span>(result[<span class="string">&#x27;score&#x27;</span>], <span class="number">4</span>)&#125;</span>&quot;</span>)</span><br><span class="line"></span><br><span class="line"><span class="comment">############################################# Use BladeDISC for optimization #############################################</span></span><br><span class="line">inputs_str = <span class="string">&quot;Hey, the cat is cute.&quot;</span></span><br><span class="line">inputs = plain_tokenizer(inputs_str, return_tensors=<span class="string">&quot;pt&quot;</span>)</span><br><span class="line"></span><br><span class="line">torch_config = torch_blade.config.Config()</span><br><span class="line">torch_config.enable_mlir_amp = <span class="literal">False</span>  <span class="comment"># disable mix-precision</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># Ensure inputs are properly formatted for optimization</span></span><br><span class="line">model_inputs = <span class="built_in">tuple</span>(i <span class="keyword">for</span> i <span class="keyword">in</span> inputs <span class="keyword">if</span> i <span class="keyword">is</span> <span class="keyword">not</span> <span class="literal">None</span>)</span><br><span class="line"></span><br><span class="line"><span class="keyword">with</span> torch.no_grad(), torch_config:</span><br><span class="line">    optimized_ts = torch_blade.optimize(model, allow_tracing=<span class="literal">True</span>, model_inputs=model_inputs)</span><br><span class="line"></span><br><span class="line"><span class="comment"># Move optimized model to CUDA</span></span><br><span class="line">optimized_ts = optimized_ts.cuda()</span><br><span class="line"></span><br><span class="line"><span class="comment"># Save the optimized TorchScript model</span></span><br><span class="line">torch.jit.save(optimized_ts, <span class="string">&quot;opt.disc.pt&quot;</span>)</span><br><span class="line"></span><br><span class="line"><span class="comment">############################################# testbench #############################################</span></span><br><span class="line"><span class="meta">@torch.no_grad()</span></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">benchmark</span>(<span class="params">model, inputs, num_iters=<span class="number">1000</span></span>):</span><br><span class="line">    <span class="keyword">for</span> _ <span class="keyword">in</span> <span class="built_in">range</span>(<span class="number">10</span>):</span><br><span class="line">        model(*inputs)</span><br><span class="line">    torch.cuda.synchronize()</span><br><span class="line"></span><br><span class="line">    start = time.time()</span><br><span class="line">    <span class="keyword">for</span> _ <span class="keyword">in</span> <span class="built_in">range</span>(num_iters):</span><br><span class="line">        model(*inputs)</span><br><span class="line">    torch.cuda.synchronize()</span><br><span class="line">    end = time.time()</span><br><span class="line">    <span class="keyword">return</span> (end - start) / num_iters * <span class="number">1000.0</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">bench_and_report</span>(<span class="params">input_strs</span>):</span><br><span class="line">    inputs = plain_tokenizer(input_strs, return_tensors=<span class="string">&quot;pt&quot;</span>)</span><br><span class="line">    model_inputs = <span class="built_in">tuple</span>(i <span class="keyword">for</span> i <span class="keyword">in</span> inputs <span class="keyword">if</span> i <span class="keyword">is</span> <span class="keyword">not</span> <span class="literal">None</span>)</span><br><span class="line"></span><br><span class="line">    avg_latency_baseline = benchmark(model, model_inputs)</span><br><span class="line">    avg_latency_bladedisc = benchmark(optimized_ts, model_inputs)</span><br><span class="line"></span><br><span class="line">    <span class="built_in">print</span>(<span class="string">f&quot;Seqlen: <span class="subst">&#123;[<span class="built_in">len</span>(s) <span class="keyword">for</span> s <span class="keyword">in</span> input_strs]&#125;</span>&quot;</span>)</span><br><span class="line">    <span class="built_in">print</span>(<span class="string">f&quot;Baseline: <span class="subst">&#123;avg_latency_baseline:<span class="number">.4</span>f&#125;</span> ms&quot;</span>)</span><br><span class="line">    <span class="built_in">print</span>(<span class="string">f&quot;BladeDISC: <span class="subst">&#123;avg_latency_bladedisc:<span class="number">.4</span>f&#125;</span> ms&quot;</span>)</span><br><span class="line">    <span class="built_in">print</span>(<span class="string">f&quot;BladeDISC speedup: <span class="subst">&#123;avg_latency_baseline / avg_latency_bladedisc:<span class="number">.4</span>f&#125;</span>&quot;</span>)</span><br><span class="line"></span><br><span class="line">input_strs = [</span><br><span class="line">    <span class="string">&quot;We are very happy to show you the story.&quot;</span>,</span><br><span class="line">    <span class="string">&quot;We hope you don&#x27;t hate it.&quot;</span></span><br><span class="line">]</span><br><span class="line"></span><br><span class="line">bench_and_report(input_strs)</span><br></pre></td></tr></table></figure>
+
+<p>上述codes中，BladeDISC的核心如下：</p>
+<figure class="highlight python"><table><tr><td class="code"><pre><span class="line"><span class="keyword">with</span> torch.no_grad(), torch_config:</span><br><span class="line">    optimized_ts = torch_blade.optimize(model, allow_tracing=<span class="literal">True</span>, model_inputs=model_inputs)</span><br></pre></td></tr></table></figure>
+
+<p>通过编译手段，生成优化后的pytorch script，注意：<strong>目前pytorch仅仅支持inference，尚不支持train</strong>。对于<code>HuggingFace</code>模型的pipeline有更深层兴趣的，参考<a href="https://huggingface.co/docs/transformers/quicktour">HuggingFace quick tour</a>。</p>
+<p><img src="F:\LeonBlog\source\images\image-20250427225534818.png" alt="image-20250427225534818"></p>
+<p>可以看到对比pytorch，有1.7倍左右的加速。</p>
+<h3 id="Pytorch-WorkFlow"><a href="#Pytorch-WorkFlow" class="headerlink" title="Pytorch WorkFlow"></a><font color = green>Pytorch WorkFlow</font></h3><p><img src="/images/image-20250311211223452.png" alt="image-20250311211223452"></p>
+<p><img src="/images/image-20250311220823276.png" alt="image-20250311220823276"></p>
+<p>参考<a href="https://github.com/alibaba/BladeDISC/blob/main/docs/developers/bladedisc_torch_overview.md">Torch-Blade教程</a>即可。</p>
+<h2 id="参考资料"><a href="#参考资料" class="headerlink" title="参考资料"></a><font color = brown>参考资料</font></h2><ol>
+<li><a href="https://github.com/alibaba/BladeDISC">BladeDisc github</a></li>
+</ol>
+]]></content>
+      <categories>
+        <category>编译技术</category>
+        <category>机器学习编译</category>
+        <category>动态shape</category>
+      </categories>
+      <tags>
+        <tag>机器学习编译器</tag>
+        <tag>mlir</tag>
+        <tag>动态shape</tag>
+      </tags>
+  </entry>
+  <entry>
     <title>BladeDISC: RAL overview</title>
     <url>/2025/04/29/BladeDISC-RAL-overview/</url>
     <content><![CDATA[<p><img src="/images/image-20250429153010114.png" alt="image-20250429153010114"></p>
@@ -966,80 +1040,6 @@
 <p>注意开启</p>
 <figure class="highlight cpp"><table><tr><td class="code"><pre><span class="line"><span class="comment">// -----// IR Dump After DiscLowerToLibraryCallPass (disc-lower-to-library-call) //----- //</span></span><br><span class="line">func.func @<span class="built_in">main</span>(%arg0: !disc_ral.context) attributes &#123;tf.entry_function = &#123;input_placements = <span class="string">&quot;gpu&quot;</span>, inputs = <span class="string">&quot;input.1_&quot;</span>, output_placements = <span class="string">&quot;gpu&quot;</span>, outputs = <span class="string">&quot;8&quot;</span>&#125;&#125; &#123;</span><br><span class="line">  %<span class="number">0</span> = llvm.mlir.<span class="built_in">constant</span>(<span class="number">0</span> : i32) : i32</span><br><span class="line">  %<span class="literal">false</span> = arith.constant <span class="literal">false</span></span><br><span class="line">  %<span class="literal">true</span> = arith.constant <span class="literal">true</span></span><br><span class="line">  %c1 = arith.constant <span class="number">1</span> : index</span><br><span class="line">  %c4 = arith.constant <span class="number">4</span> : index</span><br><span class="line">  %c10 = arith.constant <span class="number">10</span> : index</span><br><span class="line">  %c0 = arith.constant <span class="number">0</span> : index</span><br><span class="line">  %<span class="number">1</span> = <span class="string">&quot;disc_ral.dispatch&quot;</span>(%arg0, %c0) &#123;backend_config = <span class="string">&quot;&quot;</span>, call_target_name = <span class="string">&quot;ral_recv_input&quot;</span>, device = <span class="string">&quot;cpu&quot;</span>, has_side_effect = <span class="literal">false</span>&#125; : (!disc_ral.context, index) -&gt; memref&lt;?x10xf32, <span class="meta">#gpu.address_space<span class="string">&lt;global&gt;</span>&gt;</span></span><br><span class="line">  %dim = memref.dim %<span class="number">1</span>, %c0 : memref&lt;?x10xf32, <span class="meta">#gpu.address_space<span class="string">&lt;global&gt;</span>&gt;</span></span><br><span class="line">  %alloc = memref.<span class="built_in">alloc</span>() : memref&lt;<span class="number">10</span>x10xf32, <span class="meta">#gpu.address_space<span class="string">&lt;global&gt;</span>&gt;</span></span><br><span class="line">  <span class="string">&quot;lmhlo.constant&quot;</span>(%alloc) &#123;disc.device = <span class="string">&quot;gpu&quot;</span>, value = dense_resource&lt;__elided__&gt; : tensor&lt;<span class="number">10</span>x10xf32&gt;&#125; : (memref&lt;<span class="number">10</span>x10xf32, <span class="meta">#gpu.address_space<span class="string">&lt;global&gt;</span>&gt;) -&gt; ()</span></span><br><span class="line">  %alloc_0 = memref.<span class="built_in">alloc</span>() : memref&lt;<span class="number">10</span>x10xf32, <span class="meta">#gpu.address_space<span class="string">&lt;global&gt;</span>&gt;</span></span><br><span class="line">  <span class="string">&quot;lmhlo.constant&quot;</span>(%alloc_0) &#123;disc.device = <span class="string">&quot;gpu&quot;</span>, value = dense_resource&lt;__elided__&gt; : tensor&lt;<span class="number">10</span>x10xf32&gt;&#125; : (memref&lt;<span class="number">10</span>x10xf32, <span class="meta">#gpu.address_space<span class="string">&lt;global&gt;</span>&gt;) -&gt; ()</span></span><br><span class="line">  %alloc_1 = memref.<span class="built_in">alloc</span>() : memref&lt;<span class="number">10</span>xf32, <span class="meta">#gpu.address_space<span class="string">&lt;global&gt;</span>&gt;</span></span><br><span class="line">  <span class="string">&quot;lmhlo.constant&quot;</span>(%alloc_1) &#123;disc.device = <span class="string">&quot;gpu&quot;</span>, value = dense&lt;[<span class="number">0.186997086</span>, <span class="number">0.235856801</span>, <span class="number">0.217500299</span>, <span class="number">0.25940907</span>, <span class="number">0.109970599</span>, <span class="number">-0.152944937</span>, <span class="number">0.137896746</span>, <span class="number">-0.189537019</span>, <span class="number">0.256005555</span>, <span class="number">0.235299528</span>]&gt; : tensor&lt;<span class="number">10</span>xf32&gt;&#125; : (memref&lt;<span class="number">10</span>xf32, <span class="meta">#gpu.address_space<span class="string">&lt;global&gt;</span>&gt;) -&gt; ()</span></span><br><span class="line">  %alloc_2 = memref.<span class="built_in">alloc</span>() : memref&lt;<span class="number">10</span>xf32, <span class="meta">#gpu.address_space<span class="string">&lt;global&gt;</span>&gt;</span></span><br><span class="line">  <span class="string">&quot;lmhlo.constant&quot;</span>(%alloc_2) &#123;disc.device = <span class="string">&quot;gpu&quot;</span>, value = dense&lt;[<span class="number">0.281509697</span>, <span class="number">-0.0671350583</span>, <span class="number">-0.291665494</span>, <span class="number">0.300998032</span>, <span class="number">-0.304899603</span>, <span class="number">0.23629041</span>, <span class="number">-0.111676671</span>, <span class="number">0.304613203</span>, <span class="number">0.107744612</span>, <span class="number">-0.118951075</span>]&gt; : tensor&lt;<span class="number">10</span>xf32&gt;&#125; : (memref&lt;<span class="number">10</span>xf32, <span class="meta">#gpu.address_space<span class="string">&lt;global&gt;</span>&gt;) -&gt; ()</span></span><br><span class="line">  %<span class="keyword">reinterpret_cast</span> = memref.<span class="keyword">reinterpret_cast</span> %<span class="number">1</span> to offset: [<span class="number">0</span>], sizes: [%dim, <span class="number">10</span>], strides: [<span class="number">10</span>, <span class="number">1</span>] &#123;kDiscSymbolicDimAttr = [@S0, @C10]&#125; : memref&lt;?x10xf32, <span class="meta">#gpu.address_space<span class="string">&lt;global&gt;</span>&gt; to memref<span class="string">&lt;?x10xf32, #gpu.address_space&lt;global&gt;</span>&gt;</span></span><br><span class="line">  %alloc_3 = memref.<span class="built_in">alloc</span>(%dim) &#123;kDiscSymbolicDimAttr = [@S0, @C10]&#125; : memref&lt;?x10xf32, <span class="meta">#gpu.address_space<span class="string">&lt;global&gt;</span>&gt;</span></span><br><span class="line">  %<span class="number">2</span> = llvm.inttoptr %<span class="number">0</span> : i32 to !llvm.ptr&lt;i8&gt;</span><br><span class="line">  <span class="string">&quot;disc_ral.dispatch&quot;</span>(%arg0, %<span class="number">2</span>, %<span class="keyword">reinterpret_cast</span>, %alloc_0, %alloc_3, %<span class="literal">false</span>, %<span class="literal">false</span>, %<span class="literal">true</span>) &#123;backend_config = <span class="string">&quot;&quot;</span>, call_target_name = <span class="string">&quot;ral_gemm&quot;</span>, device = <span class="string">&quot;gpu&quot;</span>, has_side_effect = <span class="literal">false</span>&#125; : (!disc_ral.context, !llvm.ptr&lt;i8&gt;, memref&lt;?x10xf32, <span class="meta">#gpu.address_space<span class="string">&lt;global&gt;</span>&gt;, memref<span class="string">&lt;10x10xf32, #gpu.address_space&lt;global&gt;</span>&gt;, memref<span class="string">&lt;?x10xf32, #gpu.address_space&lt;global&gt;</span>&gt;, i1, i1, i1) -&gt; ()</span></span><br><span class="line">  memref.dealloc %alloc_0 : memref&lt;<span class="number">10</span>x10xf32, <span class="meta">#gpu.address_space<span class="string">&lt;global&gt;</span>&gt;</span></span><br><span class="line">  %alloca = memref.<span class="built_in">alloca</span>() &#123;alignment = <span class="number">64</span> : i64&#125; : memref&lt;<span class="number">2</span>xindex&gt;</span><br><span class="line">  memref.store %dim, %alloca[%c0] : memref&lt;<span class="number">2</span>xindex&gt;</span><br><span class="line">  memref.store %c10, %alloca[%c1] : memref&lt;<span class="number">2</span>xindex&gt;</span><br><span class="line">  %<span class="number">3</span> = arith.muli %dim, %c10 : index</span><br><span class="line">  %<span class="number">4</span> = arith.remui %<span class="number">3</span>, %c4 : index</span><br><span class="line">  %<span class="number">5</span> = arith.cmpi eq, %<span class="number">4</span>, %c0 : index</span><br><span class="line">  %alloc_4 = memref.<span class="built_in">alloc</span>() : memref&lt;f32, <span class="meta">#gpu.address_space<span class="string">&lt;global&gt;</span>&gt;</span></span><br><span class="line">  %alloc_5 = memref.<span class="built_in">alloc</span>(%dim) &#123;kDiscSymbolicDimAttr = [@S0, @C10]&#125; : memref&lt;?x10xf32, <span class="meta">#gpu.address_space<span class="string">&lt;global&gt;</span>&gt;</span></span><br><span class="line">  %alloc_6 = memref.<span class="built_in">alloc</span>(%dim) &#123;kDiscSymbolicDimAttr = [@S0, @C10]&#125; : memref&lt;?x10xf32, <span class="meta">#gpu.address_space<span class="string">&lt;global&gt;</span>&gt;</span></span><br><span class="line">  %alloc_7 = memref.<span class="built_in">alloc</span>(%dim) &#123;kDiscSymbolicDimAttr = [@S0, @C10]&#125; : memref&lt;?x10xf32, <span class="meta">#gpu.address_space<span class="string">&lt;global&gt;</span>&gt;</span></span><br><span class="line">  %alloc_8 = memref.<span class="built_in">alloc</span>(%dim) &#123;kDiscSymbolicDimAttr = [@S0, @C10]&#125; : memref&lt;?x10xf32, <span class="meta">#gpu.address_space<span class="string">&lt;global&gt;</span>&gt;</span></span><br><span class="line">  scf.<span class="keyword">if</span> %<span class="number">5</span> &#123;</span><br><span class="line">    <span class="string">&quot;lmhlo.fusion&quot;</span>() (&#123;</span><br><span class="line">      <span class="string">&quot;lmhlo.constant&quot;</span>(%alloc_4) &#123;disc.device = <span class="string">&quot;gpu&quot;</span>, value = dense&lt;<span class="number">0.000000e+00</span>&gt; : tensor&lt;f32&gt;&#125; : (memref&lt;f32, <span class="meta">#gpu.address_space<span class="string">&lt;global&gt;</span>&gt;) -&gt; ()</span></span><br><span class="line">      <span class="string">&quot;lmhlo.dynamic_broadcast_in_dim&quot;</span>(%alloc_1, %alloca, %alloc_5) &#123;broadcast_dimensions = dense&lt;<span class="number">1</span>&gt; : tensor&lt;<span class="number">1</span>xi64&gt;, disc.device = <span class="string">&quot;gpu&quot;</span>&#125; : (memref&lt;<span class="number">10</span>xf32, <span class="meta">#gpu.address_space<span class="string">&lt;global&gt;</span>&gt;, memref<span class="string">&lt;2xindex&gt;</span>, memref<span class="string">&lt;?x10xf32, #gpu.address_space&lt;global&gt;</span>&gt;) -&gt; ()</span></span><br><span class="line">      <span class="string">&quot;lmhlo.add&quot;</span>(%alloc_3, %alloc_5, %alloc_6) &#123;disc.device = <span class="string">&quot;gpu&quot;</span>&#125; : (memref&lt;?x10xf32, <span class="meta">#gpu.address_space<span class="string">&lt;global&gt;</span>&gt;, memref<span class="string">&lt;?x10xf32, #gpu.address_space&lt;global&gt;</span>&gt;, memref<span class="string">&lt;?x10xf32, #gpu.address_space&lt;global&gt;</span>&gt;) -&gt; ()</span></span><br><span class="line">      <span class="string">&quot;lmhlo.dynamic_broadcast_in_dim&quot;</span>(%alloc_4, %alloca, %alloc_8) &#123;broadcast_dimensions = dense&lt;&gt; : tensor&lt;<span class="number">0</span>xi64&gt;, disc.device = <span class="string">&quot;gpu&quot;</span>&#125; : (memref&lt;f32, <span class="meta">#gpu.address_space<span class="string">&lt;global&gt;</span>&gt;, memref<span class="string">&lt;2xindex&gt;</span>, memref<span class="string">&lt;?x10xf32, #gpu.address_space&lt;global&gt;</span>&gt;) -&gt; ()</span></span><br><span class="line">      <span class="string">&quot;lmhlo.maximum&quot;</span>(%alloc_6, %alloc_8, %alloc_7) &#123;disc.device = <span class="string">&quot;gpu&quot;</span>&#125; : (memref&lt;?x10xf32, <span class="meta">#gpu.address_space<span class="string">&lt;global&gt;</span>&gt;, memref<span class="string">&lt;?x10xf32, #gpu.address_space&lt;global&gt;</span>&gt;, memref<span class="string">&lt;?x10xf32, #gpu.address_space&lt;global&gt;</span>&gt;) -&gt; ()</span></span><br><span class="line">      <span class="string">&quot;lmhlo.terminator&quot;</span>() : () -&gt; ()</span><br><span class="line">    &#125;) &#123;disc.device = <span class="string">&quot;gpu&quot;</span>, disc.fusion.name = <span class="string">&quot;main_kLoop_maximum__5_1_0&quot;</span>, disc.fusion.tag = <span class="string">&quot;Vec4&quot;</span>, disc.fusion_type = <span class="string">&quot;kLoop&quot;</span>, disc_vectorize_or_tile_hint = <span class="number">4</span> : i32&#125; : () -&gt; ()</span><br><span class="line">  &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">    <span class="string">&quot;lmhlo.fusion&quot;</span>() (&#123;</span><br><span class="line">      <span class="string">&quot;lmhlo.constant&quot;</span>(%alloc_4) &#123;disc.device = <span class="string">&quot;gpu&quot;</span>, value = dense&lt;<span class="number">0.000000e+00</span>&gt; : tensor&lt;f32&gt;&#125; : (memref&lt;f32, <span class="meta">#gpu.address_space<span class="string">&lt;global&gt;</span>&gt;) -&gt; ()</span></span><br><span class="line">      <span class="string">&quot;lmhlo.dynamic_broadcast_in_dim&quot;</span>(%alloc_1, %alloca, %alloc_5) &#123;broadcast_dimensions = dense&lt;<span class="number">1</span>&gt; : tensor&lt;<span class="number">1</span>xi64&gt;, disc.device = <span class="string">&quot;gpu&quot;</span>&#125; : (memref&lt;<span class="number">10</span>xf32, <span class="meta">#gpu.address_space<span class="string">&lt;global&gt;</span>&gt;, memref<span class="string">&lt;2xindex&gt;</span>, memref<span class="string">&lt;?x10xf32, #gpu.address_space&lt;global&gt;</span>&gt;) -&gt; ()</span></span><br><span class="line">      <span class="string">&quot;lmhlo.add&quot;</span>(%alloc_3, %alloc_5, %alloc_6) &#123;disc.device = <span class="string">&quot;gpu&quot;</span>&#125; : (memref&lt;?x10xf32, <span class="meta">#gpu.address_space<span class="string">&lt;global&gt;</span>&gt;, memref<span class="string">&lt;?x10xf32, #gpu.address_space&lt;global&gt;</span>&gt;, memref<span class="string">&lt;?x10xf32, #gpu.address_space&lt;global&gt;</span>&gt;) -&gt; ()</span></span><br><span class="line">      <span class="string">&quot;lmhlo.dynamic_broadcast_in_dim&quot;</span>(%alloc_4, %alloca, %alloc_8) &#123;broadcast_dimensions = dense&lt;&gt; : tensor&lt;<span class="number">0</span>xi64&gt;, disc.device = <span class="string">&quot;gpu&quot;</span>&#125; : (memref&lt;f32, <span class="meta">#gpu.address_space<span class="string">&lt;global&gt;</span>&gt;, memref<span class="string">&lt;2xindex&gt;</span>, memref<span class="string">&lt;?x10xf32, #gpu.address_space&lt;global&gt;</span>&gt;) -&gt; ()</span></span><br><span class="line">      <span class="string">&quot;lmhlo.maximum&quot;</span>(%alloc_6, %alloc_8, %alloc_7) &#123;disc.device = <span class="string">&quot;gpu&quot;</span>&#125; : (memref&lt;?x10xf32, <span class="meta">#gpu.address_space<span class="string">&lt;global&gt;</span>&gt;, memref<span class="string">&lt;?x10xf32, #gpu.address_space&lt;global&gt;</span>&gt;, memref<span class="string">&lt;?x10xf32, #gpu.address_space&lt;global&gt;</span>&gt;) -&gt; ()</span></span><br><span class="line">      <span class="string">&quot;lmhlo.terminator&quot;</span>() : () -&gt; ()</span><br><span class="line">    &#125;) &#123;disc.device = <span class="string">&quot;gpu&quot;</span>, disc.fusion.name = <span class="string">&quot;main_kLoop_maximum__5_1_0&quot;</span>, disc.fusion_type = <span class="string">&quot;kLoop&quot;</span>, disc_vectorize_or_tile_hint = <span class="number">1</span> : i32&#125; : () -&gt; ()</span><br><span class="line">  &#125;</span><br><span class="line">  memref.dealloc %alloc_8 : memref&lt;?x10xf32, <span class="meta">#gpu.address_space<span class="string">&lt;global&gt;</span>&gt;</span></span><br><span class="line">  memref.dealloc %alloc_6 : memref&lt;?x10xf32, <span class="meta">#gpu.address_space<span class="string">&lt;global&gt;</span>&gt;</span></span><br><span class="line">  memref.dealloc %alloc_5 : memref&lt;?x10xf32, <span class="meta">#gpu.address_space<span class="string">&lt;global&gt;</span>&gt;</span></span><br><span class="line">  memref.dealloc %alloc_4 : memref&lt;f32, <span class="meta">#gpu.address_space<span class="string">&lt;global&gt;</span>&gt;</span></span><br><span class="line">  memref.dealloc %alloc_3 : memref&lt;?x10xf32, <span class="meta">#gpu.address_space<span class="string">&lt;global&gt;</span>&gt;</span></span><br><span class="line">  memref.dealloc %alloc_1 : memref&lt;<span class="number">10</span>xf32, <span class="meta">#gpu.address_space<span class="string">&lt;global&gt;</span>&gt;</span></span><br><span class="line">  %alloc_9 = memref.<span class="built_in">alloc</span>(%dim) &#123;kDiscSymbolicDimAttr = [@S0, @C10]&#125; : memref&lt;?x10xf32, <span class="meta">#gpu.address_space<span class="string">&lt;global&gt;</span>&gt;</span></span><br><span class="line">  %<span class="number">6</span> = llvm.inttoptr %<span class="number">0</span> : i32 to !llvm.ptr&lt;i8&gt;</span><br><span class="line">  <span class="string">&quot;disc_ral.dispatch&quot;</span>(%arg0, %<span class="number">6</span>, %alloc_7, %alloc, %alloc_9, %<span class="literal">false</span>, %<span class="literal">false</span>, %<span class="literal">true</span>) &#123;backend_config = <span class="string">&quot;&quot;</span>, call_target_name = <span class="string">&quot;ral_gemm&quot;</span>, device = <span class="string">&quot;gpu&quot;</span>, has_side_effect = <span class="literal">false</span>&#125; : (!disc_ral.context, !llvm.ptr&lt;i8&gt;, memref&lt;?x10xf32, <span class="meta">#gpu.address_space<span class="string">&lt;global&gt;</span>&gt;, memref<span class="string">&lt;10x10xf32, #gpu.address_space&lt;global&gt;</span>&gt;, memref<span class="string">&lt;?x10xf32, #gpu.address_space&lt;global&gt;</span>&gt;, i1, i1, i1) -&gt; ()</span></span><br><span class="line">  memref.dealloc %alloc_7 : memref&lt;?x10xf32, <span class="meta">#gpu.address_space<span class="string">&lt;global&gt;</span>&gt;</span></span><br><span class="line">  memref.dealloc %alloc : memref&lt;<span class="number">10</span>x10xf32, <span class="meta">#gpu.address_space<span class="string">&lt;global&gt;</span>&gt;</span></span><br><span class="line">  %alloc_10 = memref.<span class="built_in">alloc</span>() : memref&lt;f32, <span class="meta">#gpu.address_space<span class="string">&lt;global&gt;</span>&gt;</span></span><br><span class="line">  %alloc_11 = memref.<span class="built_in">alloc</span>(%dim) &#123;kDiscSymbolicDimAttr = [@S0, @C10]&#125; : memref&lt;?x10xf32, <span class="meta">#gpu.address_space<span class="string">&lt;global&gt;</span>&gt;</span></span><br><span class="line">  %alloc_12 = memref.<span class="built_in">alloc</span>(%dim) &#123;kDiscSymbolicDimAttr = [@S0, @C10]&#125; : memref&lt;?x10xf32, <span class="meta">#gpu.address_space<span class="string">&lt;global&gt;</span>&gt;</span></span><br><span class="line">  %alloc_13 = memref.<span class="built_in">alloc</span>(%dim) &#123;kDiscSymbolicDimAttr = [@S0, @C10]&#125; : memref&lt;?x10xf32, <span class="meta">#gpu.address_space<span class="string">&lt;global&gt;</span>&gt;</span></span><br><span class="line">  %alloc_14 = memref.<span class="built_in">alloc</span>(%dim) &#123;kDiscSymbolicDimAttr = [@S0, @C10]&#125; : memref&lt;?x10xf32, <span class="meta">#gpu.address_space<span class="string">&lt;global&gt;</span>&gt;</span></span><br><span class="line">  scf.<span class="keyword">if</span> %<span class="number">5</span> &#123;</span><br><span class="line">    <span class="string">&quot;lmhlo.fusion&quot;</span>() (&#123;</span><br><span class="line">      <span class="string">&quot;lmhlo.constant&quot;</span>(%alloc_10) &#123;value = dense&lt;<span class="number">0.000000e+00</span>&gt; : tensor&lt;f32&gt;&#125; : (memref&lt;f32, <span class="meta">#gpu.address_space<span class="string">&lt;global&gt;</span>&gt;) -&gt; ()</span></span><br><span class="line">      <span class="string">&quot;lmhlo.dynamic_broadcast_in_dim&quot;</span>(%alloc_10, %alloca, %alloc_11) &#123;broadcast_dimensions = dense&lt;&gt; : tensor&lt;<span class="number">0</span>xi64&gt;, disc.device = <span class="string">&quot;gpu&quot;</span>&#125; : (memref&lt;f32, <span class="meta">#gpu.address_space<span class="string">&lt;global&gt;</span>&gt;, memref<span class="string">&lt;2xindex&gt;</span>, memref<span class="string">&lt;?x10xf32, #gpu.address_space&lt;global&gt;</span>&gt;) -&gt; ()</span></span><br><span class="line">      <span class="string">&quot;lmhlo.dynamic_broadcast_in_dim&quot;</span>(%alloc_2, %alloca, %alloc_12) &#123;broadcast_dimensions = dense&lt;<span class="number">1</span>&gt; : tensor&lt;<span class="number">1</span>xi64&gt;, disc.device = <span class="string">&quot;gpu&quot;</span>&#125; : (memref&lt;<span class="number">10</span>xf32, <span class="meta">#gpu.address_space<span class="string">&lt;global&gt;</span>&gt;, memref<span class="string">&lt;2xindex&gt;</span>, memref<span class="string">&lt;?x10xf32, #gpu.address_space&lt;global&gt;</span>&gt;) -&gt; ()</span></span><br><span class="line">      <span class="string">&quot;lmhlo.add&quot;</span>(%alloc_9, %alloc_12, %alloc_13) &#123;disc.device = <span class="string">&quot;gpu&quot;</span>&#125; : (memref&lt;?x10xf32, <span class="meta">#gpu.address_space<span class="string">&lt;global&gt;</span>&gt;, memref<span class="string">&lt;?x10xf32, #gpu.address_space&lt;global&gt;</span>&gt;, memref<span class="string">&lt;?x10xf32, #gpu.address_space&lt;global&gt;</span>&gt;) -&gt; ()</span></span><br><span class="line">      <span class="string">&quot;lmhlo.maximum&quot;</span>(%alloc_13, %alloc_11, %alloc_14) &#123;disc.device = <span class="string">&quot;gpu&quot;</span>&#125; : (memref&lt;?x10xf32, <span class="meta">#gpu.address_space<span class="string">&lt;global&gt;</span>&gt;, memref<span class="string">&lt;?x10xf32, #gpu.address_space&lt;global&gt;</span>&gt;, memref<span class="string">&lt;?x10xf32, #gpu.address_space&lt;global&gt;</span>&gt;) -&gt; ()</span></span><br><span class="line">      <span class="string">&quot;lmhlo.terminator&quot;</span>() : () -&gt; ()</span><br><span class="line">    &#125;) &#123;disc.device = <span class="string">&quot;gpu&quot;</span>, disc.fusion.name = <span class="string">&quot;main_kLoop_maximum__5_1_1&quot;</span>, disc.fusion.tag = <span class="string">&quot;Vec4&quot;</span>, disc.fusion_type = <span class="string">&quot;kLoop&quot;</span>, disc_vectorize_or_tile_hint = <span class="number">4</span> : i32&#125; : () -&gt; ()</span><br><span class="line">  &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">    <span class="string">&quot;lmhlo.fusion&quot;</span>() (&#123;</span><br><span class="line">      <span class="string">&quot;lmhlo.constant&quot;</span>(%alloc_10) &#123;value = dense&lt;<span class="number">0.000000e+00</span>&gt; : tensor&lt;f32&gt;&#125; : (memref&lt;f32, <span class="meta">#gpu.address_space<span class="string">&lt;global&gt;</span>&gt;) -&gt; ()</span></span><br><span class="line">      <span class="string">&quot;lmhlo.dynamic_broadcast_in_dim&quot;</span>(%alloc_10, %alloca, %alloc_11) &#123;broadcast_dimensions = dense&lt;&gt; : tensor&lt;<span class="number">0</span>xi64&gt;, disc.device = <span class="string">&quot;gpu&quot;</span>&#125; : (memref&lt;f32, <span class="meta">#gpu.address_space<span class="string">&lt;global&gt;</span>&gt;, memref<span class="string">&lt;2xindex&gt;</span>, memref<span class="string">&lt;?x10xf32, #gpu.address_space&lt;global&gt;</span>&gt;) -&gt; ()</span></span><br><span class="line">      <span class="string">&quot;lmhlo.dynamic_broadcast_in_dim&quot;</span>(%alloc_2, %alloca, %alloc_12) &#123;broadcast_dimensions = dense&lt;<span class="number">1</span>&gt; : tensor&lt;<span class="number">1</span>xi64&gt;, disc.device = <span class="string">&quot;gpu&quot;</span>&#125; : (memref&lt;<span class="number">10</span>xf32, <span class="meta">#gpu.address_space<span class="string">&lt;global&gt;</span>&gt;, memref<span class="string">&lt;2xindex&gt;</span>, memref<span class="string">&lt;?x10xf32, #gpu.address_space&lt;global&gt;</span>&gt;) -&gt; ()</span></span><br><span class="line">      <span class="string">&quot;lmhlo.add&quot;</span>(%alloc_9, %alloc_12, %alloc_13) &#123;disc.device = <span class="string">&quot;gpu&quot;</span>&#125; : (memref&lt;?x10xf32, <span class="meta">#gpu.address_space<span class="string">&lt;global&gt;</span>&gt;, memref<span class="string">&lt;?x10xf32, #gpu.address_space&lt;global&gt;</span>&gt;, memref<span class="string">&lt;?x10xf32, #gpu.address_space&lt;global&gt;</span>&gt;) -&gt; ()</span></span><br><span class="line">      <span class="string">&quot;lmhlo.maximum&quot;</span>(%alloc_13, %alloc_11, %alloc_14) &#123;disc.device = <span class="string">&quot;gpu&quot;</span>&#125; : (memref&lt;?x10xf32, <span class="meta">#gpu.address_space<span class="string">&lt;global&gt;</span>&gt;, memref<span class="string">&lt;?x10xf32, #gpu.address_space&lt;global&gt;</span>&gt;, memref<span class="string">&lt;?x10xf32, #gpu.address_space&lt;global&gt;</span>&gt;) -&gt; ()</span></span><br><span class="line">      <span class="string">&quot;lmhlo.terminator&quot;</span>() : () -&gt; ()</span><br><span class="line">    &#125;) &#123;disc.device = <span class="string">&quot;gpu&quot;</span>, disc.fusion.name = <span class="string">&quot;main_kLoop_maximum__5_1_1&quot;</span>, disc.fusion_type = <span class="string">&quot;kLoop&quot;</span>, disc_vectorize_or_tile_hint = <span class="number">1</span> : i32&#125; : () -&gt; ()</span><br><span class="line">  &#125;</span><br><span class="line">  memref.dealloc %alloc_13 : memref&lt;?x10xf32, <span class="meta">#gpu.address_space<span class="string">&lt;global&gt;</span>&gt;</span></span><br><span class="line">  memref.dealloc %alloc_12 : memref&lt;?x10xf32, <span class="meta">#gpu.address_space<span class="string">&lt;global&gt;</span>&gt;</span></span><br><span class="line">  memref.dealloc %alloc_11 : memref&lt;?x10xf32, <span class="meta">#gpu.address_space<span class="string">&lt;global&gt;</span>&gt;</span></span><br><span class="line">  memref.dealloc %alloc_10 : memref&lt;f32, <span class="meta">#gpu.address_space<span class="string">&lt;global&gt;</span>&gt;</span></span><br><span class="line">  memref.dealloc %alloc_9 : memref&lt;?x10xf32, <span class="meta">#gpu.address_space<span class="string">&lt;global&gt;</span>&gt;</span></span><br><span class="line">  memref.dealloc %alloc_2 : memref&lt;<span class="number">10</span>xf32, <span class="meta">#gpu.address_space<span class="string">&lt;global&gt;</span>&gt;</span></span><br><span class="line">  <span class="string">&quot;disc_ral.dispatch&quot;</span>(%arg0, %c0, %alloc_14) &#123;backend_config = <span class="string">&quot;&quot;</span>, call_target_name = <span class="string">&quot;ral_send_output&quot;</span>, device = <span class="string">&quot;cpu&quot;</span>, has_side_effect = <span class="literal">false</span>&#125; : (!disc_ral.context, index, memref&lt;?x10xf32, <span class="meta">#gpu.address_space<span class="string">&lt;global&gt;</span>&gt;) -&gt; ()</span></span><br><span class="line">  <span class="keyword">return</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 
-]]></content>
-      <categories>
-        <category>编译技术</category>
-        <category>机器学习编译</category>
-        <category>动态shape</category>
-      </categories>
-      <tags>
-        <tag>机器学习编译器</tag>
-        <tag>mlir</tag>
-        <tag>动态shape</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>BladeDISC初探</title>
-    <url>/2025/04/01/BladeDISC%E5%88%9D%E6%8E%A2/</url>
-    <content><![CDATA[<p><img src="/images/image-20250401195537142.png" alt="image-20250401195537142"></p>
-<span id="more"></span>
-
-<blockquote>
-<p>在大模型训练推理场景中，一个十分大的瓶颈是动态shape问题。比如nlp领域，处理的句子长短不一，tensor的shape是动态变化的，到runtime才能确定。这给机器学习编译器带来很大的困扰，以XLA为首的sota编译器均是静态shape的，在性能上会有一定损失。BladeDISC是阿里提出的针对动态shape的机器学习编译器，并且经过大量实验和实际生产检验。本文重点关注BladeDISC的构建，pytorch使用方式以及基础架构解读。后续文章会讲解优化流程和论文解读。</p>
-</blockquote>
-<h2 id="源码构建"><a href="#源码构建" class="headerlink" title="源码构建"></a><font color = brown>源码构建</font></h2><h4 id="Build-from-source"><a href="#Build-from-source" class="headerlink" title="Build from source"></a>Build from source</h4><ul>
-<li><p>下载<a href="https://hub.docker.com/r/bladedisc/bladedisc/tags?page=1&name=devel">BladeDisc</a>镜像</p>
-<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">docker pull bladedisc/bladedisc:latest-devel-cu118</span><br></pre></td></tr></table></figure>
-
-<ul>
-<li>使用cu118版本</li>
-</ul>
-</li>
-<li><p>运行该镜像</p>
-<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">docker run --gpus all -it -v $PWD:/disc bladedisc/bladedisc:latest-devel-cu118 bash</span><br></pre></td></tr></table></figure>
-</li>
-<li><p>修改一下<code>pytorch_blade/scripts/build_pytorch_blade.sh</code>里面的<code>TORCH_BLADE_CI_BUILD_TORCH_VERSION</code>。修改为存在的<code>requirements.txt</code>即可。</p>
-<blockquote>
-<p>构建过程中，onnx由于带宽等问题，可能会报error，添加-i <a href="https://pypi.tuna.tsinghua.edu.cn/simple%E6%8C%87%E5%AE%9Apypi%E9%95%9C%E5%83%8F%E5%8D%B3%E5%8F%AF%E3%80%82">https://pypi.tuna.tsinghua.edu.cn/simple指定pypi镜像即可。</a></p>
-</blockquote>
-</li>
-<li><p>pytorch版本构建</p>
-<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">cd pytorch_blade &amp;&amp; bash ./scripts/build_pytorch_blade.sh</span><br><span class="line">python setup.py bdist_wheel</span><br><span class="line">pip install ./pytorch_blade/dist/torch_blade-0.2.0+2.0.1.cu118-cp38-cp38-linux_x86_64.whl</span><br></pre></td></tr></table></figure></li>
-</ul>
-<h3 id="错误处理"><a href="#错误处理" class="headerlink" title="错误处理"></a><font color = green>错误处理</font></h3><p>如果报错没有安全git，在docker中用：</p>
-<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">git config --global --add safe.directory /disc</span><br></pre></td></tr></table></figure>
-
-<h4 id="quick-install"><a href="#quick-install" class="headerlink" title="quick install"></a>quick install</h4><p>参考<a href="https://github.com/alibaba/BladeDISC/blob/main/docs/install_with_docker.md">docker install</a></p>
-<h2 id="Pytorch部署BERT模型"><a href="#Pytorch部署BERT模型" class="headerlink" title="Pytorch部署BERT模型"></a><font color = brown>Pytorch部署BERT模型</font></h2><h3 id="Hugging-Face模型下载"><a href="#Hugging-Face模型下载" class="headerlink" title="Hugging Face模型下载"></a><font color = green>Hugging Face模型下载</font></h3><ul>
-<li><p>手动下载模型（适合服务器联网不稳定的情况使用）</p>
-<p>找到<a href="https://huggingface.co/nlptown/bert-base-multilingual-uncased-sentiment/tree/main">Bert sentiment inference 模型</a>，主要手动下载如下几个文件：</p>
-<p><img src="/images/image-20250306203839463.png" alt="image-20250306203839463"></p>
-<p>在python代码中使用离线下载的模型：</p>
-<figure class="highlight python"><table><tr><td class="code"><pre><span class="line">model_path = <span class="string">&quot;./model&quot;</span></span><br><span class="line">tokenizer = AutoTokenizer.from_pretrained(model_path)</span><br><span class="line">model = AutoModelForSequenceClassification.from_pretrained(model_path).cuda().<span class="built_in">eval</span>()</span><br></pre></td></tr></table></figure>
-</li>
-<li><p>直接通过transformers 包下载，该下载方式通过huggingface对应模型网页的<code>use this model</code>获取</p>
-<figure class="highlight python"><table><tr><td class="code"><pre><span class="line"><span class="comment"># Load model directly</span></span><br><span class="line"><span class="keyword">from</span> transformers <span class="keyword">import</span> AutoTokenizer, AutoModelForSequenceClassification</span><br><span class="line"></span><br><span class="line">tokenizer = AutoTokenizer.from_pretrained(<span class="string">&quot;nlptown/bert-base-multilingual-uncased-sentiment&quot;</span>)</span><br><span class="line">model = AutoModelForSequenceClassification.from_pretrained(<span class="string">&quot;nlptown/bert-base-multilingual-uncased-sentiment&quot;</span>)</span><br></pre></td></tr></table></figure>
-
-<p>确保环境有transformers包即可</p>
-</li>
-<li><p>通过<code>huggingface-cli</code>下载</p>
-<figure class="highlight python"><table><tr><td class="code"><pre><span class="line">huggingface-cli download nlptown/bert-base-multilingual-uncased-sentiment</span><br></pre></td></tr></table></figure></li>
-</ul>
-<h3 id="做BERT-Inference的testbench"><a href="#做BERT-Inference的testbench" class="headerlink" title="做BERT Inference的testbench"></a><font color = green>做BERT Inference的testbench</font></h3><p>我的测试codes如下：</p>
-<figure class="highlight python"><table><tr><td class="code"><pre><span class="line"><span class="keyword">import</span> torch</span><br><span class="line"><span class="keyword">import</span> torch_blade</span><br><span class="line"><span class="keyword">import</span> time</span><br><span class="line"></span><br><span class="line"><span class="keyword">from</span> transformers <span class="keyword">import</span> (</span><br><span class="line">    pipeline,</span><br><span class="line">    AutoTokenizer,</span><br><span class="line">    AutoModelForSequenceClassification,</span><br><span class="line">    TextClassificationPipeline,</span><br><span class="line">)</span><br><span class="line"></span><br><span class="line"><span class="comment">############################################# download model from huggingface #############################################</span></span><br><span class="line">model_path = <span class="string">&quot;./model&quot;</span></span><br><span class="line"></span><br><span class="line">tokenizer = AutoTokenizer.from_pretrained(model_path)</span><br><span class="line"></span><br><span class="line">model = AutoModelForSequenceClassification.from_pretrained(model_path).cuda().<span class="built_in">eval</span>()</span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">plain_tokenizer</span>(<span class="params">inputs_str, return_tensors</span>):</span><br><span class="line">    inputs = tokenizer(inputs_str, return_tensors=return_tensors, padding=<span class="literal">True</span>)</span><br><span class="line">    inputs = &#123;key: value.cuda() <span class="keyword">for</span> key, value <span class="keyword">in</span> inputs.items()&#125;</span><br><span class="line">    </span><br><span class="line">    <span class="comment"># torch_blade.optimize 不支持 None 作为输入</span></span><br><span class="line">    <span class="keyword">if</span> <span class="string">&quot;token_type_ids&quot;</span> <span class="keyword">in</span> inputs <span class="keyword">and</span> inputs[<span class="string">&quot;token_type_ids&quot;</span>] <span class="keyword">is</span> <span class="literal">None</span>:</span><br><span class="line">        <span class="keyword">del</span> inputs[<span class="string">&quot;token_type_ids&quot;</span>]</span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> (inputs[<span class="string">&#x27;input_ids&#x27;</span>], inputs[<span class="string">&#x27;attention_mask&#x27;</span>], inputs.get(<span class="string">&#x27;token_type_ids&#x27;</span>, <span class="literal">None</span>))</span><br><span class="line"></span><br><span class="line"><span class="keyword">class</span> <span class="title class_">PlainTextClassificationPipeline</span>(<span class="title class_ inherited__">TextClassificationPipeline</span>):</span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">_forward</span>(<span class="params">self, model_inputs</span>):</span><br><span class="line">        <span class="keyword">return</span> <span class="variable language_">self</span>.model(*model_inputs)</span><br><span class="line"></span><br><span class="line">classifier = pipeline(</span><br><span class="line">    <span class="string">&#x27;sentiment-analysis&#x27;</span>,</span><br><span class="line">    model=model,</span><br><span class="line">    tokenizer=plain_tokenizer,</span><br><span class="line">    pipeline_class=PlainTextClassificationPipeline,</span><br><span class="line">    device=<span class="number">0</span></span><br><span class="line">)</span><br><span class="line"></span><br><span class="line">input_strs = [</span><br><span class="line">    <span class="string">&quot;We are very happy to show you the story.&quot;</span>,</span><br><span class="line">    <span class="string">&quot;We hope you don&#x27;t hate it.&quot;</span></span><br><span class="line">]</span><br><span class="line"></span><br><span class="line">results = classifier(input_strs)</span><br><span class="line"></span><br><span class="line"><span class="keyword">for</span> inp_str, result <span class="keyword">in</span> <span class="built_in">zip</span>(input_strs, results):</span><br><span class="line">    <span class="built_in">print</span>(inp_str)</span><br><span class="line">    <span class="built_in">print</span>(<span class="string">f&quot; label: <span class="subst">&#123;result[<span class="string">&#x27;label&#x27;</span>]&#125;</span>, with a score: <span class="subst">&#123;<span class="built_in">round</span>(result[<span class="string">&#x27;score&#x27;</span>], <span class="number">4</span>)&#125;</span>&quot;</span>)</span><br><span class="line"></span><br><span class="line"><span class="comment">############################################# Use BladeDISC for optimization #############################################</span></span><br><span class="line">inputs_str = <span class="string">&quot;Hey, the cat is cute.&quot;</span></span><br><span class="line">inputs = plain_tokenizer(inputs_str, return_tensors=<span class="string">&quot;pt&quot;</span>)</span><br><span class="line"></span><br><span class="line">torch_config = torch_blade.config.Config()</span><br><span class="line">torch_config.enable_mlir_amp = <span class="literal">False</span>  <span class="comment"># disable mix-precision</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># Ensure inputs are properly formatted for optimization</span></span><br><span class="line">model_inputs = <span class="built_in">tuple</span>(i <span class="keyword">for</span> i <span class="keyword">in</span> inputs <span class="keyword">if</span> i <span class="keyword">is</span> <span class="keyword">not</span> <span class="literal">None</span>)</span><br><span class="line"></span><br><span class="line"><span class="keyword">with</span> torch.no_grad(), torch_config:</span><br><span class="line">    optimized_ts = torch_blade.optimize(model, allow_tracing=<span class="literal">True</span>, model_inputs=model_inputs)</span><br><span class="line"></span><br><span class="line"><span class="comment"># Move optimized model to CUDA</span></span><br><span class="line">optimized_ts = optimized_ts.cuda()</span><br><span class="line"></span><br><span class="line"><span class="comment"># Save the optimized TorchScript model</span></span><br><span class="line">torch.jit.save(optimized_ts, <span class="string">&quot;opt.disc.pt&quot;</span>)</span><br><span class="line"></span><br><span class="line"><span class="comment">############################################# testbench #############################################</span></span><br><span class="line"><span class="meta">@torch.no_grad()</span></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">benchmark</span>(<span class="params">model, inputs, num_iters=<span class="number">1000</span></span>):</span><br><span class="line">    <span class="keyword">for</span> _ <span class="keyword">in</span> <span class="built_in">range</span>(<span class="number">10</span>):</span><br><span class="line">        model(*inputs)</span><br><span class="line">    torch.cuda.synchronize()</span><br><span class="line"></span><br><span class="line">    start = time.time()</span><br><span class="line">    <span class="keyword">for</span> _ <span class="keyword">in</span> <span class="built_in">range</span>(num_iters):</span><br><span class="line">        model(*inputs)</span><br><span class="line">    torch.cuda.synchronize()</span><br><span class="line">    end = time.time()</span><br><span class="line">    <span class="keyword">return</span> (end - start) / num_iters * <span class="number">1000.0</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">bench_and_report</span>(<span class="params">input_strs</span>):</span><br><span class="line">    inputs = plain_tokenizer(input_strs, return_tensors=<span class="string">&quot;pt&quot;</span>)</span><br><span class="line">    model_inputs = <span class="built_in">tuple</span>(i <span class="keyword">for</span> i <span class="keyword">in</span> inputs <span class="keyword">if</span> i <span class="keyword">is</span> <span class="keyword">not</span> <span class="literal">None</span>)</span><br><span class="line"></span><br><span class="line">    avg_latency_baseline = benchmark(model, model_inputs)</span><br><span class="line">    avg_latency_bladedisc = benchmark(optimized_ts, model_inputs)</span><br><span class="line"></span><br><span class="line">    <span class="built_in">print</span>(<span class="string">f&quot;Seqlen: <span class="subst">&#123;[<span class="built_in">len</span>(s) <span class="keyword">for</span> s <span class="keyword">in</span> input_strs]&#125;</span>&quot;</span>)</span><br><span class="line">    <span class="built_in">print</span>(<span class="string">f&quot;Baseline: <span class="subst">&#123;avg_latency_baseline:<span class="number">.4</span>f&#125;</span> ms&quot;</span>)</span><br><span class="line">    <span class="built_in">print</span>(<span class="string">f&quot;BladeDISC: <span class="subst">&#123;avg_latency_bladedisc:<span class="number">.4</span>f&#125;</span> ms&quot;</span>)</span><br><span class="line">    <span class="built_in">print</span>(<span class="string">f&quot;BladeDISC speedup: <span class="subst">&#123;avg_latency_baseline / avg_latency_bladedisc:<span class="number">.4</span>f&#125;</span>&quot;</span>)</span><br><span class="line"></span><br><span class="line">input_strs = [</span><br><span class="line">    <span class="string">&quot;We are very happy to show you the story.&quot;</span>,</span><br><span class="line">    <span class="string">&quot;We hope you don&#x27;t hate it.&quot;</span></span><br><span class="line">]</span><br><span class="line"></span><br><span class="line">bench_and_report(input_strs)</span><br></pre></td></tr></table></figure>
-
-<p>上述codes中，BladeDISC的核心如下：</p>
-<figure class="highlight python"><table><tr><td class="code"><pre><span class="line"><span class="keyword">with</span> torch.no_grad(), torch_config:</span><br><span class="line">    optimized_ts = torch_blade.optimize(model, allow_tracing=<span class="literal">True</span>, model_inputs=model_inputs)</span><br></pre></td></tr></table></figure>
-
-<p>通过编译手段，生成优化后的pytorch script，注意：<strong>目前pytorch仅仅支持inference，尚不支持train</strong>。对于<code>HuggingFace</code>模型的pipeline有更深层兴趣的，参考<a href="https://huggingface.co/docs/transformers/quicktour">HuggingFace quick tour</a>。</p>
-<p><img src="F:\LeonBlog\source\images\image-20250427225534818.png" alt="image-20250427225534818"></p>
-<p>可以看到对比pytorch，有1.7倍左右的加速。</p>
-<h3 id="Pytorch-WorkFlow"><a href="#Pytorch-WorkFlow" class="headerlink" title="Pytorch WorkFlow"></a><font color = green>Pytorch WorkFlow</font></h3><p><img src="/images/image-20250311211223452.png" alt="image-20250311211223452"></p>
-<p><img src="/images/image-20250311220823276.png" alt="image-20250311220823276"></p>
-<p>参考<a href="https://github.com/alibaba/BladeDISC/blob/main/docs/developers/bladedisc_torch_overview.md">Torch-Blade教程</a>即可。</p>
-<h2 id="参考资料"><a href="#参考资料" class="headerlink" title="参考资料"></a><font color = brown>参考资料</font></h2><ol>
-<li><a href="https://github.com/alibaba/BladeDISC">BladeDisc github</a></li>
-</ol>
 ]]></content>
       <categories>
         <category>编译技术</category>
@@ -1168,6 +1168,149 @@
       <tags>
         <tag>mlir</tag>
         <tag>basics</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>GPU 后端优化（一）</title>
+    <url>/2025/05/11/GPU-%E5%90%8E%E7%AB%AF%E4%BC%98%E5%8C%96%EF%BC%88%E4%B8%80%EF%BC%89/</url>
+    <content><![CDATA[<p><img src="F:\LeonBlog\source\images\image-20250511230828794.png" alt="image-20250511230828794"></p>
+<span id="more"></span>
+
+<blockquote>
+<p>为什么会有GPU后端优化博客？在阅读BladeDISC以及IREE等源码的过程中，发现当逐步接触后端代码生成&#x2F;运行时系统调度时，由于本人没有深入接触过GPU体系架构（基础太差），很多优化pass难以理解。这一过程使我认识到对于底层系统架构的深入理解往往比具体的编译技术，编译框架（MLIR&#x2F;LLVM）而言更为重要。本系列主要记录我补习GPU架构知识的学习历程（开个坑，主要用于激励我自学CUDA，不然太摆了）。目前初步的计划，该系列会有如下几篇博客：</p>
+<ol>
+<li>GPU后端优化（一）：主要包括GPU后端优化基础知识</li>
+<li>GPU后端优化（二）：结合<a href="http://arxiv.org/abs/2108.13191">MLIR生成高性能GPU算子</a>论文，以及<a href="https://siboehm.com/articles/22/CUDA-MMM">CUDA算子优化博客</a>，学习CUDA算子开发过程和对应算子编译手段</li>
+<li>GPU后端优化（三）：机器学习编译实战部分，包括IREE和BladeDISC代码分析</li>
+<li>GPU后端优化（四）：高阶GPU体系结构，结合GPU架构书籍进行解读</li>
+</ol>
+</blockquote>
+<h2 id="GPU后端优化基础知识"><a href="#GPU后端优化基础知识" class="headerlink" title="GPU后端优化基础知识"></a><font color = brown>GPU后端优化基础知识</font></h2><p>在日常学习中，由于我的工作和编译器关联度较大，因此一般都是在阅读开源项目的pass源码。这其中如果涉及GPU相关的优化pass，遇到不懂的可能直接询问chatgpt或是一些博客寻找答案。久而久之发现自己虽然好像能够读懂编译器的后端生成pass，但往深处探讨，为什么这些pass是这样的顺序，为什么GPU需要这些pass，很多问题其实都回答不上来。归根结底，是对于GPU优化的原理知识以及优化之间的关联细节没有真正去仔细思考和学习。</p>
+<p>印度理工的学者的一篇利用MLIR搭建高性能GPU算子自动生成的文章，使我们开始的很好的起点。这篇<a href="http://arxiv.org/abs/2108.13191">文章</a>完全基于MLIR基础设施，并做少量修改，同时是一个完整的GPU优化生成流程，是十分值得学习的。本章节的目的就是尽量扫盲，使一些原本不那么清晰或是没涉及过的优化概念尽量明晰，为读懂该文章做好准备工作。</p>
+<p><img src="F:\LeonBlog\source\images\image-20250511233238659.png" alt="image-20250511233238659"></p>
+<p>如上图所示是论文中的GPU算子生成流水线，也是我们补足GPU后端编译优化基础知识的概览。后续内容按照流水线展开，大体内容划分如下：</p>
+<ul>
+<li>Loop Tiling优化</li>
+<li>存储优化（共享内存开辟，padding，coalesce内存）</li>
+<li>WMMA tensor core</li>
+<li>latency hiding</li>
+</ul>
+<h3 id="Loop-Tiling优化"><a href="#Loop-Tiling优化" class="headerlink" title="Loop Tiling优化"></a><font color = green>Loop Tiling优化</font></h3><p>这一章节主要参考<a href="https://zhuanlan.zhihu.com/p/477023757">一篇文章了解 Loop Tiling 优化</a>，这篇博客讲解非常到位，强烈建议有兴趣的读者仔细阅读。本篇文章的解读顺序和原博客不太一致，选择先列出tiling算法步骤，然后以一个具体例子带着大家走一遍算法步骤，解读每一步原理。</p>
+<h4 id="Tiling算法步骤"><a href="#Tiling算法步骤" class="headerlink" title="Tiling算法步骤"></a>Tiling算法步骤</h4><blockquote>
+<p>算法：</p>
+<p>设总共有 <code>N</code> 层循环，从外向内分别是 <code>0,1,...,N-1</code></p>
+<ul>
+<li><strong>从内向外</strong>，逐步分析 <code>N-2,N-3,...,0</code>（先排除掉最内层循环）</li>
+<li>对于每层循环 <code>L</code> ，<strong>看其 <code>idx=0,1,...</code> 时，是否有 array 可能被反复读取</strong>。<ul>
+<li>若有，则 tile 第 <code>L+1</code> 层循环。</li>
+</ul>
+</li>
+</ul>
+<p>都做完之后，再分析 <strong>基于新循环是否仍然有可 tile 的部分</strong></p>
+</blockquote>
+<p>上述算法初看比较抽象，选择通过一个矩阵乘法例子来走一遍该规则，以简化算法理解。</p>
+<p>首先我们要tiling的计算任务是NxNxN的矩阵乘（现实场景由于矩阵的维度，cache的维度有很多dirty work和边界trick，这里默认矩阵是“完美的”）。伪代码如下图所示：</p>
+<figure class="highlight python"><table><tr><td class="code"><pre><span class="line"><span class="keyword">for</span> i <span class="keyword">in</span> <span class="built_in">range</span>(<span class="number">0</span>, N):            <span class="comment"># i,k,j，访问符合行优先原则</span></span><br><span class="line">  <span class="keyword">for</span> k <span class="keyword">in</span> <span class="built_in">range</span>(<span class="number">0</span>, N): </span><br><span class="line">    <span class="keyword">for</span> j <span class="keyword">in</span> <span class="built_in">range</span>(<span class="number">0</span>, N):</span><br><span class="line">      C[i][j] += A[i][k] * B[k][j]</span><br></pre></td></tr></table></figure>
+
+<p>根据算法描述，首先分析k维度遍历过程中是否有array反复读取（k维度对应N-2维度）。发现<code>c[i][j]</code>的遍历和k维度无关，因此可以tile j这个维度，得到如下伪代码：</p>
+<figure class="highlight python"><table><tr><td class="code"><pre><span class="line"><span class="keyword">for</span> j_o <span class="keyword">in</span> <span class="built_in">range</span>(<span class="number">0</span>, N, T_j):                           <span class="comment"># j_i 对应j维度的外层维度，从0到N，步长为T</span></span><br><span class="line">    <span class="keyword">for</span> i <span class="keyword">in</span> <span class="built_in">range</span>(<span class="number">0</span>, N):</span><br><span class="line">        <span class="keyword">for</span> k <span class="keyword">in</span> <span class="built_in">range</span>(<span class="number">0</span>, N):</span><br><span class="line">            <span class="keyword">for</span> j_i <span class="keyword">in</span> <span class="built_in">range</span>(j_o, j_o+T_j):            <span class="comment"># j_o 对应j维度的内层循环</span></span><br><span class="line">                c[i][j_i] += A[i][k] * B[k][j_i]</span><br></pre></td></tr></table></figure>
+
+<p>分析tiling后伪代码，通过选取合适的T（适配L1缓存大小），则<code>c[i][j_i]</code>可以做到在k迭代过程中一直缓存在cache中。继续我们的tiling算法，该尝试k的上一层维度，i维度。发现<code>B[k][j_i]</code>在遍历过程中和i的值无关，因此可以对下一层，即k做优化，使得<code>B[k][j_i]</code>适配缓存。如下是伪代码：</p>
+<figure class="highlight python"><table><tr><td class="code"><pre><span class="line"><span class="keyword">for</span> k_o <span class="keyword">in</span> <span class="built_in">range</span>(<span class="number">0</span>, N, T_k):</span><br><span class="line">  <span class="keyword">for</span> j_o <span class="keyword">in</span> <span class="built_in">range</span>(<span class="number">0</span>, N, T_j):</span><br><span class="line">    <span class="keyword">for</span> i <span class="keyword">in</span> <span class="built_in">range</span>(<span class="number">0</span>, N):</span><br><span class="line">      <span class="keyword">for</span> k_i <span class="keyword">in</span> <span class="built_in">range</span>(k_o, k_o+T_k):</span><br><span class="line">        <span class="keyword">for</span> j_i <span class="keyword">in</span> <span class="built_in">range</span>(j_o, j_o+T_j):</span><br><span class="line">          C[i][j_i] += A[i][k_i] * B[k_i][j_i]</span><br><span class="line"><span class="comment"># 这样，k_i=0,1... 时，C[i_i][j] 始终在 cache 中；i=0,1.. 时，B[k_i][j_i] 也始终在 cache 中</span></span><br></pre></td></tr></table></figure>
+
+<p>至此，走完算法的第一部分流程，来到第二部分：需要分析 <strong>基于新循环是否仍然有可 tile 的部分</strong>。这部分的逻辑是，对于k维度和j维度做的tiling分块，对于最顶层（初始的顶层）i维度产生影响，目前i维度已不是顶层维度。i维度之上的j_o遍历过程中，下一层i的遍历跨度是N，比较大，是难以存入cache中的，因此需要对i也做tiling优化。伪代码如下：</p>
+<figure class="highlight python"><table><tr><td class="code"><pre><span class="line"><span class="comment"># 又因为循环 i 从最外层循环变成了内循环，对于其上层循环 j_o 来说，当 j_o=0,1,...时，A[i][k_i] 是被反复读取的，因此也可以 tile 循环 i</span></span><br><span class="line"><span class="keyword">for</span> i_o <span class="keyword">in</span> <span class="built_in">range</span>(<span class="number">0</span>, N, T_i):</span><br><span class="line">  <span class="keyword">for</span> k_o <span class="keyword">in</span> <span class="built_in">range</span>(<span class="number">0</span>, N, T_k):</span><br><span class="line">    <span class="keyword">for</span> j_o <span class="keyword">in</span> <span class="built_in">range</span>(<span class="number">0</span>, N, T_j):</span><br><span class="line">      <span class="keyword">for</span> i_i <span class="keyword">in</span> <span class="built_in">range</span>(i_o, i_o + T_i):</span><br><span class="line">        <span class="keyword">for</span> k_i <span class="keyword">in</span> <span class="built_in">range</span>(k_o, k_o + T_k):</span><br><span class="line">          <span class="keyword">for</span> j_i <span class="keyword">in</span> <span class="built_in">range</span>(j_o, j_o + T_j):</span><br><span class="line">            C[i_i][j_i] += A[i_i][k_i] * B[k_i][j_i]</span><br><span class="line"><span class="comment"># 注意，内三层循环仍然是按照 i_i,k_i,j_i 的顺序，因此仍然满足 RowMajor 的顺序读取</span></span><br></pre></td></tr></table></figure>
+
+<p>至此，完成L1的tiling优化。可以看到，目前我的变换出的代码，在i_i，k_i和j_i维度都已经是tiling分块的。</p>
+<p>结束了？Too Naive！！！:fire:</p>
+<p>现代体系结构（从CPU到GPU到ASIC），均有多层级缓存体系。让我们继续研究一下代码，思考一下如果有L2 cache，该如何继续tiling？目前的矩阵乘运算已经适配L1缓存，可以看到j_o维度的循环，已经是完美缓存的。但是对于k_o循环而言，下一层j_o循环则成了严重的性能瓶颈。j_o循环总步长为N，这之间又是大量的cache miss。这一部分就需要L2缓存来加速存储交互了。继续我们的算法，以k_o维度为新的起点<strong>由内向外</strong>，分块的大小按照L2缓存来，继续一轮迭代，最终的结果：</p>
+<figure class="highlight python"><table><tr><td class="code"><pre><span class="line"><span class="keyword">for</span> j_oo <span class="keyword">in</span> <span class="built_in">range</span>(<span class="number">0</span>, N, T2_j):</span><br><span class="line">  <span class="keyword">for</span> i_o <span class="keyword">in</span> <span class="built_in">range</span>(<span class="number">0</span>, N, T_i):</span><br><span class="line">    <span class="keyword">for</span> k_o <span class="keyword">in</span> <span class="built_in">range</span>(<span class="number">0</span>, N, T_k):</span><br><span class="line">      <span class="keyword">for</span> j_oi <span class="keyword">in</span> <span class="built_in">range</span>(j_oo, j_oo + T2_j, T_j):</span><br><span class="line">        <span class="keyword">for</span> i_i <span class="keyword">in</span> <span class="built_in">range</span>(<span class="number">0</span>, N, T_i):</span><br><span class="line">          <span class="keyword">for</span> k_i <span class="keyword">in</span> <span class="built_in">range</span>(k_o, k_o + T_k):</span><br><span class="line">            <span class="keyword">for</span> j_i <span class="keyword">in</span> <span class="built_in">range</span>(j_oi, j_oi + T_j):</span><br><span class="line">              C[i_i][j_i] += A[i_i][k_i] * B[k_i][j_i]</span><br><span class="line"><span class="comment"># 这样的话，内三层循环 i_i, k_i, j_i （对应的 Tile size 为 T_i, T_j, T_k）放到 L1 Cache 里。</span></span><br><span class="line"><span class="comment"># 外层循环 j_oi （对应Tile size 为 T2_j） 就可以放到更大的 L2 Cache 里。于是便在 L2 里形成了对 C[i_i][j_i] 的复用</span></span><br></pre></td></tr></table></figure>
+
+<p>同理，可以继续向上，做k_o和i_o的分块，不再详细阐述了。</p>
+<h2 id="参考资料"><a href="#参考资料" class="headerlink" title="参考资料"></a><font color = brown>参考资料</font></h2><ol>
+<li><a href="https://zhuanlan.zhihu.com/p/477023757">博客：Loop Tiling优化</a></li>
+<li><a href="https://siboehm.com/articles/22/CUDA-MMM">博客：CUDA手写算子教程</a></li>
+<li><a href="http://arxiv.org/abs/2108.13191">论文：MLIR 优化GEMM算子</a></li>
+</ol>
+]]></content>
+      <categories>
+        <category>编译技术</category>
+        <category>机器学习编译</category>
+        <category>后端</category>
+        <category>运行时</category>
+      </categories>
+      <tags>
+        <tag>机器学习编译器</tag>
+        <tag>后端</tag>
+        <tag>运行时</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>ByteIR 初探</title>
+    <url>/2025/05/06/ByteIR-%E5%88%9D%E6%8E%A2/</url>
+    <content><![CDATA[<p><img src="/images/image-20250506220408172.png" alt="image-20250506220408172"></p>
+<span id="more"></span>
+
+<h2 id="Why-ByteIR？"><a href="#Why-ByteIR？" class="headerlink" title="Why ByteIR？"></a><font color = brown>Why ByteIR？</font></h2><p>看了这么多端到端机器学习编译器（IREE，BladeDISC），为什么选择研究一下ByteIR？这个<a href="https://github.com/bytedance/byteir/issues/9">ByteIR issue9</a>的回答很好地指明了ByteIR相比成熟端到端编译器的区别：</p>
+<ul>
+<li>ByteIR有十分清晰的Frontend，Compiler和runtime，而且三者可以分离编译构建。</li>
+<li>ByteIR在字节内部不同的开发人员都在使用。</li>
+<li>ByteIR是十分简洁的，单纯的是一堆passes集合，辅助开发者完成端到端流程。</li>
+</ul>
+<p>上述三个特点，使得ByteIR十分适合针对性学习。</p>
+<h2 id="源码构建"><a href="#源码构建" class="headerlink" title="源码构建"></a><font color = brown>源码构建</font></h2><h3 id="Frontend构建"><a href="#Frontend构建" class="headerlink" title="Frontend构建"></a><font color = green>Frontend构建</font></h3><p>ByteIR的前端支持pytorch，onnx和tensorflow三种框架。其流程都是将框架接入stableHLO再合法化到MHLO 方言中。笔者先前构建过torch-mlir和iree等项目，原本想省去构建前端，复用torch-mlir的前端，但是</p>
+<h3 id="Compiler部分构建"><a href="#Compiler部分构建" class="headerlink" title="Compiler部分构建"></a><font color = green>Compiler部分构建</font></h3><ol>
+<li><p>clone项目</p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">git clone git@github.com:bytedance/byteir.git</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>构建虚拟环境</p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line"><span class="meta prompt_"># </span><span class="language-bash">构建虚拟环境</span></span><br><span class="line">pip install pybind11</span><br><span class="line">pip install nanobind</span><br><span class="line">pip install numpy</span><br><span class="line">pip install lit</span><br><span class="line">pip install filecheck</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>Build LLVM</p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">cd /path_to_byteir</span><br><span class="line">git submodule update --init external/llvm-project</span><br></pre></td></tr></table></figure>
+
+<p>构建脚本如下：</p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line"><span class="meta prompt_"># </span><span class="language-bash">build llvm</span></span><br><span class="line">cd external/llvm-project</span><br><span class="line">cmake -H./llvm \</span><br><span class="line">      -B./build \</span><br><span class="line">      -GNinja \</span><br><span class="line">      -DLLVM_ENABLE_PROJECTS=mlir \</span><br><span class="line">      -DLLVM_TARGETS_TO_BUILD=&quot;X86;NVPTX&quot; \</span><br><span class="line">      -DCMAKE_BUILD_TYPE=Release \</span><br><span class="line">      -DLLVM_ENABLE_ASSERTIONS=ON \</span><br><span class="line">      -DLLVM_INSTALL_UTILS=ON \</span><br><span class="line">      -DLLVM_CCACHE_BUILD=OFF \</span><br><span class="line">      -DLLVM_ENABLE_TERMINFO=OFF \</span><br><span class="line">      -DMLIR_ENABLE_BINDINGS_PYTHON=ON \</span><br><span class="line">      -DCMAKE_INSTALL_PREFIX=$(pwd)/build/install</span><br><span class="line"><span class="meta prompt_"># </span><span class="language-bash">via -DCMAKE_C_COMPILER=gcc/clang and -DCMAKE_CXX_COMPILER=g++/clang++</span></span><br><span class="line"><span class="meta prompt_"># </span><span class="language-bash">to specify gcc&gt;=8.5 or clang&gt;=7</span> </span><br><span class="line"><span class="meta prompt_"># </span><span class="language-bash"><span class="keyword">for</span> Mac <span class="built_in">users</span>, <span class="built_in">set</span> -DLLVM_TARGETS_TO_BUILD=<span class="string">&quot;AArch64;NVPTX&quot;</span></span></span><br><span class="line"></span><br><span class="line">cmake --build ./build --target all --target install</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>Build ByteIR compiler</p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">cmake -B./compiler/build \</span><br><span class="line">      -H./compiler/cmake \</span><br><span class="line">      -GNinja \</span><br><span class="line">      -DCMAKE_BUILD_TYPE=Release \</span><br><span class="line">      -DPython3_EXECUTABLE=/mnt/home/douliyang/mlir-workspace/byteir/venv/bin/python \</span><br><span class="line">      -DLLVM_INSTALL_PATH=$(pwd)/external/llvm-project/build/install \</span><br><span class="line">      -DLLVM_EXTERNAL_LIT=/mnt/home/douliyang/mlir-workspace/byteir/venv/bin/lit \</span><br><span class="line">      -Dpybind11_DIR=/mnt/home/douliyang/mlir-workspace/byteir/venv/lib/python3.11/site-packages/pybind11/share/cmake/pybind11 \</span><br><span class="line">      -Dnanobind_DIR=/mnt/home/douliyang/mlir-workspace/byteir/venv/lib/python3.11/site-packages/nanobind/cmake \</span><br><span class="line">      -DBYTEIR_ENABLE_BINDINGS_PYTHON=ON</span><br><span class="line"></span><br><span class="line">cmake --build ./compiler/build --target check-byteir</span><br><span class="line">cmake --build ./compiler/build --target byteir-python-pack</span><br></pre></td></tr></table></figure>
+
+<p>上述一定要构建两个测试，第一个测试compiler的pipeline正确性，第二个测试python wrapper api正确性。</p>
+<p>这里构建过程中有几处坑：lit测试由于我使用了虚拟环境，所以需要cmake中显示指定python3的可执行路径。pybind11和nanobind也是同理，需要显示指定路径。</p>
+</li>
+<li><p>测试正确性（一个端到端的测试case）</p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">BYTEIR=&quot;/home/douliyang/large/mlir-workspace/byteir&quot;</span><br><span class="line"></span><br><span class="line">export PYTHONPATH=&quot;$&#123;BYTEIR&#125;/compiler/build/python_packages/byteir&quot;</span><br><span class="line"></span><br><span class="line">python3 -m byteir.tools.compiler -v \</span><br><span class="line">  &quot;$&#123;BYTEIR&#125;/compiler/test/E2E/CUDA/MLPInference/input.mlir&quot; \</span><br><span class="line">  -o out.mlir \</span><br><span class="line">  --entry_func forward \</span><br><span class="line"><span class="meta prompt_">  2&gt;</span><span class="language-bash">&amp;1 | <span class="built_in">tee</span> pipeline.log</span></span><br></pre></td></tr></table></figure></li>
+</ol>
+<p>​	<font color = red>注意，最终的wheel包生成在<code>build/python/dist</code>中，pip isntall即可。</font></p>
+<h3 id="Runtime部分构建"><a href="#Runtime部分构建" class="headerlink" title="Runtime部分构建"></a><font color = green>Runtime部分构建</font></h3><p>首先确保compiler部分构建成功，runtime部分依赖compiler部分构建的LLVM项目。</p>
+<ol>
+<li><p>获取runtime的依赖</p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">git submodule update --init --recursive -f external/mlir-hlo external/cutlass external/date external/googletest external/pybind11</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>构建runtime项目</p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">cmake -H./runtime/cmake \</span><br><span class="line">      -B./runtime/build \</span><br><span class="line">      -G Ninja \</span><br><span class="line">      -DCMAKE_BUILD_TYPE=Release \</span><br><span class="line">      -DLLVM_INSTALL_PATH=$(pwd)/external/llvm-project/build/install \</span><br><span class="line">      -DCMAKE_INSTALL_PREFIX=&quot;$(pwd)/runtime/build/install&quot; \</span><br><span class="line">      -Dbrt_ENABLE_PYTHON_BINDINGS=ON \</span><br><span class="line">      -Dbrt_USE_CUDA=ON</span><br><span class="line"></span><br><span class="line">cmake --build ./runtime/build --target all --target install</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>构建python wheel包，具体打包过程如下：</p>
+<p>运行<code>python3 setup.py</code></p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">(base) root@leondou-y1fkbccpmlrb-main:/openbayes/home/byteir/byteir/runtime/python# python3 setup.py bdist_wheel</span><br><span class="line">running bdist_wheel</span><br><span class="line">running build</span><br><span class="line">running build_py</span><br><span class="line">creating build</span><br><span class="line">creating build/lib.linux-x86_64-cpython-38</span><br><span class="line">creating build/lib.linux-x86_64-cpython-38/brt</span><br><span class="line">copying /output/byteir/byteir/runtime/python/brt/backend.py -&gt; build/lib.linux-x86_64-cpython-38/brt</span><br><span class="line">copying /output/byteir/byteir/runtime/python/brt/__init__.py -&gt; build/lib.linux-x86_64-cpython-38/brt</span><br><span class="line">copying /output/byteir/byteir/runtime/python/brt/version.py -&gt; build/lib.linux-x86_64-cpython-38/brt</span><br><span class="line">copying /output/byteir/byteir/runtime/python/brt/utils.py -&gt; build/lib.linux-x86_64-cpython-38/brt</span><br><span class="line">running build_ext</span><br><span class="line">/usr/local/lib/python3.8/site-packages/setuptools/_distutils/cmd.py:66: SetuptoolsDeprecationWarning: setup.py install is deprecated.</span><br><span class="line">!!</span><br><span class="line"></span><br><span class="line">        ********************************************************************************</span><br><span class="line">        Please avoid running ``setup.py`` directly.</span><br><span class="line">        Instead, use pypa/build, pypa/installer or other</span><br><span class="line">        standards-based tools.</span><br><span class="line"></span><br><span class="line">        See https://blog.ganssle.io/articles/2021/10/setup-py-deprecated.html for details.</span><br><span class="line">        ********************************************************************************</span><br><span class="line"></span><br><span class="line">!!</span><br><span class="line">  self.initialize_options()</span><br><span class="line">installing to build/bdist.linux-x86_64/wheel</span><br><span class="line">running install</span><br><span class="line">running install_lib</span><br><span class="line">creating build/bdist.linux-x86_64</span><br><span class="line">creating build/bdist.linux-x86_64/wheel</span><br><span class="line">creating build/bdist.linux-x86_64/wheel/brt</span><br><span class="line">copying build/lib.linux-x86_64-cpython-38/brt/backend.py -&gt; build/bdist.linux-x86_64/wheel/brt</span><br><span class="line">copying build/lib.linux-x86_64-cpython-38/brt/__init__.py -&gt; build/bdist.linux-x86_64/wheel/brt</span><br><span class="line">copying build/lib.linux-x86_64-cpython-38/brt/_brt.cpython-38-x86_64-linux-gnu.so -&gt; build/bdist.linux-x86_64/wheel/brt</span><br><span class="line">creating build/bdist.linux-x86_64/wheel/brt/lib</span><br><span class="line">copying build/lib.linux-x86_64-cpython-38/brt/lib/libbrt.so -&gt; build/bdist.linux-x86_64/wheel/brt/lib</span><br><span class="line">copying build/lib.linux-x86_64-cpython-38/brt/version.py -&gt; build/bdist.linux-x86_64/wheel/brt</span><br><span class="line">copying build/lib.linux-x86_64-cpython-38/brt/utils.py -&gt; build/bdist.linux-x86_64/wheel/brt</span><br><span class="line">running install_egg_info</span><br><span class="line">running egg_info</span><br><span class="line">creating /output/byteir/byteir/runtime/python/brt.egg-info</span><br><span class="line">writing /output/byteir/byteir/runtime/python/brt.egg-info/PKG-INFO</span><br><span class="line">writing dependency_links to /output/byteir/byteir/runtime/python/brt.egg-info/dependency_links.txt</span><br><span class="line">writing top-level names to /output/byteir/byteir/runtime/python/brt.egg-info/top_level.txt</span><br><span class="line">writing manifest file &#x27;/output/byteir/byteir/runtime/python/brt.egg-info/SOURCES.txt&#x27;</span><br><span class="line">reading manifest file &#x27;/output/byteir/byteir/runtime/python/brt.egg-info/SOURCES.txt&#x27;</span><br><span class="line">writing manifest file &#x27;/output/byteir/byteir/runtime/python/brt.egg-info/SOURCES.txt&#x27;</span><br><span class="line">Copying /output/byteir/byteir/runtime/python/brt.egg-info to build/bdist.linux-x86_64/wheel/brt-1.9.3.0+cpu-py3.8.egg-info</span><br><span class="line">running install_scripts</span><br><span class="line">creating build/bdist.linux-x86_64/wheel/brt-1.9.3.0+cpu.dist-info/WHEEL</span><br><span class="line">creating &#x27;dist/brt-1.9.3.0+cpu-cp38-cp38-linux_x86_64.whl&#x27; and adding &#x27;build/bdist.linux-x86_64/wheel&#x27; to it</span><br><span class="line">adding &#x27;brt/__init__.py&#x27;</span><br><span class="line">adding &#x27;brt/_brt.cpython-38-x86_64-linux-gnu.so&#x27;</span><br><span class="line">adding &#x27;brt/backend.py&#x27;</span><br><span class="line">adding &#x27;brt/utils.py&#x27;</span><br><span class="line">adding &#x27;brt/version.py&#x27;</span><br><span class="line">adding &#x27;brt/lib/libbrt.so&#x27;</span><br><span class="line">adding &#x27;brt-1.9.3.0+cpu.dist-info/METADATA&#x27;</span><br><span class="line">adding &#x27;brt-1.9.3.0+cpu.dist-info/WHEEL&#x27;</span><br><span class="line">adding &#x27;brt-1.9.3.0+cpu.dist-info/top_level.txt&#x27;</span><br><span class="line">adding &#x27;brt-1.9.3.0+cpu.dist-info/RECORD&#x27;</span><br><span class="line">removing build/bdist.linux-x86_64/wheel</span><br></pre></td></tr></table></figure></li>
+</ol>
+<p>​	<font color = red>注意：</font>最终的wheel包在&#x2F;openbayes&#x2F;home&#x2F;byteir&#x2F;byteir&#x2F;runtime&#x2F;python&#x2F;dist下，需要pip install一下才能使用。</p>
+<blockquote>
+<p>在组内服务器构建遇到的问题是，组内服务器没有cudnn，因此会报错<code>cudnn.h</code>头文件没有找到。目前暂时选择租服务器来完成构建流程，还没有解决这个问题（后续填坑）。</p>
+</blockquote>
+<p>至此成功构建好compiler部分和runtime部分（frontend部分不是研究重点，后续结合模型测试性能再研究）。</p>
+<h2 id="参考资料"><a href="#参考资料" class="headerlink" title="参考资料"></a><font color = brown>参考资料</font></h2><ol>
+<li><a href="https://byteir.ai/">ByteIR官方资料</a></li>
+<li><a href="https://github.com/bytedance/byteir?tab=readme-ov-file">ByteIR github</a></li>
+</ol>
+]]></content>
+      <categories>
+        <category>编译技术</category>
+        <category>机器学习编译</category>
+      </categories>
+      <tags>
+        <tag>机器学习编译器</tag>
+        <tag>mlir</tag>
       </tags>
   </entry>
   <entry>
@@ -1399,40 +1542,46 @@
       </tags>
   </entry>
   <entry>
-    <title>MLIR topic: Linalg</title>
-    <url>/2025/05/09/MLIR-topic-Linalg/</url>
-    <content><![CDATA[<p><img src="/images/image-20250509110504481.png" alt="image-20250509110504481"></p>
+    <title>Modern CPP: 条款1</title>
+    <url>/2025/05/09/Modern-CPP-%E6%9D%A1%E6%AC%BE1/</url>
+    <content><![CDATA[]]></content>
+  </entry>
+  <entry>
+    <title>byteir初探：Compiler部分</title>
+    <url>/2025/05/08/byteir%E5%88%9D%E6%8E%A2%EF%BC%9ACompiler%E9%83%A8%E5%88%86/</url>
+    <content><![CDATA[<img src="/images/image-20250508125112166.png" alt="image-20250508125112166" style="zoom:50%;" />
+
 <span id="more"></span>
 
-<h2 id="Why-Linalg"><a href="#Why-Linalg" class="headerlink" title="Why Linalg?"></a><font color = brown>Why Linalg?</font></h2><h3 id="问题空间"><a href="#问题空间" class="headerlink" title="问题空间"></a><font color = green>问题空间</font></h3><p>首先，需要明白为什么MLIR要引入Linalg dialect。分析深度学习模型，发现有如下特点：</p>
-<ul>
-<li>深度学习的计算任务十分规整，可以大致分为如下几类：<ol>
-<li>矩阵乘和卷积：内含乘加归约运算的<strong>完美嵌套循环</strong>。</li>
-<li>逐元素乘：规整轻量，易于计算。</li>
-</ol>
-</li>
-<li>除去计算算子，还有数据搬运算子。比如broadcast，reshape等。这些操作有一个很好地特点：<strong>映射符合仿射变化</strong>。</li>
-<li>诸如topK，scatter等不规则数据搬运方式，一般会引入自定义算子解决。</li>
-</ul>
-<p>在将深度学习模型部署到硬件上，对于硬件架构也需要有认知：</p>
-<blockquote>
-<p>通用可编程 CPU 和 GPU 采用的都是 tiled-based 架构，它们通过多级的内存缓存系统来给 SIMD&#x2F;SIMT 计算单元提供数据。 不过即便多层次，访存速度总体上也远慢于计算单元，所以我们需要提高数据的利用率来提高每秒钟能够实际执行的指令数。 <strong>要高效地利用硬件，我们需对原问题进行分块 (tile) 以产生更小规模的子问题，并分配 (distribute) 给不同的计算单元。同时我们需要尽可能多地利用近处的高速缓存来达到高比例的数据复用。</strong></p>
-</blockquote>
-<p>基于深度学习模型特点和硬件特点，不同的算子类别有不同的硬件映射规则策略（代码生成策略）。为了解耦上层算子和底层硬件，我们希望有一个统一的流程来做代码生成，但同时也要尽量保留各个算子的特性。Linalg Dialect由此产生。基于前面探讨的深度学习模型特点，Linalg dialect聚焦于仿射变化和完美嵌套循环，在IR通用性和简洁有效性之间取得完美平衡。</p>
-<h2 id="参考资料"><a href="#参考资料" class="headerlink" title="参考资料"></a><font color = brown>参考资料</font></h2><ol>
-<li><a href="https://www.lei.chat/zh/posts/mlir-linalg-dialect-and-patterns/">Lei Chat博客</a></li>
-</ol>
-<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">/usr/xilinx/Vitis/2021.1/gnu/aarch64/lin/aarch64-linux/bin/aarch64-linux-gnu-g++ -Wall -c -std=c++14 -Wno-int-to-pointer-cast --sysroot=/home/douliyang/large/AIE/CHARM/VITIS2021/opt/sysroots/cortexa72-cortexa53-xilinx-linux/sysroots/cortexa72-cortexa53-xilinx-linux  -I/home/douliyang/large/AIE/CHARM/VITIS2021/opt/sysroots/cortexa72-cortexa53-xilinx-linux/sysroots/cortexa72-cortexa53-xilinx-linux/usr/include/xrt -I./ -I/usr/xilinx/Vitis/2021.1/aietools/include -I/usr/xilinx/Vitis/2021.1/include -I./aie ./Work/ps/c_rts/aie_control_xrt.cpp -o&#x27;aie_control_xrt.o&#x27; -I/home/douliyang/large/AIE/CHARM/VITIS2021/opt/sysroots/cortexa72-cortexa53-xilinx-linux/usr/include/c++/10.2.0 -I$SYSROOT/usr/include/c++/10.2.0/aarch64-xilinx-linux -I/home/douliyang/large/AIE/CHARM/VITIS2021/opt/sysroots/cortexa72-cortexa53-xilinx-linux/usr/include</span><br></pre></td></tr></table></figure>
+<h2 id="Compiler部分概览"><a href="#Compiler部分概览" class="headerlink" title="Compiler部分概览"></a><font color = brown>Compiler部分概览</font></h2><p><img src="/images/image-20250508165752639.png" alt="image-20250508165752639"></p>
+<p>ByteIR的compiler部分设计遵循标准的mlir层级转换流程，上图所示是前端，中间compiler和后端runtime的架构图。compiler的输入是MHLO dialect（包含部分ByteIR针对特定算子的扩展），输出是mlir（host code）和ptx（默认的cuda device后端中间形式）。最终输出给到runtime做调度和GPU上执行。如下图所示是compiler的编译优化流水线架构图：</p>
+<pre class="mermaid">graph TD
+    A[Start: hlo-graph-opt] --> B[hlo-fusion-opt]
+    B --> C[linalg-tensor-opt]
+    C --> D[byre-tensor-opt]
+    D --> E[byteir-bufferize-opt]
+    E --> F[linalg-memref-opt]
+    F --> G[scf-opt]
+    G --> H[gpu-opt]
+    H --> I[inline + lccl-to-byre + gpu-launch-func-to-byre]
+    I --> J[set-op-space & set-arg-space]
+    J --> K[byre-opt]
+    K --> L[nvvm-codegenfor device]
+    K --> M[byre-hostfor host]
+    M --> N[remove-module-tag]
+    L --> O[translate_to_ptx]
+    N --> P[write host MLIR / MLIRBC]</pre>
+
+
 
 ]]></content>
       <categories>
         <category>编译技术</category>
-        <category>mlir</category>
-        <category>basics</category>
+        <category>机器学习编译</category>
       </categories>
       <tags>
+        <tag>机器学习编译器</tag>
         <tag>mlir</tag>
-        <tag>basics</tag>
       </tags>
   </entry>
   <entry>
@@ -1655,44 +1804,6 @@
       </tags>
   </entry>
   <entry>
-    <title>byteir初探：Compiler部分</title>
-    <url>/2025/05/08/byteir%E5%88%9D%E6%8E%A2%EF%BC%9ACompiler%E9%83%A8%E5%88%86/</url>
-    <content><![CDATA[<img src="/images/image-20250508125112166.png" alt="image-20250508125112166" style="zoom:50%;" />
-
-<span id="more"></span>
-
-<h2 id="Compiler部分概览"><a href="#Compiler部分概览" class="headerlink" title="Compiler部分概览"></a><font color = brown>Compiler部分概览</font></h2><p><img src="/images/image-20250508165752639.png" alt="image-20250508165752639"></p>
-<p>ByteIR的compiler部分设计遵循标准的mlir层级转换流程，上图所示是前端，中间compiler和后端runtime的架构图。compiler的输入是MHLO dialect（包含部分ByteIR针对特定算子的扩展），输出是mlir（host code）和ptx（默认的cuda device后端中间形式）。最终输出给到runtime做调度和GPU上执行。如下图所示是compiler的编译优化流水线架构图：</p>
-<pre class="mermaid">graph TD
-    A[Start: hlo-graph-opt] --> B[hlo-fusion-opt]
-    B --> C[linalg-tensor-opt]
-    C --> D[byre-tensor-opt]
-    D --> E[byteir-bufferize-opt]
-    E --> F[linalg-memref-opt]
-    F --> G[scf-opt]
-    G --> H[gpu-opt]
-    H --> I[inline + lccl-to-byre + gpu-launch-func-to-byre]
-    I --> J[set-op-space & set-arg-space]
-    J --> K[byre-opt]
-    K --> L[nvvm-codegenfor device]
-    K --> M[byre-hostfor host]
-    M --> N[remove-module-tag]
-    L --> O[translate_to_ptx]
-    N --> P[write host MLIR / MLIRBC]</pre>
-
-
-
-]]></content>
-      <categories>
-        <category>编译技术</category>
-        <category>机器学习编译</category>
-      </categories>
-      <tags>
-        <tag>机器学习编译器</tag>
-        <tag>mlir</tag>
-      </tags>
-  </entry>
-  <entry>
     <title>tpu-mlir初探</title>
     <url>/2025/04/08/tpu-mlir%E5%88%9D%E6%8E%A2/</url>
     <content><![CDATA[<p><img src="/images/image-20250411150531193.png" alt="image-20250411150531193"></p>
@@ -1865,43 +1976,6 @@
       </tags>
   </entry>
   <entry>
-    <title>初探minitorch</title>
-    <url>/2025/04/27/%E5%88%9D%E6%8E%A2minitorch/</url>
-    <content><![CDATA[<p><img src="/images/image-20250427110245462.png" alt="image-20250427110245462"></p>
-<span id="more"></span>
-
-<blockquote>
-<p>本篇文章主要介绍minitorch项目的module0所需要的基础工具以及一些python知识。</p>
-</blockquote>
-<h2 id="Functional-Python"><a href="#Functional-Python" class="headerlink" title="Functional Python"></a><font color = brown>Functional Python</font></h2><h3 id="为什么用Functional-Python"><a href="#为什么用Functional-Python" class="headerlink" title="为什么用Functional Python"></a><font color = green>为什么用Functional Python</font></h3><p>重点参考<a href="https://minitorch.github.io/module0/functional/">Functional tutorial</a>文档。首先我们需要弄清楚为什么使用Functional python。MiniTorch 对外的接口（API）模仿 PyTorch 的标准用法，降低用户学习成本。而在内部，库的核心逻辑采用<strong>函数式编程</strong>风格，即通过纯函数（无副作用）和组合函数的方式构建计算逻辑。关于函数式编程，可以参考<a href="https://liaoxuefeng.com/books/python/functional/index.html">廖雪峰python博客</a>（后续会专门开一个博客内容学习讲解函数式编程，函数是编程是一个很重要且复杂的topic）。函数式编程有如下两个优点：</p>
-<ol>
-<li>更易测试</li>
-<li>更易优化</li>
-</ol>
-<p>函数式编程允许如下两件事情：</p>
-<ol>
-<li>将一个函数作为参数传入另一个函数</li>
-<li>将一个函数作为返回值返回</li>
-</ol>
-<h3 id="一个简单的例子"><a href="#一个简单的例子" class="headerlink" title="一个简单的例子"></a><font color = green>一个简单的例子</font></h3><figure class="highlight python"><table><tr><td class="code"><pre><span class="line"><span class="comment"># 支持type hints</span></span><br><span class="line"><span class="keyword">from</span> typing <span class="keyword">import</span> <span class="type">Callable</span>, Iterable</span><br><span class="line"></span><br><span class="line"><span class="comment"># 定义一个函数，返回一个函数，该函数将传入的filter function参数应用到参数数组上</span></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">apply_filter</span>(<span class="params"><span class="built_in">filter</span>: <span class="type">Callable</span>[[<span class="built_in">float</span>], <span class="built_in">bool</span>]</span>) -&gt; <span class="type">Callable</span>[[Iterable[<span class="built_in">float</span>]], Iterable[<span class="built_in">float</span>]]:</span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">func</span>(<span class="params">ls: Iterable[<span class="built_in">float</span>]</span>):</span><br><span class="line">        res = []</span><br><span class="line">        <span class="keyword">for</span> a <span class="keyword">in</span> ls:</span><br><span class="line">            <span class="keyword">if</span> <span class="built_in">filter</span>(a):</span><br><span class="line">                res.append(a)</span><br><span class="line"></span><br><span class="line">        <span class="keyword">return</span> res</span><br><span class="line">    <span class="keyword">return</span> func</span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">more_than_4</span>(<span class="params">a: <span class="built_in">float</span></span>) -&gt; <span class="built_in">bool</span>:</span><br><span class="line">    <span class="keyword">return</span> a &gt; <span class="number">4</span></span><br><span class="line"></span><br><span class="line">array = [<span class="number">1</span>, <span class="number">3</span>, <span class="number">4</span>, <span class="number">5</span>, <span class="number">6</span>, <span class="number">7</span>]</span><br><span class="line">filter_fn = apply_filter(more_than_4) </span><br><span class="line"><span class="built_in">print</span>(filter_fn(array))</span><br></pre></td></tr></table></figure>
-
-<p>通过上述例子，来辅助我们的理解。上述例子需要完成一个任务：从一个数组中，挑选出数值大于4的数字并重新组合返回。如果使用传统写法，则针对不同的筛选条件，都要遍历并筛选，之间会有大量逻辑重复。通过使用函数式编程范式，将filter封装成一个函数并传参，可减少重复代码，且有更强的可扩展性。</p>
-<h2 id="MiniTorch项目的辅助工具"><a href="#MiniTorch项目的辅助工具" class="headerlink" title="MiniTorch项目的辅助工具"></a><font color = brown>MiniTorch项目的辅助工具</font></h2><p>MiniTorch项目学习起来一个最大的优点，就是其对于测试，coding等规范性均做了详细的要求和工具辅助。<code>black</code>和<code>flake</code>等代码规范性检测工具，<code>PyTest</code>测试框架以及<code>github CI</code>版本管理和测试流程，以上均是本章讲解的重点。</p>
-<h3 id="PyTest框架"><a href="#PyTest框架" class="headerlink" title="PyTest框架"></a><font color = green>PyTest框架</font></h3><h2 id="References"><a href="#References" class="headerlink" title="References"></a><font color = brown>References</font></h2><ol>
-<li><a href="https://minitorch.github.io/">MiniTorch官网</a></li>
-<li><a href="https://dezeming.top/wp-content/uploads/2022/02/MiniTorch-%E5%AD%A6%E4%B9%A0%E5%85%A8%E6%94%BB%E7%95%A5.pdf">MiniTorch学习参考攻略</a></li>
-</ol>
-]]></content>
-      <categories>
-        <category>pytorch</category>
-        <category>机器学习系统</category>
-      </categories>
-      <tags>
-        <tag>机器学习</tag>
-        <tag>机器学习系统</tag>
-      </tags>
-  </entry>
-  <entry>
     <title>计算密集算子融合</title>
     <url>/2025/03/31/%E8%AE%A1%E7%AE%97%E5%AF%86%E9%9B%86%E7%AE%97%E5%AD%90%E8%9E%8D%E5%90%88/</url>
     <content><![CDATA[<p><img src="/images/image-20250331211738664.png" alt="image-20250331211738664"></p>
@@ -1991,6 +2065,43 @@
         <tag>机器学习编译器</tag>
         <tag>mlir</tag>
         <tag>算子融合技术</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>初探minitorch</title>
+    <url>/2025/04/27/%E5%88%9D%E6%8E%A2minitorch/</url>
+    <content><![CDATA[<p><img src="/images/image-20250427110245462.png" alt="image-20250427110245462"></p>
+<span id="more"></span>
+
+<blockquote>
+<p>本篇文章主要介绍minitorch项目的module0所需要的基础工具以及一些python知识。</p>
+</blockquote>
+<h2 id="Functional-Python"><a href="#Functional-Python" class="headerlink" title="Functional Python"></a><font color = brown>Functional Python</font></h2><h3 id="为什么用Functional-Python"><a href="#为什么用Functional-Python" class="headerlink" title="为什么用Functional Python"></a><font color = green>为什么用Functional Python</font></h3><p>重点参考<a href="https://minitorch.github.io/module0/functional/">Functional tutorial</a>文档。首先我们需要弄清楚为什么使用Functional python。MiniTorch 对外的接口（API）模仿 PyTorch 的标准用法，降低用户学习成本。而在内部，库的核心逻辑采用<strong>函数式编程</strong>风格，即通过纯函数（无副作用）和组合函数的方式构建计算逻辑。关于函数式编程，可以参考<a href="https://liaoxuefeng.com/books/python/functional/index.html">廖雪峰python博客</a>（后续会专门开一个博客内容学习讲解函数式编程，函数是编程是一个很重要且复杂的topic）。函数式编程有如下两个优点：</p>
+<ol>
+<li>更易测试</li>
+<li>更易优化</li>
+</ol>
+<p>函数式编程允许如下两件事情：</p>
+<ol>
+<li>将一个函数作为参数传入另一个函数</li>
+<li>将一个函数作为返回值返回</li>
+</ol>
+<h3 id="一个简单的例子"><a href="#一个简单的例子" class="headerlink" title="一个简单的例子"></a><font color = green>一个简单的例子</font></h3><figure class="highlight python"><table><tr><td class="code"><pre><span class="line"><span class="comment"># 支持type hints</span></span><br><span class="line"><span class="keyword">from</span> typing <span class="keyword">import</span> <span class="type">Callable</span>, Iterable</span><br><span class="line"></span><br><span class="line"><span class="comment"># 定义一个函数，返回一个函数，该函数将传入的filter function参数应用到参数数组上</span></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">apply_filter</span>(<span class="params"><span class="built_in">filter</span>: <span class="type">Callable</span>[[<span class="built_in">float</span>], <span class="built_in">bool</span>]</span>) -&gt; <span class="type">Callable</span>[[Iterable[<span class="built_in">float</span>]], Iterable[<span class="built_in">float</span>]]:</span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">func</span>(<span class="params">ls: Iterable[<span class="built_in">float</span>]</span>):</span><br><span class="line">        res = []</span><br><span class="line">        <span class="keyword">for</span> a <span class="keyword">in</span> ls:</span><br><span class="line">            <span class="keyword">if</span> <span class="built_in">filter</span>(a):</span><br><span class="line">                res.append(a)</span><br><span class="line"></span><br><span class="line">        <span class="keyword">return</span> res</span><br><span class="line">    <span class="keyword">return</span> func</span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">more_than_4</span>(<span class="params">a: <span class="built_in">float</span></span>) -&gt; <span class="built_in">bool</span>:</span><br><span class="line">    <span class="keyword">return</span> a &gt; <span class="number">4</span></span><br><span class="line"></span><br><span class="line">array = [<span class="number">1</span>, <span class="number">3</span>, <span class="number">4</span>, <span class="number">5</span>, <span class="number">6</span>, <span class="number">7</span>]</span><br><span class="line">filter_fn = apply_filter(more_than_4) </span><br><span class="line"><span class="built_in">print</span>(filter_fn(array))</span><br></pre></td></tr></table></figure>
+
+<p>通过上述例子，来辅助我们的理解。上述例子需要完成一个任务：从一个数组中，挑选出数值大于4的数字并重新组合返回。如果使用传统写法，则针对不同的筛选条件，都要遍历并筛选，之间会有大量逻辑重复。通过使用函数式编程范式，将filter封装成一个函数并传参，可减少重复代码，且有更强的可扩展性。</p>
+<h2 id="MiniTorch项目的辅助工具"><a href="#MiniTorch项目的辅助工具" class="headerlink" title="MiniTorch项目的辅助工具"></a><font color = brown>MiniTorch项目的辅助工具</font></h2><p>MiniTorch项目学习起来一个最大的优点，就是其对于测试，coding等规范性均做了详细的要求和工具辅助。<code>black</code>和<code>flake</code>等代码规范性检测工具，<code>PyTest</code>测试框架以及<code>github CI</code>版本管理和测试流程，以上均是本章讲解的重点。</p>
+<h3 id="PyTest框架"><a href="#PyTest框架" class="headerlink" title="PyTest框架"></a><font color = green>PyTest框架</font></h3><h2 id="References"><a href="#References" class="headerlink" title="References"></a><font color = brown>References</font></h2><ol>
+<li><a href="https://minitorch.github.io/">MiniTorch官网</a></li>
+<li><a href="https://dezeming.top/wp-content/uploads/2022/02/MiniTorch-%E5%AD%A6%E4%B9%A0%E5%85%A8%E6%94%BB%E7%95%A5.pdf">MiniTorch学习参考攻略</a></li>
+</ol>
+]]></content>
+      <categories>
+        <category>pytorch</category>
+        <category>机器学习系统</category>
+      </categories>
+      <tags>
+        <tag>机器学习</tag>
+        <tag>机器学习系统</tag>
       </tags>
   </entry>
   <entry>
@@ -2191,74 +2302,6 @@
         <tag>机器学习编译器</tag>
         <tag>mlir</tag>
         <tag>算子融合技术</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>ByteIR 初探</title>
-    <url>/2025/05/06/ByteIR-%E5%88%9D%E6%8E%A2/</url>
-    <content><![CDATA[<p><img src="/images/image-20250506220408172.png" alt="image-20250506220408172"></p>
-<span id="more"></span>
-
-<h2 id="Why-ByteIR？"><a href="#Why-ByteIR？" class="headerlink" title="Why ByteIR？"></a><font color = brown>Why ByteIR？</font></h2><p>看了这么多端到端机器学习编译器（IREE，BladeDISC），为什么选择研究一下ByteIR？这个<a href="https://github.com/bytedance/byteir/issues/9">ByteIR issue9</a>的回答很好地指明了ByteIR相比成熟端到端编译器的区别：</p>
-<ul>
-<li>ByteIR有十分清晰的Frontend，Compiler和runtime，而且三者可以分离编译构建。</li>
-<li>ByteIR在字节内部不同的开发人员都在使用。</li>
-<li>ByteIR是十分简洁的，单纯的是一堆passes集合，辅助开发者完成端到端流程。</li>
-</ul>
-<p>上述三个特点，使得ByteIR十分适合针对性学习。</p>
-<h2 id="源码构建"><a href="#源码构建" class="headerlink" title="源码构建"></a><font color = brown>源码构建</font></h2><h3 id="Frontend构建"><a href="#Frontend构建" class="headerlink" title="Frontend构建"></a><font color = green>Frontend构建</font></h3><p>ByteIR的前端支持pytorch，onnx和tensorflow三种框架。其流程都是将框架接入stableHLO再合法化到MHLO 方言中。笔者先前构建过torch-mlir和iree等项目，原本想省去构建前端，复用torch-mlir的前端，但是</p>
-<h3 id="Compiler部分构建"><a href="#Compiler部分构建" class="headerlink" title="Compiler部分构建"></a><font color = green>Compiler部分构建</font></h3><ol>
-<li><p>clone项目</p>
-<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">git clone git@github.com:bytedance/byteir.git</span><br></pre></td></tr></table></figure>
-</li>
-<li><p>构建虚拟环境</p>
-<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line"><span class="meta prompt_"># </span><span class="language-bash">构建虚拟环境</span></span><br><span class="line">pip install pybind11</span><br><span class="line">pip install nanobind</span><br><span class="line">pip install numpy</span><br><span class="line">pip install lit</span><br><span class="line">pip install filecheck</span><br></pre></td></tr></table></figure>
-</li>
-<li><p>Build LLVM</p>
-<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">cd /path_to_byteir</span><br><span class="line">git submodule update --init external/llvm-project</span><br></pre></td></tr></table></figure>
-
-<p>构建脚本如下：</p>
-<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line"><span class="meta prompt_"># </span><span class="language-bash">build llvm</span></span><br><span class="line">cd external/llvm-project</span><br><span class="line">cmake -H./llvm \</span><br><span class="line">      -B./build \</span><br><span class="line">      -GNinja \</span><br><span class="line">      -DLLVM_ENABLE_PROJECTS=mlir \</span><br><span class="line">      -DLLVM_TARGETS_TO_BUILD=&quot;X86;NVPTX&quot; \</span><br><span class="line">      -DCMAKE_BUILD_TYPE=Release \</span><br><span class="line">      -DLLVM_ENABLE_ASSERTIONS=ON \</span><br><span class="line">      -DLLVM_INSTALL_UTILS=ON \</span><br><span class="line">      -DLLVM_CCACHE_BUILD=OFF \</span><br><span class="line">      -DLLVM_ENABLE_TERMINFO=OFF \</span><br><span class="line">      -DMLIR_ENABLE_BINDINGS_PYTHON=ON \</span><br><span class="line">      -DCMAKE_INSTALL_PREFIX=$(pwd)/build/install</span><br><span class="line"><span class="meta prompt_"># </span><span class="language-bash">via -DCMAKE_C_COMPILER=gcc/clang and -DCMAKE_CXX_COMPILER=g++/clang++</span></span><br><span class="line"><span class="meta prompt_"># </span><span class="language-bash">to specify gcc&gt;=8.5 or clang&gt;=7</span> </span><br><span class="line"><span class="meta prompt_"># </span><span class="language-bash"><span class="keyword">for</span> Mac <span class="built_in">users</span>, <span class="built_in">set</span> -DLLVM_TARGETS_TO_BUILD=<span class="string">&quot;AArch64;NVPTX&quot;</span></span></span><br><span class="line"></span><br><span class="line">cmake --build ./build --target all --target install</span><br></pre></td></tr></table></figure>
-</li>
-<li><p>Build ByteIR compiler</p>
-<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">cmake -B./compiler/build \</span><br><span class="line">      -H./compiler/cmake \</span><br><span class="line">      -GNinja \</span><br><span class="line">      -DCMAKE_BUILD_TYPE=Release \</span><br><span class="line">      -DPython3_EXECUTABLE=/mnt/home/douliyang/mlir-workspace/byteir/venv/bin/python \</span><br><span class="line">      -DLLVM_INSTALL_PATH=$(pwd)/external/llvm-project/build/install \</span><br><span class="line">      -DLLVM_EXTERNAL_LIT=/mnt/home/douliyang/mlir-workspace/byteir/venv/bin/lit \</span><br><span class="line">      -Dpybind11_DIR=/mnt/home/douliyang/mlir-workspace/byteir/venv/lib/python3.11/site-packages/pybind11/share/cmake/pybind11 \</span><br><span class="line">      -Dnanobind_DIR=/mnt/home/douliyang/mlir-workspace/byteir/venv/lib/python3.11/site-packages/nanobind/cmake \</span><br><span class="line">      -DBYTEIR_ENABLE_BINDINGS_PYTHON=ON</span><br><span class="line"></span><br><span class="line">cmake --build ./compiler/build --target check-byteir</span><br><span class="line">cmake --build ./compiler/build --target byteir-python-pack</span><br></pre></td></tr></table></figure>
-
-<p>上述一定要构建两个测试，第一个测试compiler的pipeline正确性，第二个测试python wrapper api正确性。</p>
-<p>这里构建过程中有几处坑：lit测试由于我使用了虚拟环境，所以需要cmake中显示指定python3的可执行路径。pybind11和nanobind也是同理，需要显示指定路径。</p>
-</li>
-<li><p>测试正确性（一个端到端的测试case）</p>
-<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">BYTEIR=&quot;/home/douliyang/large/mlir-workspace/byteir&quot;</span><br><span class="line"></span><br><span class="line">export PYTHONPATH=&quot;$&#123;BYTEIR&#125;/compiler/build/python_packages/byteir&quot;</span><br><span class="line"></span><br><span class="line">python3 -m byteir.tools.compiler -v \</span><br><span class="line">  &quot;$&#123;BYTEIR&#125;/compiler/test/E2E/CUDA/MLPInference/input.mlir&quot; \</span><br><span class="line">  -o out.mlir \</span><br><span class="line">  --entry_func forward \</span><br><span class="line"><span class="meta prompt_">  2&gt;</span><span class="language-bash">&amp;1 | <span class="built_in">tee</span> pipeline.log</span></span><br></pre></td></tr></table></figure></li>
-</ol>
-<p>​	<font color = red>注意，最终的wheel包生成在<code>build/python/dist</code>中，pip isntall即可。</font></p>
-<h3 id="Runtime部分构建"><a href="#Runtime部分构建" class="headerlink" title="Runtime部分构建"></a><font color = green>Runtime部分构建</font></h3><p>首先确保compiler部分构建成功，runtime部分依赖compiler部分构建的LLVM项目。</p>
-<ol>
-<li><p>获取runtime的依赖</p>
-<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">git submodule update --init --recursive -f external/mlir-hlo external/cutlass external/date external/googletest external/pybind11</span><br></pre></td></tr></table></figure>
-</li>
-<li><p>构建runtime项目</p>
-<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">cmake -H./runtime/cmake \</span><br><span class="line">      -B./runtime/build \</span><br><span class="line">      -G Ninja \</span><br><span class="line">      -DCMAKE_BUILD_TYPE=Release \</span><br><span class="line">      -DLLVM_INSTALL_PATH=$(pwd)/external/llvm-project/build/install \</span><br><span class="line">      -DCMAKE_INSTALL_PREFIX=&quot;$(pwd)/runtime/build/install&quot; \</span><br><span class="line">      -Dbrt_ENABLE_PYTHON_BINDINGS=ON \</span><br><span class="line">      -Dbrt_USE_CUDA=ON</span><br><span class="line"></span><br><span class="line">cmake --build ./runtime/build --target all --target install</span><br></pre></td></tr></table></figure>
-</li>
-<li><p>构建python wheel包，具体打包过程如下：</p>
-<p>运行<code>python3 setup.py</code></p>
-<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">(base) root@leondou-y1fkbccpmlrb-main:/openbayes/home/byteir/byteir/runtime/python# python3 setup.py bdist_wheel</span><br><span class="line">running bdist_wheel</span><br><span class="line">running build</span><br><span class="line">running build_py</span><br><span class="line">creating build</span><br><span class="line">creating build/lib.linux-x86_64-cpython-38</span><br><span class="line">creating build/lib.linux-x86_64-cpython-38/brt</span><br><span class="line">copying /output/byteir/byteir/runtime/python/brt/backend.py -&gt; build/lib.linux-x86_64-cpython-38/brt</span><br><span class="line">copying /output/byteir/byteir/runtime/python/brt/__init__.py -&gt; build/lib.linux-x86_64-cpython-38/brt</span><br><span class="line">copying /output/byteir/byteir/runtime/python/brt/version.py -&gt; build/lib.linux-x86_64-cpython-38/brt</span><br><span class="line">copying /output/byteir/byteir/runtime/python/brt/utils.py -&gt; build/lib.linux-x86_64-cpython-38/brt</span><br><span class="line">running build_ext</span><br><span class="line">/usr/local/lib/python3.8/site-packages/setuptools/_distutils/cmd.py:66: SetuptoolsDeprecationWarning: setup.py install is deprecated.</span><br><span class="line">!!</span><br><span class="line"></span><br><span class="line">        ********************************************************************************</span><br><span class="line">        Please avoid running ``setup.py`` directly.</span><br><span class="line">        Instead, use pypa/build, pypa/installer or other</span><br><span class="line">        standards-based tools.</span><br><span class="line"></span><br><span class="line">        See https://blog.ganssle.io/articles/2021/10/setup-py-deprecated.html for details.</span><br><span class="line">        ********************************************************************************</span><br><span class="line"></span><br><span class="line">!!</span><br><span class="line">  self.initialize_options()</span><br><span class="line">installing to build/bdist.linux-x86_64/wheel</span><br><span class="line">running install</span><br><span class="line">running install_lib</span><br><span class="line">creating build/bdist.linux-x86_64</span><br><span class="line">creating build/bdist.linux-x86_64/wheel</span><br><span class="line">creating build/bdist.linux-x86_64/wheel/brt</span><br><span class="line">copying build/lib.linux-x86_64-cpython-38/brt/backend.py -&gt; build/bdist.linux-x86_64/wheel/brt</span><br><span class="line">copying build/lib.linux-x86_64-cpython-38/brt/__init__.py -&gt; build/bdist.linux-x86_64/wheel/brt</span><br><span class="line">copying build/lib.linux-x86_64-cpython-38/brt/_brt.cpython-38-x86_64-linux-gnu.so -&gt; build/bdist.linux-x86_64/wheel/brt</span><br><span class="line">creating build/bdist.linux-x86_64/wheel/brt/lib</span><br><span class="line">copying build/lib.linux-x86_64-cpython-38/brt/lib/libbrt.so -&gt; build/bdist.linux-x86_64/wheel/brt/lib</span><br><span class="line">copying build/lib.linux-x86_64-cpython-38/brt/version.py -&gt; build/bdist.linux-x86_64/wheel/brt</span><br><span class="line">copying build/lib.linux-x86_64-cpython-38/brt/utils.py -&gt; build/bdist.linux-x86_64/wheel/brt</span><br><span class="line">running install_egg_info</span><br><span class="line">running egg_info</span><br><span class="line">creating /output/byteir/byteir/runtime/python/brt.egg-info</span><br><span class="line">writing /output/byteir/byteir/runtime/python/brt.egg-info/PKG-INFO</span><br><span class="line">writing dependency_links to /output/byteir/byteir/runtime/python/brt.egg-info/dependency_links.txt</span><br><span class="line">writing top-level names to /output/byteir/byteir/runtime/python/brt.egg-info/top_level.txt</span><br><span class="line">writing manifest file &#x27;/output/byteir/byteir/runtime/python/brt.egg-info/SOURCES.txt&#x27;</span><br><span class="line">reading manifest file &#x27;/output/byteir/byteir/runtime/python/brt.egg-info/SOURCES.txt&#x27;</span><br><span class="line">writing manifest file &#x27;/output/byteir/byteir/runtime/python/brt.egg-info/SOURCES.txt&#x27;</span><br><span class="line">Copying /output/byteir/byteir/runtime/python/brt.egg-info to build/bdist.linux-x86_64/wheel/brt-1.9.3.0+cpu-py3.8.egg-info</span><br><span class="line">running install_scripts</span><br><span class="line">creating build/bdist.linux-x86_64/wheel/brt-1.9.3.0+cpu.dist-info/WHEEL</span><br><span class="line">creating &#x27;dist/brt-1.9.3.0+cpu-cp38-cp38-linux_x86_64.whl&#x27; and adding &#x27;build/bdist.linux-x86_64/wheel&#x27; to it</span><br><span class="line">adding &#x27;brt/__init__.py&#x27;</span><br><span class="line">adding &#x27;brt/_brt.cpython-38-x86_64-linux-gnu.so&#x27;</span><br><span class="line">adding &#x27;brt/backend.py&#x27;</span><br><span class="line">adding &#x27;brt/utils.py&#x27;</span><br><span class="line">adding &#x27;brt/version.py&#x27;</span><br><span class="line">adding &#x27;brt/lib/libbrt.so&#x27;</span><br><span class="line">adding &#x27;brt-1.9.3.0+cpu.dist-info/METADATA&#x27;</span><br><span class="line">adding &#x27;brt-1.9.3.0+cpu.dist-info/WHEEL&#x27;</span><br><span class="line">adding &#x27;brt-1.9.3.0+cpu.dist-info/top_level.txt&#x27;</span><br><span class="line">adding &#x27;brt-1.9.3.0+cpu.dist-info/RECORD&#x27;</span><br><span class="line">removing build/bdist.linux-x86_64/wheel</span><br></pre></td></tr></table></figure></li>
-</ol>
-<p>​	<font color = red>注意：</font>最终的wheel包在&#x2F;openbayes&#x2F;home&#x2F;byteir&#x2F;byteir&#x2F;runtime&#x2F;python&#x2F;dist下，需要pip install一下才能使用。</p>
-<blockquote>
-<p>在组内服务器构建遇到的问题是，组内服务器没有cudnn，因此会报错<code>cudnn.h</code>头文件没有找到。目前暂时选择租服务器来完成构建流程，还没有解决这个问题（后续填坑）。</p>
-</blockquote>
-<p>至此成功构建好compiler部分和runtime部分（frontend部分不是研究重点，后续结合模型测试性能再研究）。</p>
-<h2 id="参考资料"><a href="#参考资料" class="headerlink" title="参考资料"></a><font color = brown>参考资料</font></h2><ol>
-<li><a href="https://byteir.ai/">ByteIR官方资料</a></li>
-<li><a href="https://github.com/bytedance/byteir?tab=readme-ov-file">ByteIR github</a></li>
-</ol>
-]]></content>
-      <categories>
-        <category>编译技术</category>
-        <category>机器学习编译</category>
-      </categories>
-      <tags>
-        <tag>机器学习编译器</tag>
-        <tag>mlir</tag>
       </tags>
   </entry>
 </search>

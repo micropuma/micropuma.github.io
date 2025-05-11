@@ -20,21 +20,18 @@
     var CONFIG = {"hostname":"example.com","root":"/","scheme":"Pisces","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":true,"show_result":true,"style":"mac"},"back2top":{"enable":true,"sidebar":false,"scrollpercent":true},"bookmark":{"enable":true,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":"gitalk","storage":true,"lazyload":false,"nav":null,"activeClass":"gitalk"},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":5,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
   </script>
 
-  <meta property="og:type" content="article">
-<meta property="og:title" content="MLIR topic: Linalg">
-<meta property="og:url" content="http://example.com/2025/05/09/MLIR-topic-Linalg/index.html">
+  <meta name="description" content="关注领域：体系结构，编译技术">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Leon&#39;s Blog">
+<meta property="og:url" content="http://example.com/archives/page/3/index.html">
 <meta property="og:site_name" content="Leon&#39;s Blog">
+<meta property="og:description" content="关注领域：体系结构，编译技术">
 <meta property="og:locale" content="zh_CN">
-<meta property="og:image" content="http://example.com/images/image-20250509110504481.png">
-<meta property="article:published_time" content="2025-05-09T02:56:24.000Z">
-<meta property="article:modified_time" content="2025-05-09T05:57:17.963Z">
 <meta property="article:author" content="Leon Dou">
-<meta property="article:tag" content="mlir">
-<meta property="article:tag" content="basics">
+<meta property="article:tag" content="compiler, system, c++">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:image" content="http://example.com/images/image-20250509110504481.png">
 
-<link rel="canonical" href="http://example.com/2025/05/09/MLIR-topic-Linalg/">
+<link rel="canonical" href="http://example.com/archives/page/3/">
 
 
 <script id="page-configurations">
@@ -42,12 +39,12 @@
   CONFIG.page = {
     sidebar: "",
     isHome : false,
-    isPost : true,
+    isPost : false,
     lang   : 'zh-CN'
   };
 </script>
 
-  <title>MLIR topic: Linalg | Leon's Blog</title>
+  <title>归档 | Leon's Blog</title>
   
 
 
@@ -188,148 +185,59 @@
         <div class="content-wrap">
           
 
-          <div class="content post posts-expand">
+          <div class="content archive">
             
 
-    
   
   
-  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
-    <link itemprop="mainEntityOfPage" href="http://example.com/2025/05/09/MLIR-topic-Linalg/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="image" content="/images/avatar.gif">
-      <meta itemprop="name" content="Leon Dou">
-      <meta itemprop="description" content="关注领域：体系结构，编译技术">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="Leon's Blog">
-    </span>
-      <header class="post-header">
-        <h1 class="post-title" itemprop="name headline">
-          MLIR topic: Linalg
-        </h1>
-
-        <div class="post-meta">
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-calendar"></i>
-              </span>
-              <span class="post-meta-item-text">发表于</span>
-              
-
-              <time title="创建时间：2025-05-09 10:56:24 / 修改时间：13:57:17" itemprop="dateCreated datePublished" datetime="2025-05-09T10:56:24+08:00">2025-05-09</time>
-            </span>
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-folder"></i>
-              </span>
-              <span class="post-meta-item-text">分类于</span>
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/%E7%BC%96%E8%AF%91%E6%8A%80%E6%9C%AF/" itemprop="url" rel="index"><span itemprop="name">编译技术</span></a>
-                </span>
-                  ，
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/%E7%BC%96%E8%AF%91%E6%8A%80%E6%9C%AF/mlir/" itemprop="url" rel="index"><span itemprop="name">mlir</span></a>
-                </span>
-                  ，
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/%E7%BC%96%E8%AF%91%E6%8A%80%E6%9C%AF/mlir/basics/" itemprop="url" rel="index"><span itemprop="name">basics</span></a>
-                </span>
-            </span>
-
-          
-            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
-              <span class="post-meta-item-icon">
-                <i class="fa fa-eye"></i>
-              </span>
-              <span class="post-meta-item-text">阅读次数：</span>
-              <span id="busuanzi_value_page_pv"></span>
-            </span><br>
-            <span class="post-meta-item" title="本文字数">
-              <span class="post-meta-item-icon">
-                <i class="far fa-file-word"></i>
-              </span>
-                <span class="post-meta-item-text">本文字数：</span>
-              <span>1.5k</span>
-            </span>
-            <span class="post-meta-item" title="阅读时长">
-              <span class="post-meta-item-icon">
-                <i class="far fa-clock"></i>
-              </span>
-                <span class="post-meta-item-text">阅读时长 &asymp;</span>
-              <span>1 分钟</span>
-            </span>
-
-        </div>
-      </header>
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
+  
+  <div class="post-block">
+    <div class="posts-collapse">
+      <div class="collection-title">
+        <span class="collection-header">嗯..! 目前共计 21 篇日志。 继续努力。</span>
+      </div>
 
       
-        <p><img src="/images/image-20250509110504481.png" alt="image-20250509110504481"></p>
-<span id="more"></span>
-
-<h2 id="Why-Linalg"><a href="#Why-Linalg" class="headerlink" title="Why Linalg?"></a><font color = brown>Why Linalg?</font></h2><h3 id="问题空间"><a href="#问题空间" class="headerlink" title="问题空间"></a><font color = green>问题空间</font></h3><p>首先，需要明白为什么MLIR要引入Linalg dialect。分析深度学习模型，发现有如下特点：</p>
-<ul>
-<li>深度学习的计算任务十分规整，可以大致分为如下几类：<ol>
-<li>矩阵乘和卷积：内含乘加归约运算的<strong>完美嵌套循环</strong>。</li>
-<li>逐元素乘：规整轻量，易于计算。</li>
-</ol>
-</li>
-<li>除去计算算子，还有数据搬运算子。比如broadcast，reshape等。这些操作有一个很好地特点：<strong>映射符合仿射变化</strong>。</li>
-<li>诸如topK，scatter等不规则数据搬运方式，一般会引入自定义算子解决。</li>
-</ul>
-<p>在将深度学习模型部署到硬件上，对于硬件架构也需要有认知：</p>
-<blockquote>
-<p>通用可编程 CPU 和 GPU 采用的都是 tiled-based 架构，它们通过多级的内存缓存系统来给 SIMD&#x2F;SIMT 计算单元提供数据。 不过即便多层次，访存速度总体上也远慢于计算单元，所以我们需要提高数据的利用率来提高每秒钟能够实际执行的指令数。 <strong>要高效地利用硬件，我们需对原问题进行分块 (tile) 以产生更小规模的子问题，并分配 (distribute) 给不同的计算单元。同时我们需要尽可能多地利用近处的高速缓存来达到高比例的数据复用。</strong></p>
-</blockquote>
-<p>基于深度学习模型特点和硬件特点，不同的算子类别有不同的硬件映射规则策略（代码生成策略）。为了解耦上层算子和底层硬件，我们希望有一个统一的流程来做代码生成，但同时也要尽量保留各个算子的特性。Linalg Dialect由此产生。基于前面探讨的深度学习模型特点，Linalg dialect聚焦于仿射变化和完美嵌套循环，在IR通用性和简洁有效性之间取得完美平衡。</p>
-<h2 id="参考资料"><a href="#参考资料" class="headerlink" title="参考资料"></a><font color = brown>参考资料</font></h2><ol>
-<li><a target="_blank" rel="noopener" href="https://www.lei.chat/zh/posts/mlir-linalg-dialect-and-patterns/">Lei Chat博客</a></li>
-</ol>
-<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">/usr/xilinx/Vitis/2021.1/gnu/aarch64/lin/aarch64-linux/bin/aarch64-linux-gnu-g++ -Wall -c -std=c++14 -Wno-int-to-pointer-cast --sysroot=/home/douliyang/large/AIE/CHARM/VITIS2021/opt/sysroots/cortexa72-cortexa53-xilinx-linux/sysroots/cortexa72-cortexa53-xilinx-linux  -I/home/douliyang/large/AIE/CHARM/VITIS2021/opt/sysroots/cortexa72-cortexa53-xilinx-linux/sysroots/cortexa72-cortexa53-xilinx-linux/usr/include/xrt -I./ -I/usr/xilinx/Vitis/2021.1/aietools/include -I/usr/xilinx/Vitis/2021.1/include -I./aie ./Work/ps/c_rts/aie_control_xrt.cpp -o&#x27;aie_control_xrt.o&#x27; -I/home/douliyang/large/AIE/CHARM/VITIS2021/opt/sysroots/cortexa72-cortexa53-xilinx-linux/usr/include/c++/10.2.0 -I$SYSROOT/usr/include/c++/10.2.0/aarch64-xilinx-linux -I/home/douliyang/large/AIE/CHARM/VITIS2021/opt/sysroots/cortexa72-cortexa53-xilinx-linux/usr/include</span><br></pre></td></tr></table></figure>
-
-
+    <div class="collection-year">
+      <span class="collection-header">2025</span>
     </div>
 
-    
-    
-    
+  <article itemscope itemtype="http://schema.org/Article">
+    <header class="post-header">
 
-      <footer class="post-footer">
-          <div class="post-tags">
-              <a href="/tags/mlir/" rel="tag"># mlir</a>
-              <a href="/tags/basics/" rel="tag"># basics</a>
-          </div>
+      <div class="post-meta">
+        <time itemprop="dateCreated"
+              datetime="2025-03-29T23:04:32+08:00"
+              content="2025-03-29">
+          03-29
+        </time>
+      </div>
 
-        
+      <div class="post-title">
+          <a class="post-title-link" href="/2025/03/29/Allo%E9%A1%B9%E7%9B%AE%E5%88%9D%E6%8E%A2/" itemprop="url">
+            <span itemprop="name">Allo项目初探</span>
+          </a>
+      </div>
 
-
-        
-    <div class="post-nav">
-      <div class="post-nav-item">
-    <a href="/2025/05/08/ByteIR%E5%88%9D%E6%8E%A2%EF%BC%9ARuntime%E7%B3%BB%E7%BB%9F%E8%AE%BE%E8%AE%A1%E4%B8%8E%E5%AE%9E%E7%8E%B0/" rel="prev" title="ByteIR初探：Runtime系统设计与实现">
-      <i class="fa fa-chevron-left"></i> ByteIR初探：Runtime系统设计与实现
-    </a></div>
-      <div class="post-nav-item"></div>
-    </div>
-      </footer>
-    
+    </header>
   </article>
+
+
+    </div>
+  </div>
   
   
   
+
+  
+  <nav class="pagination">
+    <a class="extend prev" rel="prev" href="/archives/page/2/"><i class="fa fa-angle-left" aria-label="上一页"></i></a><a class="page-number" href="/archives/">1</a><a class="page-number" href="/archives/page/2/">2</a><span class="page-number current">3</span>
+  </nav>
 
 
 
           </div>
           
-    <div class="comments" id="gitalk-container"></div>
 
 <script>
   window.addEventListener('tabs:register', () => {
@@ -376,7 +284,6 @@
 
       <!--noindex-->
       <div class="post-toc-wrap sidebar-panel">
-          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#Why-Linalg"><span class="nav-number">1.</span> <span class="nav-text">Why Linalg?</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E9%97%AE%E9%A2%98%E7%A9%BA%E9%97%B4"><span class="nav-number">1.1.</span> <span class="nav-text">问题空间</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%8F%82%E8%80%83%E8%B5%84%E6%96%99"><span class="nav-number">2.</span> <span class="nav-text">参考资料</span></a></li></ol></div>
       </div>
       <!--/noindex-->
 
@@ -390,7 +297,7 @@
       <div class="site-state-item site-state-posts">
           <a href="/archives/">
         
-          <span class="site-state-item-count">20</span>
+          <span class="site-state-item-count">21</span>
           <span class="site-state-item-name">日志</span>
         </a>
       </div>
@@ -440,13 +347,13 @@
       <i class="fa fa-chart-area"></i>
     </span>
       <span class="post-meta-item-text">站点总字数：</span>
-    <span title="站点总字数">154k</span>
+    <span title="站点总字数">156k</span>
     <span class="post-meta-divider">|</span>
     <span class="post-meta-item-icon">
       <i class="fa fa-coffee"></i>
     </span>
       <span class="post-meta-item-text">站点阅读时长 &asymp;</span>
-    <span title="站点阅读时长">2:20</span>
+    <span title="站点阅读时长">2:21</span>
 </div>
   <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://pisces.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Pisces</a> 强力驱动
   </div>
@@ -591,25 +498,6 @@ window.addEventListener('pjax:success', () => {
 
   
 
-<link rel="stylesheet" href="//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.min.css">
-
-<script>
-NexT.utils.loadComments(document.querySelector('#gitalk-container'), () => {
-  NexT.utils.getScript('//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.min.js', () => {
-    var gitalk = new Gitalk({
-      clientID    : 'Ov23liFsw1lTgh0R8s8H',
-      clientSecret: '1f947cb0d107ba1ffbcad8c25688c075224fff36',
-      repo        : 'micropuma.github.io',
-      owner       : 'micropuma',
-      admin       : ['micropuma'],
-      id          : 'c28f925679996290777ff22a21f088a0',
-        language: 'zh-CN',
-      distractionFreeMode: true
-    });
-    gitalk.render('gitalk-container');
-  }, window.Gitalk);
-});
-</script>
 
     </div>
 </body>

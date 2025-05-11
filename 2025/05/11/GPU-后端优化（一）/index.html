@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 7.3.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"example.com","root":"/","scheme":"Pisces","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":true,"show_result":true,"style":"mac"},"back2top":{"enable":true,"sidebar":false,"scrollpercent":true},"bookmark":{"enable":true,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":"gitalk","storage":true,"lazyload":false,"nav":null,"activeClass":"gitalk"},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":5,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta property="og:type" content="article">
+<meta property="og:title" content="GPU 后端优化（一）">
+<meta property="og:url" content="http://example.com/2025/05/11/GPU-%E5%90%8E%E7%AB%AF%E4%BC%98%E5%8C%96%EF%BC%88%E4%B8%80%EF%BC%89/index.html">
+<meta property="og:site_name" content="Leon&#39;s Blog">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="f:\LeonBlog\source\images\image-20250511230828794.png">
+<meta property="og:image" content="f:\LeonBlog\source\images\image-20250511233238659.png">
+<meta property="article:published_time" content="2025-05-11T13:25:29.000Z">
+<meta property="article:modified_time" content="2025-05-11T15:35:57.365Z">
+<meta property="article:author" content="Leon Dou">
+<meta property="article:tag" content="机器学习编译器">
+<meta property="article:tag" content="后端">
+<meta property="article:tag" content="运行时">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="f:\LeonBlog\source\images\image-20250511230828794.png">
+
+<link rel="canonical" href="http://example.com/2025/05/11/GPU-%E5%90%8E%E7%AB%AF%E4%BC%98%E5%8C%96%EF%BC%88%E4%B8%80%EF%BC%89/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>GPU 后端优化（一） | Leon's Blog</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">Leon's Blog</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">分享一点有趣的技术</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocapitalize="off"
+           placeholder="搜索..." spellcheck="false"
+           type="search" class="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result">
+  <div id="no-result">
+    <i class="fa fa-spinner fa-pulse fa-5x fa-fw"></i>
+  </div>
+</div>
+
+    </div>
+  </div>
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+  <div class="reading-progress-bar"></div>
+  <a role="button" class="book-mark-link book-mark-link-fixed"></a>
+
+  <a href="https://github.com/micropuma" class="github-corner" title="Follow me on GitHub" aria-label="Follow me on GitHub" rel="noopener" target="_blank"><svg width="80" height="80" viewBox="0 0 250 250" aria-hidden="true"><path d="M0,0 L115,115 L130,115 L142,142 L250,250 L250,0 Z"></path><path d="M128.3,109.0 C113.8,99.7 119.0,89.6 119.0,89.6 C122.0,82.7 120.5,78.6 120.5,78.6 C119.2,72.0 123.4,76.3 123.4,76.3 C127.3,80.9 125.5,87.3 125.5,87.3 C122.9,97.6 130.6,101.9 134.4,103.2" fill="currentColor" style="transform-origin: 130px 106px;" class="octo-arm"></path><path d="M115.0,115.0 C114.9,115.1 118.7,116.5 119.8,115.4 L133.7,101.6 C136.9,99.2 139.9,98.4 142.2,98.6 C133.8,88.0 127.5,74.4 143.8,58.0 C148.5,53.4 154.0,51.2 159.7,51.0 C160.3,49.4 163.2,43.6 171.4,40.1 C171.4,40.1 176.1,42.5 178.8,56.2 C183.1,58.6 187.2,61.8 190.9,65.4 C194.5,69.0 197.7,73.2 200.1,77.6 C213.8,80.2 216.3,84.9 216.3,84.9 C212.7,93.1 206.9,96.0 205.4,96.6 C205.1,102.4 203.0,107.8 198.3,112.5 C181.9,128.9 168.3,122.5 157.7,114.1 C157.9,116.9 156.7,120.9 152.7,124.9 L141.0,136.5 C139.8,137.7 141.6,141.9 141.8,141.8 Z" fill="currentColor" class="octo-body"></path></svg></a>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://example.com/2025/05/11/GPU-%E5%90%8E%E7%AB%AF%E4%BC%98%E5%8C%96%EF%BC%88%E4%B8%80%EF%BC%89/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="Leon Dou">
+      <meta itemprop="description" content="关注领域：体系结构，编译技术">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Leon's Blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          GPU 后端优化（一）
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+              
+
+              <time title="创建时间：2025-05-11 21:25:29 / 修改时间：23:35:57" itemprop="dateCreated datePublished" datetime="2025-05-11T21:25:29+08:00">2025-05-11</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/%E7%BC%96%E8%AF%91%E6%8A%80%E6%9C%AF/" itemprop="url" rel="index"><span itemprop="name">编译技术</span></a>
+                </span>
+                  ，
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/%E7%BC%96%E8%AF%91%E6%8A%80%E6%9C%AF/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0%E7%BC%96%E8%AF%91/" itemprop="url" rel="index"><span itemprop="name">机器学习编译</span></a>
+                </span>
+                  ，
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/%E7%BC%96%E8%AF%91%E6%8A%80%E6%9C%AF/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0%E7%BC%96%E8%AF%91/%E5%90%8E%E7%AB%AF/" itemprop="url" rel="index"><span itemprop="name">后端</span></a>
+                </span>
+                  ，
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/%E7%BC%96%E8%AF%91%E6%8A%80%E6%9C%AF/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0%E7%BC%96%E8%AF%91/%E5%90%8E%E7%AB%AF/%E8%BF%90%E8%A1%8C%E6%97%B6/" itemprop="url" rel="index"><span itemprop="name">运行时</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span><br>
+            <span class="post-meta-item" title="本文字数">
+              <span class="post-meta-item-icon">
+                <i class="far fa-file-word"></i>
+              </span>
+                <span class="post-meta-item-text">本文字数：</span>
+              <span>3.3k</span>
+            </span>
+            <span class="post-meta-item" title="阅读时长">
+              <span class="post-meta-item-icon">
+                <i class="far fa-clock"></i>
+              </span>
+                <span class="post-meta-item-text">阅读时长 &asymp;</span>
+              <span>3 分钟</span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p><img src="F:\LeonBlog\source\images\image-20250511230828794.png" alt="image-20250511230828794"></p>
+<span id="more"></span>
+
+<blockquote>
+<p>为什么会有GPU后端优化博客？在阅读BladeDISC以及IREE等源码的过程中，发现当逐步接触后端代码生成&#x2F;运行时系统调度时，由于本人没有深入接触过GPU体系架构（基础太差），很多优化pass难以理解。这一过程使我认识到对于底层系统架构的深入理解往往比具体的编译技术，编译框架（MLIR&#x2F;LLVM）而言更为重要。本系列主要记录我补习GPU架构知识的学习历程（开个坑，主要用于激励我自学CUDA，不然太摆了）。目前初步的计划，该系列会有如下几篇博客：</p>
+<ol>
+<li>GPU后端优化（一）：主要包括GPU后端优化基础知识</li>
+<li>GPU后端优化（二）：结合<a target="_blank" rel="noopener" href="http://arxiv.org/abs/2108.13191">MLIR生成高性能GPU算子</a>论文，以及<a target="_blank" rel="noopener" href="https://siboehm.com/articles/22/CUDA-MMM">CUDA算子优化博客</a>，学习CUDA算子开发过程和对应算子编译手段</li>
+<li>GPU后端优化（三）：机器学习编译实战部分，包括IREE和BladeDISC代码分析</li>
+<li>GPU后端优化（四）：高阶GPU体系结构，结合GPU架构书籍进行解读</li>
+</ol>
+</blockquote>
+<h2 id="GPU后端优化基础知识"><a href="#GPU后端优化基础知识" class="headerlink" title="GPU后端优化基础知识"></a><font color = brown>GPU后端优化基础知识</font></h2><p>在日常学习中，由于我的工作和编译器关联度较大，因此一般都是在阅读开源项目的pass源码。这其中如果涉及GPU相关的优化pass，遇到不懂的可能直接询问chatgpt或是一些博客寻找答案。久而久之发现自己虽然好像能够读懂编译器的后端生成pass，但往深处探讨，为什么这些pass是这样的顺序，为什么GPU需要这些pass，很多问题其实都回答不上来。归根结底，是对于GPU优化的原理知识以及优化之间的关联细节没有真正去仔细思考和学习。</p>
+<p>印度理工的学者的一篇利用MLIR搭建高性能GPU算子自动生成的文章，使我们开始的很好的起点。这篇<a target="_blank" rel="noopener" href="http://arxiv.org/abs/2108.13191">文章</a>完全基于MLIR基础设施，并做少量修改，同时是一个完整的GPU优化生成流程，是十分值得学习的。本章节的目的就是尽量扫盲，使一些原本不那么清晰或是没涉及过的优化概念尽量明晰，为读懂该文章做好准备工作。</p>
+<p><img src="F:\LeonBlog\source\images\image-20250511233238659.png" alt="image-20250511233238659"></p>
+<p>如上图所示是论文中的GPU算子生成流水线，也是我们补足GPU后端编译优化基础知识的概览。后续内容按照流水线展开，大体内容划分如下：</p>
+<ul>
+<li>Loop Tiling优化</li>
+<li>存储优化（共享内存开辟，padding，coalesce内存）</li>
+<li>WMMA tensor core</li>
+<li>latency hiding</li>
+</ul>
+<h3 id="Loop-Tiling优化"><a href="#Loop-Tiling优化" class="headerlink" title="Loop Tiling优化"></a><font color = green>Loop Tiling优化</font></h3><p>这一章节主要参考<a target="_blank" rel="noopener" href="https://zhuanlan.zhihu.com/p/477023757">一篇文章了解 Loop Tiling 优化</a>，这篇博客讲解非常到位，强烈建议有兴趣的读者仔细阅读。本篇文章的解读顺序和原博客不太一致，选择先列出tiling算法步骤，然后以一个具体例子带着大家走一遍算法步骤，解读每一步原理。</p>
+<h4 id="Tiling算法步骤"><a href="#Tiling算法步骤" class="headerlink" title="Tiling算法步骤"></a>Tiling算法步骤</h4><blockquote>
+<p>算法：</p>
+<p>设总共有 <code>N</code> 层循环，从外向内分别是 <code>0,1,...,N-1</code></p>
+<ul>
+<li><strong>从内向外</strong>，逐步分析 <code>N-2,N-3,...,0</code>（先排除掉最内层循环）</li>
+<li>对于每层循环 <code>L</code> ，<strong>看其 <code>idx=0,1,...</code> 时，是否有 array 可能被反复读取</strong>。<ul>
+<li>若有，则 tile 第 <code>L+1</code> 层循环。</li>
+</ul>
+</li>
+</ul>
+<p>都做完之后，再分析 <strong>基于新循环是否仍然有可 tile 的部分</strong></p>
+</blockquote>
+<p>上述算法初看比较抽象，选择通过一个矩阵乘法例子来走一遍该规则，以简化算法理解。</p>
+<p>首先我们要tiling的计算任务是NxNxN的矩阵乘（现实场景由于矩阵的维度，cache的维度有很多dirty work和边界trick，这里默认矩阵是“完美的”）。伪代码如下图所示：</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">for</span> i <span class="keyword">in</span> <span class="built_in">range</span>(<span class="number">0</span>, N):            <span class="comment"># i,k,j，访问符合行优先原则</span></span><br><span class="line">  <span class="keyword">for</span> k <span class="keyword">in</span> <span class="built_in">range</span>(<span class="number">0</span>, N): </span><br><span class="line">    <span class="keyword">for</span> j <span class="keyword">in</span> <span class="built_in">range</span>(<span class="number">0</span>, N):</span><br><span class="line">      C[i][j] += A[i][k] * B[k][j]</span><br></pre></td></tr></table></figure>
+
+<p>根据算法描述，首先分析k维度遍历过程中是否有array反复读取（k维度对应N-2维度）。发现<code>c[i][j]</code>的遍历和k维度无关，因此可以tile j这个维度，得到如下伪代码：</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">for</span> j_o <span class="keyword">in</span> <span class="built_in">range</span>(<span class="number">0</span>, N, T_j):                           <span class="comment"># j_i 对应j维度的外层维度，从0到N，步长为T</span></span><br><span class="line">    <span class="keyword">for</span> i <span class="keyword">in</span> <span class="built_in">range</span>(<span class="number">0</span>, N):</span><br><span class="line">        <span class="keyword">for</span> k <span class="keyword">in</span> <span class="built_in">range</span>(<span class="number">0</span>, N):</span><br><span class="line">            <span class="keyword">for</span> j_i <span class="keyword">in</span> <span class="built_in">range</span>(j_o, j_o+T_j):            <span class="comment"># j_o 对应j维度的内层循环</span></span><br><span class="line">                c[i][j_i] += A[i][k] * B[k][j_i]</span><br></pre></td></tr></table></figure>
+
+<p>分析tiling后伪代码，通过选取合适的T（适配L1缓存大小），则<code>c[i][j_i]</code>可以做到在k迭代过程中一直缓存在cache中。继续我们的tiling算法，该尝试k的上一层维度，i维度。发现<code>B[k][j_i]</code>在遍历过程中和i的值无关，因此可以对下一层，即k做优化，使得<code>B[k][j_i]</code>适配缓存。如下是伪代码：</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">for</span> k_o <span class="keyword">in</span> <span class="built_in">range</span>(<span class="number">0</span>, N, T_k):</span><br><span class="line">  <span class="keyword">for</span> j_o <span class="keyword">in</span> <span class="built_in">range</span>(<span class="number">0</span>, N, T_j):</span><br><span class="line">    <span class="keyword">for</span> i <span class="keyword">in</span> <span class="built_in">range</span>(<span class="number">0</span>, N):</span><br><span class="line">      <span class="keyword">for</span> k_i <span class="keyword">in</span> <span class="built_in">range</span>(k_o, k_o+T_k):</span><br><span class="line">        <span class="keyword">for</span> j_i <span class="keyword">in</span> <span class="built_in">range</span>(j_o, j_o+T_j):</span><br><span class="line">          C[i][j_i] += A[i][k_i] * B[k_i][j_i]</span><br><span class="line"><span class="comment"># 这样，k_i=0,1... 时，C[i_i][j] 始终在 cache 中；i=0,1.. 时，B[k_i][j_i] 也始终在 cache 中</span></span><br></pre></td></tr></table></figure>
+
+<p>至此，走完算法的第一部分流程，来到第二部分：需要分析 <strong>基于新循环是否仍然有可 tile 的部分</strong>。这部分的逻辑是，对于k维度和j维度做的tiling分块，对于最顶层（初始的顶层）i维度产生影响，目前i维度已不是顶层维度。i维度之上的j_o遍历过程中，下一层i的遍历跨度是N，比较大，是难以存入cache中的，因此需要对i也做tiling优化。伪代码如下：</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 又因为循环 i 从最外层循环变成了内循环，对于其上层循环 j_o 来说，当 j_o=0,1,...时，A[i][k_i] 是被反复读取的，因此也可以 tile 循环 i</span></span><br><span class="line"><span class="keyword">for</span> i_o <span class="keyword">in</span> <span class="built_in">range</span>(<span class="number">0</span>, N, T_i):</span><br><span class="line">  <span class="keyword">for</span> k_o <span class="keyword">in</span> <span class="built_in">range</span>(<span class="number">0</span>, N, T_k):</span><br><span class="line">    <span class="keyword">for</span> j_o <span class="keyword">in</span> <span class="built_in">range</span>(<span class="number">0</span>, N, T_j):</span><br><span class="line">      <span class="keyword">for</span> i_i <span class="keyword">in</span> <span class="built_in">range</span>(i_o, i_o + T_i):</span><br><span class="line">        <span class="keyword">for</span> k_i <span class="keyword">in</span> <span class="built_in">range</span>(k_o, k_o + T_k):</span><br><span class="line">          <span class="keyword">for</span> j_i <span class="keyword">in</span> <span class="built_in">range</span>(j_o, j_o + T_j):</span><br><span class="line">            C[i_i][j_i] += A[i_i][k_i] * B[k_i][j_i]</span><br><span class="line"><span class="comment"># 注意，内三层循环仍然是按照 i_i,k_i,j_i 的顺序，因此仍然满足 RowMajor 的顺序读取</span></span><br></pre></td></tr></table></figure>
+
+<p>至此，完成L1的tiling优化。可以看到，目前我的变换出的代码，在i_i，k_i和j_i维度都已经是tiling分块的。</p>
+<p>结束了？Too Naive！！！:fire:</p>
+<p>现代体系结构（从CPU到GPU到ASIC），均有多层级缓存体系。让我们继续研究一下代码，思考一下如果有L2 cache，该如何继续tiling？目前的矩阵乘运算已经适配L1缓存，可以看到j_o维度的循环，已经是完美缓存的。但是对于k_o循环而言，下一层j_o循环则成了严重的性能瓶颈。j_o循环总步长为N，这之间又是大量的cache miss。这一部分就需要L2缓存来加速存储交互了。继续我们的算法，以k_o维度为新的起点<strong>由内向外</strong>，分块的大小按照L2缓存来，继续一轮迭代，最终的结果：</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">for</span> j_oo <span class="keyword">in</span> <span class="built_in">range</span>(<span class="number">0</span>, N, T2_j):</span><br><span class="line">  <span class="keyword">for</span> i_o <span class="keyword">in</span> <span class="built_in">range</span>(<span class="number">0</span>, N, T_i):</span><br><span class="line">    <span class="keyword">for</span> k_o <span class="keyword">in</span> <span class="built_in">range</span>(<span class="number">0</span>, N, T_k):</span><br><span class="line">      <span class="keyword">for</span> j_oi <span class="keyword">in</span> <span class="built_in">range</span>(j_oo, j_oo + T2_j, T_j):</span><br><span class="line">        <span class="keyword">for</span> i_i <span class="keyword">in</span> <span class="built_in">range</span>(<span class="number">0</span>, N, T_i):</span><br><span class="line">          <span class="keyword">for</span> k_i <span class="keyword">in</span> <span class="built_in">range</span>(k_o, k_o + T_k):</span><br><span class="line">            <span class="keyword">for</span> j_i <span class="keyword">in</span> <span class="built_in">range</span>(j_oi, j_oi + T_j):</span><br><span class="line">              C[i_i][j_i] += A[i_i][k_i] * B[k_i][j_i]</span><br><span class="line"><span class="comment"># 这样的话，内三层循环 i_i, k_i, j_i （对应的 Tile size 为 T_i, T_j, T_k）放到 L1 Cache 里。</span></span><br><span class="line"><span class="comment"># 外层循环 j_oi （对应Tile size 为 T2_j） 就可以放到更大的 L2 Cache 里。于是便在 L2 里形成了对 C[i_i][j_i] 的复用</span></span><br></pre></td></tr></table></figure>
+
+<p>同理，可以继续向上，做k_o和i_o的分块，不再详细阐述了。</p>
+<h2 id="参考资料"><a href="#参考资料" class="headerlink" title="参考资料"></a><font color = brown>参考资料</font></h2><ol>
+<li><a target="_blank" rel="noopener" href="https://zhuanlan.zhihu.com/p/477023757">博客：Loop Tiling优化</a></li>
+<li><a target="_blank" rel="noopener" href="https://siboehm.com/articles/22/CUDA-MMM">博客：CUDA手写算子教程</a></li>
+<li><a target="_blank" rel="noopener" href="http://arxiv.org/abs/2108.13191">论文：MLIR 优化GEMM算子</a></li>
+</ol>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0%E7%BC%96%E8%AF%91%E5%99%A8/" rel="tag"># 机器学习编译器</a>
+              <a href="/tags/%E5%90%8E%E7%AB%AF/" rel="tag"># 后端</a>
+              <a href="/tags/%E8%BF%90%E8%A1%8C%E6%97%B6/" rel="tag"># 运行时</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2025/05/09/Modern-CPP-%E6%9D%A1%E6%AC%BE1/" rel="prev" title="Modern CPP: 条款1">
+      <i class="fa fa-chevron-left"></i> Modern CPP: 条款1
+    </a></div>
+      <div class="post-nav-item"></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+    <div class="comments" id="gitalk-container"></div>
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#GPU%E5%90%8E%E7%AB%AF%E4%BC%98%E5%8C%96%E5%9F%BA%E7%A1%80%E7%9F%A5%E8%AF%86"><span class="nav-number">1.</span> <span class="nav-text">GPU后端优化基础知识</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#Loop-Tiling%E4%BC%98%E5%8C%96"><span class="nav-number">1.1.</span> <span class="nav-text">Loop Tiling优化</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#Tiling%E7%AE%97%E6%B3%95%E6%AD%A5%E9%AA%A4"><span class="nav-number">1.1.1.</span> <span class="nav-text">Tiling算法步骤</span></a></li></ol></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%8F%82%E8%80%83%E8%B5%84%E6%96%99"><span class="nav-number">2.</span> <span class="nav-text">参考资料</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">Leon Dou</p>
+  <div class="site-description" itemprop="description">关注领域：体系结构，编译技术</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">21</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">16</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">12</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2025</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Leon Dou</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-area"></i>
+    </span>
+      <span class="post-meta-item-text">站点总字数：</span>
+    <span title="站点总字数">156k</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+      <span class="post-meta-item-text">站点阅读时长 &asymp;</span>
+    <span title="站点阅读时长">2:21</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://pisces.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Pisces</a> 强力驱动
+  </div>
+
+        
+<div class="busuanzi-count">
+  <script data-pjax async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/pjax/pjax.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+<script src="/js/bookmark.js"></script>
+
+  <script>
+var pjax = new Pjax({
+  selectors: [
+    'head title',
+    '#page-configurations',
+    '.content-wrap',
+    '.post-toc-wrap',
+    '.languages',
+    '#pjax'
+  ],
+  switches: {
+    '.post-toc-wrap': Pjax.switches.innerHTML
+  },
+  analytics: false,
+  cacheBust: false,
+  scrollTo : !CONFIG.bookmark.enable
+});
+
+window.addEventListener('pjax:success', () => {
+  document.querySelectorAll('script[data-pjax], script#page-configurations, #pjax script').forEach(element => {
+    var code = element.text || element.textContent || element.innerHTML || '';
+    var parent = element.parentNode;
+    parent.removeChild(element);
+    var script = document.createElement('script');
+    if (element.id) {
+      script.id = element.id;
+    }
+    if (element.className) {
+      script.className = element.className;
+    }
+    if (element.type) {
+      script.type = element.type;
+    }
+    if (element.src) {
+      script.src = element.src;
+      // Force synchronous loading of peripheral JS.
+      script.async = false;
+    }
+    if (element.dataset.pjax !== undefined) {
+      script.dataset.pjax = '';
+    }
+    if (code !== '') {
+      script.appendChild(document.createTextNode(code));
+    }
+    parent.appendChild(script);
+  });
+  NexT.boot.refresh();
+  // Define Motion Sequence & Bootstrap Motion.
+  if (CONFIG.motion.enable) {
+    NexT.motion.integrator
+      .init()
+      .add(NexT.motion.middleWares.subMenu)
+      .add(NexT.motion.middleWares.postList)
+      .bootstrap();
+  }
+  NexT.utils.updateSidebarPosition();
+});
+</script>
+
+
+
+
+  
+
+
+
+
+  
+<script src="/js/local-search.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+    <div id="pjax">
+  
+
+  
+
+  
+
+<link rel="stylesheet" href="//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.min.css">
+
+<script>
+NexT.utils.loadComments(document.querySelector('#gitalk-container'), () => {
+  NexT.utils.getScript('//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.min.js', () => {
+    var gitalk = new Gitalk({
+      clientID    : 'Ov23liFsw1lTgh0R8s8H',
+      clientSecret: '1f947cb0d107ba1ffbcad8c25688c075224fff36',
+      repo        : 'micropuma.github.io',
+      owner       : 'micropuma',
+      admin       : ['micropuma'],
+      id          : 'f6c320acc6b64c15fb5bdb6534feb65e',
+        language: 'zh-CN',
+      distractionFreeMode: true
+    });
+    gitalk.render('gitalk-container');
+  }, window.Gitalk);
+});
+</script>
+
+    </div>
+</body>
+</html>
