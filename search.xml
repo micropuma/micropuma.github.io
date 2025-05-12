@@ -874,6 +874,235 @@
       </tags>
   </entry>
   <entry>
+    <title>ByteIR 初探</title>
+    <url>/2025/05/06/ByteIR-%E5%88%9D%E6%8E%A2/</url>
+    <content><![CDATA[<p><img src="/images/image-20250506220408172.png" alt="image-20250506220408172"></p>
+<span id="more"></span>
+
+<h2 id="Why-ByteIR？"><a href="#Why-ByteIR？" class="headerlink" title="Why ByteIR？"></a><font color = brown>Why ByteIR？</font></h2><p>看了这么多端到端机器学习编译器（IREE，BladeDISC），为什么选择研究一下ByteIR？这个<a href="https://github.com/bytedance/byteir/issues/9">ByteIR issue9</a>的回答很好地指明了ByteIR相比成熟端到端编译器的区别：</p>
+<ul>
+<li>ByteIR有十分清晰的Frontend，Compiler和runtime，而且三者可以分离编译构建。</li>
+<li>ByteIR在字节内部不同的开发人员都在使用。</li>
+<li>ByteIR是十分简洁的，单纯的是一堆passes集合，辅助开发者完成端到端流程。</li>
+</ul>
+<p>上述三个特点，使得ByteIR十分适合针对性学习。</p>
+<h2 id="源码构建"><a href="#源码构建" class="headerlink" title="源码构建"></a><font color = brown>源码构建</font></h2><h3 id="Frontend构建"><a href="#Frontend构建" class="headerlink" title="Frontend构建"></a><font color = green>Frontend构建</font></h3><p>ByteIR的前端支持pytorch，onnx和tensorflow三种框架。其流程都是将框架接入stableHLO再合法化到MHLO 方言中。笔者先前构建过torch-mlir和iree等项目，原本想省去构建前端，复用torch-mlir的前端，但是</p>
+<h3 id="Compiler部分构建"><a href="#Compiler部分构建" class="headerlink" title="Compiler部分构建"></a><font color = green>Compiler部分构建</font></h3><ol>
+<li><p>clone项目</p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">git clone git@github.com:bytedance/byteir.git</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>构建虚拟环境</p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line"><span class="meta prompt_"># </span><span class="language-bash">构建虚拟环境</span></span><br><span class="line">pip install pybind11</span><br><span class="line">pip install nanobind</span><br><span class="line">pip install numpy</span><br><span class="line">pip install lit</span><br><span class="line">pip install filecheck</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>Build LLVM</p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">cd /path_to_byteir</span><br><span class="line">git submodule update --init external/llvm-project</span><br></pre></td></tr></table></figure>
+
+<p>构建脚本如下：</p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line"><span class="meta prompt_"># </span><span class="language-bash">build llvm</span></span><br><span class="line">cd external/llvm-project</span><br><span class="line">cmake -H./llvm \</span><br><span class="line">      -B./build \</span><br><span class="line">      -GNinja \</span><br><span class="line">      -DLLVM_ENABLE_PROJECTS=mlir \</span><br><span class="line">      -DLLVM_TARGETS_TO_BUILD=&quot;X86;NVPTX&quot; \</span><br><span class="line">      -DCMAKE_BUILD_TYPE=Release \</span><br><span class="line">      -DLLVM_ENABLE_ASSERTIONS=ON \</span><br><span class="line">      -DLLVM_INSTALL_UTILS=ON \</span><br><span class="line">      -DLLVM_CCACHE_BUILD=OFF \</span><br><span class="line">      -DLLVM_ENABLE_TERMINFO=OFF \</span><br><span class="line">      -DMLIR_ENABLE_BINDINGS_PYTHON=ON \</span><br><span class="line">      -DCMAKE_INSTALL_PREFIX=$(pwd)/build/install</span><br><span class="line"><span class="meta prompt_"># </span><span class="language-bash">via -DCMAKE_C_COMPILER=gcc/clang and -DCMAKE_CXX_COMPILER=g++/clang++</span></span><br><span class="line"><span class="meta prompt_"># </span><span class="language-bash">to specify gcc&gt;=8.5 or clang&gt;=7</span> </span><br><span class="line"><span class="meta prompt_"># </span><span class="language-bash"><span class="keyword">for</span> Mac <span class="built_in">users</span>, <span class="built_in">set</span> -DLLVM_TARGETS_TO_BUILD=<span class="string">&quot;AArch64;NVPTX&quot;</span></span></span><br><span class="line"></span><br><span class="line">cmake --build ./build --target all --target install</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>Build ByteIR compiler</p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">cmake -B./compiler/build \</span><br><span class="line">      -H./compiler/cmake \</span><br><span class="line">      -GNinja \</span><br><span class="line">      -DCMAKE_BUILD_TYPE=Release \</span><br><span class="line">      -DPython3_EXECUTABLE=/mnt/home/douliyang/mlir-workspace/byteir/venv/bin/python \</span><br><span class="line">      -DLLVM_INSTALL_PATH=$(pwd)/external/llvm-project/build/install \</span><br><span class="line">      -DLLVM_EXTERNAL_LIT=/mnt/home/douliyang/mlir-workspace/byteir/venv/bin/lit \</span><br><span class="line">      -Dpybind11_DIR=/mnt/home/douliyang/mlir-workspace/byteir/venv/lib/python3.11/site-packages/pybind11/share/cmake/pybind11 \</span><br><span class="line">      -Dnanobind_DIR=/mnt/home/douliyang/mlir-workspace/byteir/venv/lib/python3.11/site-packages/nanobind/cmake \</span><br><span class="line">      -DBYTEIR_ENABLE_BINDINGS_PYTHON=ON</span><br><span class="line"></span><br><span class="line">cmake --build ./compiler/build --target check-byteir</span><br><span class="line">cmake --build ./compiler/build --target byteir-python-pack</span><br></pre></td></tr></table></figure>
+
+<p>上述一定要构建两个测试，第一个测试compiler的pipeline正确性，第二个测试python wrapper api正确性。</p>
+<p>这里构建过程中有几处坑：lit测试由于我使用了虚拟环境，所以需要cmake中显示指定python3的可执行路径。pybind11和nanobind也是同理，需要显示指定路径。</p>
+</li>
+<li><p>测试正确性（一个端到端的测试case）</p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">BYTEIR=&quot;/home/douliyang/large/mlir-workspace/byteir&quot;</span><br><span class="line"></span><br><span class="line">export PYTHONPATH=&quot;$&#123;BYTEIR&#125;/compiler/build/python_packages/byteir&quot;</span><br><span class="line"></span><br><span class="line">python3 -m byteir.tools.compiler -v \</span><br><span class="line">  &quot;$&#123;BYTEIR&#125;/compiler/test/E2E/CUDA/MLPInference/input.mlir&quot; \</span><br><span class="line">  -o out.mlir \</span><br><span class="line">  --entry_func forward \</span><br><span class="line"><span class="meta prompt_">  2&gt;</span><span class="language-bash">&amp;1 | <span class="built_in">tee</span> pipeline.log</span></span><br></pre></td></tr></table></figure></li>
+</ol>
+<p>​	<font color = red>注意，最终的wheel包生成在<code>build/python/dist</code>中，pip isntall即可。</font></p>
+<h3 id="Runtime部分构建"><a href="#Runtime部分构建" class="headerlink" title="Runtime部分构建"></a><font color = green>Runtime部分构建</font></h3><p>首先确保compiler部分构建成功，runtime部分依赖compiler部分构建的LLVM项目。</p>
+<ol>
+<li><p>获取runtime的依赖</p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">git submodule update --init --recursive -f external/mlir-hlo external/cutlass external/date external/googletest external/pybind11</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>构建runtime项目</p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">cmake -H./runtime/cmake \</span><br><span class="line">      -B./runtime/build \</span><br><span class="line">      -G Ninja \</span><br><span class="line">      -DCMAKE_BUILD_TYPE=Release \</span><br><span class="line">      -DLLVM_INSTALL_PATH=$(pwd)/external/llvm-project/build/install \</span><br><span class="line">      -DCMAKE_INSTALL_PREFIX=&quot;$(pwd)/runtime/build/install&quot; \</span><br><span class="line">      -Dbrt_ENABLE_PYTHON_BINDINGS=ON \</span><br><span class="line">      -Dbrt_USE_CUDA=ON</span><br><span class="line"></span><br><span class="line">cmake --build ./runtime/build --target all --target install</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>构建python wheel包，具体打包过程如下：</p>
+<p>运行<code>python3 setup.py</code></p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">(base) root@leondou-y1fkbccpmlrb-main:/openbayes/home/byteir/byteir/runtime/python# python3 setup.py bdist_wheel</span><br><span class="line">running bdist_wheel</span><br><span class="line">running build</span><br><span class="line">running build_py</span><br><span class="line">creating build</span><br><span class="line">creating build/lib.linux-x86_64-cpython-38</span><br><span class="line">creating build/lib.linux-x86_64-cpython-38/brt</span><br><span class="line">copying /output/byteir/byteir/runtime/python/brt/backend.py -&gt; build/lib.linux-x86_64-cpython-38/brt</span><br><span class="line">copying /output/byteir/byteir/runtime/python/brt/__init__.py -&gt; build/lib.linux-x86_64-cpython-38/brt</span><br><span class="line">copying /output/byteir/byteir/runtime/python/brt/version.py -&gt; build/lib.linux-x86_64-cpython-38/brt</span><br><span class="line">copying /output/byteir/byteir/runtime/python/brt/utils.py -&gt; build/lib.linux-x86_64-cpython-38/brt</span><br><span class="line">running build_ext</span><br><span class="line">/usr/local/lib/python3.8/site-packages/setuptools/_distutils/cmd.py:66: SetuptoolsDeprecationWarning: setup.py install is deprecated.</span><br><span class="line">!!</span><br><span class="line"></span><br><span class="line">        ********************************************************************************</span><br><span class="line">        Please avoid running ``setup.py`` directly.</span><br><span class="line">        Instead, use pypa/build, pypa/installer or other</span><br><span class="line">        standards-based tools.</span><br><span class="line"></span><br><span class="line">        See https://blog.ganssle.io/articles/2021/10/setup-py-deprecated.html for details.</span><br><span class="line">        ********************************************************************************</span><br><span class="line"></span><br><span class="line">!!</span><br><span class="line">  self.initialize_options()</span><br><span class="line">installing to build/bdist.linux-x86_64/wheel</span><br><span class="line">running install</span><br><span class="line">running install_lib</span><br><span class="line">creating build/bdist.linux-x86_64</span><br><span class="line">creating build/bdist.linux-x86_64/wheel</span><br><span class="line">creating build/bdist.linux-x86_64/wheel/brt</span><br><span class="line">copying build/lib.linux-x86_64-cpython-38/brt/backend.py -&gt; build/bdist.linux-x86_64/wheel/brt</span><br><span class="line">copying build/lib.linux-x86_64-cpython-38/brt/__init__.py -&gt; build/bdist.linux-x86_64/wheel/brt</span><br><span class="line">copying build/lib.linux-x86_64-cpython-38/brt/_brt.cpython-38-x86_64-linux-gnu.so -&gt; build/bdist.linux-x86_64/wheel/brt</span><br><span class="line">creating build/bdist.linux-x86_64/wheel/brt/lib</span><br><span class="line">copying build/lib.linux-x86_64-cpython-38/brt/lib/libbrt.so -&gt; build/bdist.linux-x86_64/wheel/brt/lib</span><br><span class="line">copying build/lib.linux-x86_64-cpython-38/brt/version.py -&gt; build/bdist.linux-x86_64/wheel/brt</span><br><span class="line">copying build/lib.linux-x86_64-cpython-38/brt/utils.py -&gt; build/bdist.linux-x86_64/wheel/brt</span><br><span class="line">running install_egg_info</span><br><span class="line">running egg_info</span><br><span class="line">creating /output/byteir/byteir/runtime/python/brt.egg-info</span><br><span class="line">writing /output/byteir/byteir/runtime/python/brt.egg-info/PKG-INFO</span><br><span class="line">writing dependency_links to /output/byteir/byteir/runtime/python/brt.egg-info/dependency_links.txt</span><br><span class="line">writing top-level names to /output/byteir/byteir/runtime/python/brt.egg-info/top_level.txt</span><br><span class="line">writing manifest file &#x27;/output/byteir/byteir/runtime/python/brt.egg-info/SOURCES.txt&#x27;</span><br><span class="line">reading manifest file &#x27;/output/byteir/byteir/runtime/python/brt.egg-info/SOURCES.txt&#x27;</span><br><span class="line">writing manifest file &#x27;/output/byteir/byteir/runtime/python/brt.egg-info/SOURCES.txt&#x27;</span><br><span class="line">Copying /output/byteir/byteir/runtime/python/brt.egg-info to build/bdist.linux-x86_64/wheel/brt-1.9.3.0+cpu-py3.8.egg-info</span><br><span class="line">running install_scripts</span><br><span class="line">creating build/bdist.linux-x86_64/wheel/brt-1.9.3.0+cpu.dist-info/WHEEL</span><br><span class="line">creating &#x27;dist/brt-1.9.3.0+cpu-cp38-cp38-linux_x86_64.whl&#x27; and adding &#x27;build/bdist.linux-x86_64/wheel&#x27; to it</span><br><span class="line">adding &#x27;brt/__init__.py&#x27;</span><br><span class="line">adding &#x27;brt/_brt.cpython-38-x86_64-linux-gnu.so&#x27;</span><br><span class="line">adding &#x27;brt/backend.py&#x27;</span><br><span class="line">adding &#x27;brt/utils.py&#x27;</span><br><span class="line">adding &#x27;brt/version.py&#x27;</span><br><span class="line">adding &#x27;brt/lib/libbrt.so&#x27;</span><br><span class="line">adding &#x27;brt-1.9.3.0+cpu.dist-info/METADATA&#x27;</span><br><span class="line">adding &#x27;brt-1.9.3.0+cpu.dist-info/WHEEL&#x27;</span><br><span class="line">adding &#x27;brt-1.9.3.0+cpu.dist-info/top_level.txt&#x27;</span><br><span class="line">adding &#x27;brt-1.9.3.0+cpu.dist-info/RECORD&#x27;</span><br><span class="line">removing build/bdist.linux-x86_64/wheel</span><br></pre></td></tr></table></figure></li>
+</ol>
+<p>​	<font color = red>注意：</font>最终的wheel包在&#x2F;openbayes&#x2F;home&#x2F;byteir&#x2F;byteir&#x2F;runtime&#x2F;python&#x2F;dist下，需要pip install一下才能使用。</p>
+<blockquote>
+<p>在组内服务器构建遇到的问题是，组内服务器没有cudnn，因此会报错<code>cudnn.h</code>头文件没有找到。目前暂时选择租服务器来完成构建流程，还没有解决这个问题（后续填坑）。</p>
+</blockquote>
+<p>至此成功构建好compiler部分和runtime部分（frontend部分不是研究重点，后续结合模型测试性能再研究）。</p>
+<h2 id="参考资料"><a href="#参考资料" class="headerlink" title="参考资料"></a><font color = brown>参考资料</font></h2><ol>
+<li><a href="https://byteir.ai/">ByteIR官方资料</a></li>
+<li><a href="https://github.com/bytedance/byteir?tab=readme-ov-file">ByteIR github</a></li>
+</ol>
+]]></content>
+      <categories>
+        <category>编译技术</category>
+        <category>机器学习编译</category>
+      </categories>
+      <tags>
+        <tag>机器学习编译器</tag>
+        <tag>mlir</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>ByteIR初探：Runtime系统设计与实现</title>
+    <url>/2025/05/08/ByteIR%E5%88%9D%E6%8E%A2%EF%BC%9ARuntime%E7%B3%BB%E7%BB%9F%E8%AE%BE%E8%AE%A1%E4%B8%8E%E5%AE%9E%E7%8E%B0/</url>
+    <content><![CDATA[]]></content>
+  </entry>
+  <entry>
+    <title>BladeDISC初探</title>
+    <url>/2025/04/01/BladeDISC%E5%88%9D%E6%8E%A2/</url>
+    <content><![CDATA[<p><img src="/images/image-20250401195537142.png" alt="image-20250401195537142"></p>
+<span id="more"></span>
+
+<blockquote>
+<p>在大模型训练推理场景中，一个十分大的瓶颈是动态shape问题。比如nlp领域，处理的句子长短不一，tensor的shape是动态变化的，到runtime才能确定。这给机器学习编译器带来很大的困扰，以XLA为首的sota编译器均是静态shape的，在性能上会有一定损失。BladeDISC是阿里提出的针对动态shape的机器学习编译器，并且经过大量实验和实际生产检验。本文重点关注BladeDISC的构建，pytorch使用方式以及基础架构解读。后续文章会讲解优化流程和论文解读。</p>
+</blockquote>
+<h2 id="源码构建"><a href="#源码构建" class="headerlink" title="源码构建"></a><font color = brown>源码构建</font></h2><h4 id="Build-from-source"><a href="#Build-from-source" class="headerlink" title="Build from source"></a>Build from source</h4><ul>
+<li><p>下载<a href="https://hub.docker.com/r/bladedisc/bladedisc/tags?page=1&name=devel">BladeDisc</a>镜像</p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">docker pull bladedisc/bladedisc:latest-devel-cu118</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>使用cu118版本</li>
+</ul>
+</li>
+<li><p>运行该镜像</p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">docker run --gpus all -it -v $PWD:/disc bladedisc/bladedisc:latest-devel-cu118 bash</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>修改一下<code>pytorch_blade/scripts/build_pytorch_blade.sh</code>里面的<code>TORCH_BLADE_CI_BUILD_TORCH_VERSION</code>。修改为存在的<code>requirements.txt</code>即可。</p>
+<blockquote>
+<p>构建过程中，onnx由于带宽等问题，可能会报error，添加-i <a href="https://pypi.tuna.tsinghua.edu.cn/simple%E6%8C%87%E5%AE%9Apypi%E9%95%9C%E5%83%8F%E5%8D%B3%E5%8F%AF%E3%80%82">https://pypi.tuna.tsinghua.edu.cn/simple指定pypi镜像即可。</a></p>
+</blockquote>
+</li>
+<li><p>pytorch版本构建</p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">cd pytorch_blade &amp;&amp; bash ./scripts/build_pytorch_blade.sh</span><br><span class="line">python setup.py bdist_wheel</span><br><span class="line">pip install ./pytorch_blade/dist/torch_blade-0.2.0+2.0.1.cu118-cp38-cp38-linux_x86_64.whl</span><br></pre></td></tr></table></figure></li>
+</ul>
+<h3 id="错误处理"><a href="#错误处理" class="headerlink" title="错误处理"></a><font color = green>错误处理</font></h3><p>如果报错没有安全git，在docker中用：</p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">git config --global --add safe.directory /disc</span><br></pre></td></tr></table></figure>
+
+<h4 id="quick-install"><a href="#quick-install" class="headerlink" title="quick install"></a>quick install</h4><p>参考<a href="https://github.com/alibaba/BladeDISC/blob/main/docs/install_with_docker.md">docker install</a></p>
+<h2 id="Pytorch部署BERT模型"><a href="#Pytorch部署BERT模型" class="headerlink" title="Pytorch部署BERT模型"></a><font color = brown>Pytorch部署BERT模型</font></h2><h3 id="Hugging-Face模型下载"><a href="#Hugging-Face模型下载" class="headerlink" title="Hugging Face模型下载"></a><font color = green>Hugging Face模型下载</font></h3><ul>
+<li><p>手动下载模型（适合服务器联网不稳定的情况使用）</p>
+<p>找到<a href="https://huggingface.co/nlptown/bert-base-multilingual-uncased-sentiment/tree/main">Bert sentiment inference 模型</a>，主要手动下载如下几个文件：</p>
+<p><img src="/images/image-20250306203839463.png" alt="image-20250306203839463"></p>
+<p>在python代码中使用离线下载的模型：</p>
+<figure class="highlight python"><table><tr><td class="code"><pre><span class="line">model_path = <span class="string">&quot;./model&quot;</span></span><br><span class="line">tokenizer = AutoTokenizer.from_pretrained(model_path)</span><br><span class="line">model = AutoModelForSequenceClassification.from_pretrained(model_path).cuda().<span class="built_in">eval</span>()</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>直接通过transformers 包下载，该下载方式通过huggingface对应模型网页的<code>use this model</code>获取</p>
+<figure class="highlight python"><table><tr><td class="code"><pre><span class="line"><span class="comment"># Load model directly</span></span><br><span class="line"><span class="keyword">from</span> transformers <span class="keyword">import</span> AutoTokenizer, AutoModelForSequenceClassification</span><br><span class="line"></span><br><span class="line">tokenizer = AutoTokenizer.from_pretrained(<span class="string">&quot;nlptown/bert-base-multilingual-uncased-sentiment&quot;</span>)</span><br><span class="line">model = AutoModelForSequenceClassification.from_pretrained(<span class="string">&quot;nlptown/bert-base-multilingual-uncased-sentiment&quot;</span>)</span><br></pre></td></tr></table></figure>
+
+<p>确保环境有transformers包即可</p>
+</li>
+<li><p>通过<code>huggingface-cli</code>下载</p>
+<figure class="highlight python"><table><tr><td class="code"><pre><span class="line">huggingface-cli download nlptown/bert-base-multilingual-uncased-sentiment</span><br></pre></td></tr></table></figure></li>
+</ul>
+<h3 id="做BERT-Inference的testbench"><a href="#做BERT-Inference的testbench" class="headerlink" title="做BERT Inference的testbench"></a><font color = green>做BERT Inference的testbench</font></h3><p>我的测试codes如下：</p>
+<figure class="highlight python"><table><tr><td class="code"><pre><span class="line"><span class="keyword">import</span> torch</span><br><span class="line"><span class="keyword">import</span> torch_blade</span><br><span class="line"><span class="keyword">import</span> time</span><br><span class="line"></span><br><span class="line"><span class="keyword">from</span> transformers <span class="keyword">import</span> (</span><br><span class="line">    pipeline,</span><br><span class="line">    AutoTokenizer,</span><br><span class="line">    AutoModelForSequenceClassification,</span><br><span class="line">    TextClassificationPipeline,</span><br><span class="line">)</span><br><span class="line"></span><br><span class="line"><span class="comment">############################################# download model from huggingface #############################################</span></span><br><span class="line">model_path = <span class="string">&quot;./model&quot;</span></span><br><span class="line"></span><br><span class="line">tokenizer = AutoTokenizer.from_pretrained(model_path)</span><br><span class="line"></span><br><span class="line">model = AutoModelForSequenceClassification.from_pretrained(model_path).cuda().<span class="built_in">eval</span>()</span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">plain_tokenizer</span>(<span class="params">inputs_str, return_tensors</span>):</span><br><span class="line">    inputs = tokenizer(inputs_str, return_tensors=return_tensors, padding=<span class="literal">True</span>)</span><br><span class="line">    inputs = &#123;key: value.cuda() <span class="keyword">for</span> key, value <span class="keyword">in</span> inputs.items()&#125;</span><br><span class="line">    </span><br><span class="line">    <span class="comment"># torch_blade.optimize 不支持 None 作为输入</span></span><br><span class="line">    <span class="keyword">if</span> <span class="string">&quot;token_type_ids&quot;</span> <span class="keyword">in</span> inputs <span class="keyword">and</span> inputs[<span class="string">&quot;token_type_ids&quot;</span>] <span class="keyword">is</span> <span class="literal">None</span>:</span><br><span class="line">        <span class="keyword">del</span> inputs[<span class="string">&quot;token_type_ids&quot;</span>]</span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> (inputs[<span class="string">&#x27;input_ids&#x27;</span>], inputs[<span class="string">&#x27;attention_mask&#x27;</span>], inputs.get(<span class="string">&#x27;token_type_ids&#x27;</span>, <span class="literal">None</span>))</span><br><span class="line"></span><br><span class="line"><span class="keyword">class</span> <span class="title class_">PlainTextClassificationPipeline</span>(<span class="title class_ inherited__">TextClassificationPipeline</span>):</span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">_forward</span>(<span class="params">self, model_inputs</span>):</span><br><span class="line">        <span class="keyword">return</span> <span class="variable language_">self</span>.model(*model_inputs)</span><br><span class="line"></span><br><span class="line">classifier = pipeline(</span><br><span class="line">    <span class="string">&#x27;sentiment-analysis&#x27;</span>,</span><br><span class="line">    model=model,</span><br><span class="line">    tokenizer=plain_tokenizer,</span><br><span class="line">    pipeline_class=PlainTextClassificationPipeline,</span><br><span class="line">    device=<span class="number">0</span></span><br><span class="line">)</span><br><span class="line"></span><br><span class="line">input_strs = [</span><br><span class="line">    <span class="string">&quot;We are very happy to show you the story.&quot;</span>,</span><br><span class="line">    <span class="string">&quot;We hope you don&#x27;t hate it.&quot;</span></span><br><span class="line">]</span><br><span class="line"></span><br><span class="line">results = classifier(input_strs)</span><br><span class="line"></span><br><span class="line"><span class="keyword">for</span> inp_str, result <span class="keyword">in</span> <span class="built_in">zip</span>(input_strs, results):</span><br><span class="line">    <span class="built_in">print</span>(inp_str)</span><br><span class="line">    <span class="built_in">print</span>(<span class="string">f&quot; label: <span class="subst">&#123;result[<span class="string">&#x27;label&#x27;</span>]&#125;</span>, with a score: <span class="subst">&#123;<span class="built_in">round</span>(result[<span class="string">&#x27;score&#x27;</span>], <span class="number">4</span>)&#125;</span>&quot;</span>)</span><br><span class="line"></span><br><span class="line"><span class="comment">############################################# Use BladeDISC for optimization #############################################</span></span><br><span class="line">inputs_str = <span class="string">&quot;Hey, the cat is cute.&quot;</span></span><br><span class="line">inputs = plain_tokenizer(inputs_str, return_tensors=<span class="string">&quot;pt&quot;</span>)</span><br><span class="line"></span><br><span class="line">torch_config = torch_blade.config.Config()</span><br><span class="line">torch_config.enable_mlir_amp = <span class="literal">False</span>  <span class="comment"># disable mix-precision</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># Ensure inputs are properly formatted for optimization</span></span><br><span class="line">model_inputs = <span class="built_in">tuple</span>(i <span class="keyword">for</span> i <span class="keyword">in</span> inputs <span class="keyword">if</span> i <span class="keyword">is</span> <span class="keyword">not</span> <span class="literal">None</span>)</span><br><span class="line"></span><br><span class="line"><span class="keyword">with</span> torch.no_grad(), torch_config:</span><br><span class="line">    optimized_ts = torch_blade.optimize(model, allow_tracing=<span class="literal">True</span>, model_inputs=model_inputs)</span><br><span class="line"></span><br><span class="line"><span class="comment"># Move optimized model to CUDA</span></span><br><span class="line">optimized_ts = optimized_ts.cuda()</span><br><span class="line"></span><br><span class="line"><span class="comment"># Save the optimized TorchScript model</span></span><br><span class="line">torch.jit.save(optimized_ts, <span class="string">&quot;opt.disc.pt&quot;</span>)</span><br><span class="line"></span><br><span class="line"><span class="comment">############################################# testbench #############################################</span></span><br><span class="line"><span class="meta">@torch.no_grad()</span></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">benchmark</span>(<span class="params">model, inputs, num_iters=<span class="number">1000</span></span>):</span><br><span class="line">    <span class="keyword">for</span> _ <span class="keyword">in</span> <span class="built_in">range</span>(<span class="number">10</span>):</span><br><span class="line">        model(*inputs)</span><br><span class="line">    torch.cuda.synchronize()</span><br><span class="line"></span><br><span class="line">    start = time.time()</span><br><span class="line">    <span class="keyword">for</span> _ <span class="keyword">in</span> <span class="built_in">range</span>(num_iters):</span><br><span class="line">        model(*inputs)</span><br><span class="line">    torch.cuda.synchronize()</span><br><span class="line">    end = time.time()</span><br><span class="line">    <span class="keyword">return</span> (end - start) / num_iters * <span class="number">1000.0</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">bench_and_report</span>(<span class="params">input_strs</span>):</span><br><span class="line">    inputs = plain_tokenizer(input_strs, return_tensors=<span class="string">&quot;pt&quot;</span>)</span><br><span class="line">    model_inputs = <span class="built_in">tuple</span>(i <span class="keyword">for</span> i <span class="keyword">in</span> inputs <span class="keyword">if</span> i <span class="keyword">is</span> <span class="keyword">not</span> <span class="literal">None</span>)</span><br><span class="line"></span><br><span class="line">    avg_latency_baseline = benchmark(model, model_inputs)</span><br><span class="line">    avg_latency_bladedisc = benchmark(optimized_ts, model_inputs)</span><br><span class="line"></span><br><span class="line">    <span class="built_in">print</span>(<span class="string">f&quot;Seqlen: <span class="subst">&#123;[<span class="built_in">len</span>(s) <span class="keyword">for</span> s <span class="keyword">in</span> input_strs]&#125;</span>&quot;</span>)</span><br><span class="line">    <span class="built_in">print</span>(<span class="string">f&quot;Baseline: <span class="subst">&#123;avg_latency_baseline:<span class="number">.4</span>f&#125;</span> ms&quot;</span>)</span><br><span class="line">    <span class="built_in">print</span>(<span class="string">f&quot;BladeDISC: <span class="subst">&#123;avg_latency_bladedisc:<span class="number">.4</span>f&#125;</span> ms&quot;</span>)</span><br><span class="line">    <span class="built_in">print</span>(<span class="string">f&quot;BladeDISC speedup: <span class="subst">&#123;avg_latency_baseline / avg_latency_bladedisc:<span class="number">.4</span>f&#125;</span>&quot;</span>)</span><br><span class="line"></span><br><span class="line">input_strs = [</span><br><span class="line">    <span class="string">&quot;We are very happy to show you the story.&quot;</span>,</span><br><span class="line">    <span class="string">&quot;We hope you don&#x27;t hate it.&quot;</span></span><br><span class="line">]</span><br><span class="line"></span><br><span class="line">bench_and_report(input_strs)</span><br></pre></td></tr></table></figure>
+
+<p>上述codes中，BladeDISC的核心如下：</p>
+<figure class="highlight python"><table><tr><td class="code"><pre><span class="line"><span class="keyword">with</span> torch.no_grad(), torch_config:</span><br><span class="line">    optimized_ts = torch_blade.optimize(model, allow_tracing=<span class="literal">True</span>, model_inputs=model_inputs)</span><br></pre></td></tr></table></figure>
+
+<p>通过编译手段，生成优化后的pytorch script，注意：<strong>目前pytorch仅仅支持inference，尚不支持train</strong>。对于<code>HuggingFace</code>模型的pipeline有更深层兴趣的，参考<a href="https://huggingface.co/docs/transformers/quicktour">HuggingFace quick tour</a>。</p>
+<p><img src="F:\LeonBlog\source\images\image-20250427225534818.png" alt="image-20250427225534818"></p>
+<p>可以看到对比pytorch，有1.7倍左右的加速。</p>
+<h3 id="Pytorch-WorkFlow"><a href="#Pytorch-WorkFlow" class="headerlink" title="Pytorch WorkFlow"></a><font color = green>Pytorch WorkFlow</font></h3><p><img src="/images/image-20250311211223452.png" alt="image-20250311211223452"></p>
+<p><img src="/images/image-20250311220823276.png" alt="image-20250311220823276"></p>
+<p>参考<a href="https://github.com/alibaba/BladeDISC/blob/main/docs/developers/bladedisc_torch_overview.md">Torch-Blade教程</a>即可。</p>
+<h2 id="参考资料"><a href="#参考资料" class="headerlink" title="参考资料"></a><font color = brown>参考资料</font></h2><ol>
+<li><a href="https://github.com/alibaba/BladeDISC">BladeDisc github</a></li>
+</ol>
+]]></content>
+      <categories>
+        <category>编译技术</category>
+        <category>机器学习编译</category>
+        <category>动态shape</category>
+      </categories>
+      <tags>
+        <tag>机器学习编译器</tag>
+        <tag>mlir</tag>
+        <tag>动态shape</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>MLIR-basics-deepdive-part2</title>
+    <url>/2025/04/24/MLIR-basics-deepdive-part2/</url>
+    <content><![CDATA[<p><img src="/images/image-20250422105012239.png" alt="image-20250422105012239"></p>
+<span id="more"></span>
+
+<blockquote>
+<p>本篇文章主要基于mlir的<a href="https://www.youtube.com/watch?v=7ofnlCFzlqg">公开talk</a>，深入理解一下mlir中的operation，attributes以及properties机制的底层实现。本文为此系列的第二篇，着重解读mlir的attirbutes特性。</p>
+</blockquote>
+<h2 id="Attribute初探"><a href="#Attribute初探" class="headerlink" title="Attribute初探"></a><font color = brown>Attribute初探</font></h2><p>首先，我们需要先简要理解一下Attribute在MLIR编译器中的作用。根据MLIR的官方文档资料，Attribute是在一个operation中用来表达常量数据的机制。MLIR中的每一operation都关联一个属性字典，其中包含属性名称和属性值的映射。</p>
+<ul>
+<li>属性按照所属方言划分，可以分为内嵌属性和方言属性。<ul>
+<li>内嵌属性：mlir的内嵌方言提供的属性，比如我们常用的StringAttr，DenseArryAttr等。</li>
+<li>方言属性：允许方言中定义自己的属性</li>
+</ul>
+</li>
+<li>属性按照字典键是否又方言前缀，可以分为inherent attributes和discardable attributes。<ul>
+<li>inherent属性：该属性由operation的语义信息来决定</li>
+<li>discardable属性：属性自带语义，但要和operation相一致</li>
+</ul>
+</li>
+</ul>
+<p>如下图所示就是两种attribute的典型示例。<code>cmpi</code>操作的<code>谓词</code>属性和操作严格捆绑。</p>
+<img src="/images/image-20250426205915933.png" alt="image-20250426205915933" style="zoom: 50%;" />
+
+<h2 id="Attribute-底层原理"><a href="#Attribute-底层原理" class="headerlink" title="Attribute 底层原理"></a><font color = brown>Attribute 底层原理</font></h2><p><img src="/images/image-20250426210418663.png" alt="image-20250426210418663"></p>
+<p>上图是编写mlir的时候，经常用到的创建新的attribute。该逻辑是，先构造构造一个vector，然后调用<code>get()</code> API获取一个属性的指针。这里的<code>get()</code> api的特点是，如果已有DenseI64ArrayAttr的内容是offsetsVec，则返回已有的属性，否则创建返回。</p>
+<h3 id="Attribute的recap知识"><a href="#Attribute的recap知识" class="headerlink" title="Attribute的recap知识"></a><font color = green>Attribute的recap知识</font></h3><p>首先来总结一下attribute的一些特点：</p>
+<img src="/images/image-20250426210700572.png" alt="image-20250426210700572" style="zoom:50%;" />
+
+<p>其最核心的一个特点是属性是不可变的，因此其一系列底层机制都围绕不可变性展开。获取一个内容是offsetsVec的DenseI64ArrayAttr，有如下几步骤：</p>
+<ul>
+<li>在operation所在的MLIRContext中获取DenseI64Array的ParametricStorageUniquer（每个属性类型都由一个存储器管理）</li>
+<li>在该storageuniqure中，通过hash的方式查找（key是&lt;Type, int64, llvm::ArrayRef<char>&gt;&gt;）。</li>
+</ul>
+<h3 id="Attribute的get-方法底层逻辑链条"><a href="#Attribute的get-方法底层逻辑链条" class="headerlink" title="Attribute的get()方法底层逻辑链条"></a><font color = green>Attribute的get()方法底层逻辑链条</font></h3><p>首先我们写梳理整个逻辑链条相关的数据结构：</p>
+<h4 id="get方法返回什么"><a href="#get方法返回什么" class="headerlink" title="get方法返回什么"></a>get方法返回什么</h4><p><code>get()</code>方法返回的是DenseArrayAttrStorage指针，该指针包含实际存储内容和一个hash值。</p>
+<ul>
+<li>实际存储内容包含：存储数据类型，存储数据长度，数组内容。</li>
+<li>KeyTy表示hash值，是type，数据长度和实际数组的一个元组。</li>
+</ul>
+<p><img src="/images/image-20250426221014974.png" alt="image-20250426221014974"></p>
+<h4 id="通过属性类型：DenseI64ArrayAttr找寻到该类型的底层storage"><a href="#通过属性类型：DenseI64ArrayAttr找寻到该类型的底层storage" class="headerlink" title="通过属性类型：DenseI64ArrayAttr找寻到该类型的底层storage"></a>通过属性类型：DenseI64ArrayAttr找寻到该类型的底层storage</h4><p><img src="/images/image-20250426221323084.png" alt="image-20250426221323084"></p>
+<p>如上图所示，一个context上下文中，每个属性都有对应的storage。</p>
+<p><img src="/images/image-20250426221410708.png" alt="image-20250426221410708"></p>
+<p>用一个densemap存储，每个attribute都有一个type id，通过type id检索到对应的ParametricStorageUniqer指针。</p>
+<h4 id="从ParametricStorageUniqer中通过hash值创建-返回属性指针"><a href="#从ParametricStorageUniqer中通过hash值创建-返回属性指针" class="headerlink" title="从ParametricStorageUniqer中通过hash值创建&#x2F;返回属性指针"></a>从ParametricStorageUniqer中通过hash值创建&#x2F;返回属性指针</h4><p><img src="/images/image-20250426225725235.png" alt="image-20250426225725235"></p>
+<p>如下是一个完整的get流程：</p>
+<p><img src="/images/image-20250426225801721.png" alt="image-20250426225801721"></p>
+<p>值得注意的是，底层的存储BumpPtrAllocator类似于内存池，只能开辟，然后空间释放是整个Allocator管理的所有存储都释放。</p>
+<h2 id="Operation-Accessors"><a href="#Operation-Accessors" class="headerlink" title="Operation Accessors"></a><font color = brown>Operation Accessors</font></h2><p><img src="/images/image-20250426225942938.png" alt="image-20250426225942938"></p>
+<p>上图中是一个operation常用的api，其中，Operand，Result和region都是可变的，而attr是不可变的。因此看似api都是get，set，但实际底层机制attr会复杂的多。</p>
+<p>具体复杂性体现在如下slide中：</p>
+<blockquote>
+<p><img src="/images/image-20250426230139141.png" alt="image-20250426230139141"></p>
+<p>由于不可变，因此set attr的时候，针对<strong>DictionaryAttr</strong>中添加一组name和attrvalue，底层也是十分复杂的（DictionaryAttr也是属性）。</p>
+<ul>
+<li>首先将已有的dict拷贝入数组</li>
+<li>在数组中变化，添加新的value（inplace）</li>
+<li>用get方法生成新的Dictionary</li>
+</ul>
+<p>一个简单的setAttr，底层流程分为如上三步，attr的immutable特性，导致其效率较低。</p>
+</blockquote>
+<blockquote>
+<p><img src="/images/image-20250426230550008.png" alt="image-20250426230550008"></p>
+<p>上述slide是一个很好地总结。</p>
+<p>如下是一个检测理解的例子：</p>
+<p><img src="/images/image-20250426230628810.png" alt="image-20250426230628810"></p>
+<p><img src="/images/image-20250426230655927.png" alt="image-20250426230655927"></p>
+<p>显而易见，这里存在大量的vector拷贝， 以及可能的存储空间浪费。</p>
+</blockquote>
+]]></content>
+      <categories>
+        <category>编译技术</category>
+        <category>mlir</category>
+        <category>basics</category>
+      </categories>
+      <tags>
+        <tag>mlir</tag>
+        <tag>basics</tag>
+      </tags>
+  </entry>
+  <entry>
     <title>BladeDISC: RAL overview</title>
     <url>/2025/04/29/BladeDISC-RAL-overview/</url>
     <content><![CDATA[<p><img src="/images/image-20250429153010114.png" alt="image-20250429153010114"></p>
@@ -979,153 +1208,6 @@
       </tags>
   </entry>
   <entry>
-    <title>ByteIR 初探</title>
-    <url>/2025/05/06/ByteIR-%E5%88%9D%E6%8E%A2/</url>
-    <content><![CDATA[<p><img src="/images/image-20250506220408172.png" alt="image-20250506220408172"></p>
-<span id="more"></span>
-
-<h2 id="Why-ByteIR？"><a href="#Why-ByteIR？" class="headerlink" title="Why ByteIR？"></a><font color = brown>Why ByteIR？</font></h2><p>看了这么多端到端机器学习编译器（IREE，BladeDISC），为什么选择研究一下ByteIR？这个<a href="https://github.com/bytedance/byteir/issues/9">ByteIR issue9</a>的回答很好地指明了ByteIR相比成熟端到端编译器的区别：</p>
-<ul>
-<li>ByteIR有十分清晰的Frontend，Compiler和runtime，而且三者可以分离编译构建。</li>
-<li>ByteIR在字节内部不同的开发人员都在使用。</li>
-<li>ByteIR是十分简洁的，单纯的是一堆passes集合，辅助开发者完成端到端流程。</li>
-</ul>
-<p>上述三个特点，使得ByteIR十分适合针对性学习。</p>
-<h2 id="源码构建"><a href="#源码构建" class="headerlink" title="源码构建"></a><font color = brown>源码构建</font></h2><h3 id="Frontend构建"><a href="#Frontend构建" class="headerlink" title="Frontend构建"></a><font color = green>Frontend构建</font></h3><p>ByteIR的前端支持pytorch，onnx和tensorflow三种框架。其流程都是将框架接入stableHLO再合法化到MHLO 方言中。笔者先前构建过torch-mlir和iree等项目，原本想省去构建前端，复用torch-mlir的前端，但是</p>
-<h3 id="Compiler部分构建"><a href="#Compiler部分构建" class="headerlink" title="Compiler部分构建"></a><font color = green>Compiler部分构建</font></h3><ol>
-<li><p>clone项目</p>
-<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">git clone git@github.com:bytedance/byteir.git</span><br></pre></td></tr></table></figure>
-</li>
-<li><p>构建虚拟环境</p>
-<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line"><span class="meta prompt_"># </span><span class="language-bash">构建虚拟环境</span></span><br><span class="line">pip install pybind11</span><br><span class="line">pip install nanobind</span><br><span class="line">pip install numpy</span><br><span class="line">pip install lit</span><br><span class="line">pip install filecheck</span><br></pre></td></tr></table></figure>
-</li>
-<li><p>Build LLVM</p>
-<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">cd /path_to_byteir</span><br><span class="line">git submodule update --init external/llvm-project</span><br></pre></td></tr></table></figure>
-
-<p>构建脚本如下：</p>
-<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line"><span class="meta prompt_"># </span><span class="language-bash">build llvm</span></span><br><span class="line">cd external/llvm-project</span><br><span class="line">cmake -H./llvm \</span><br><span class="line">      -B./build \</span><br><span class="line">      -GNinja \</span><br><span class="line">      -DLLVM_ENABLE_PROJECTS=mlir \</span><br><span class="line">      -DLLVM_TARGETS_TO_BUILD=&quot;X86;NVPTX&quot; \</span><br><span class="line">      -DCMAKE_BUILD_TYPE=Release \</span><br><span class="line">      -DLLVM_ENABLE_ASSERTIONS=ON \</span><br><span class="line">      -DLLVM_INSTALL_UTILS=ON \</span><br><span class="line">      -DLLVM_CCACHE_BUILD=OFF \</span><br><span class="line">      -DLLVM_ENABLE_TERMINFO=OFF \</span><br><span class="line">      -DMLIR_ENABLE_BINDINGS_PYTHON=ON \</span><br><span class="line">      -DCMAKE_INSTALL_PREFIX=$(pwd)/build/install</span><br><span class="line"><span class="meta prompt_"># </span><span class="language-bash">via -DCMAKE_C_COMPILER=gcc/clang and -DCMAKE_CXX_COMPILER=g++/clang++</span></span><br><span class="line"><span class="meta prompt_"># </span><span class="language-bash">to specify gcc&gt;=8.5 or clang&gt;=7</span> </span><br><span class="line"><span class="meta prompt_"># </span><span class="language-bash"><span class="keyword">for</span> Mac <span class="built_in">users</span>, <span class="built_in">set</span> -DLLVM_TARGETS_TO_BUILD=<span class="string">&quot;AArch64;NVPTX&quot;</span></span></span><br><span class="line"></span><br><span class="line">cmake --build ./build --target all --target install</span><br></pre></td></tr></table></figure>
-</li>
-<li><p>Build ByteIR compiler</p>
-<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">cmake -B./compiler/build \</span><br><span class="line">      -H./compiler/cmake \</span><br><span class="line">      -GNinja \</span><br><span class="line">      -DCMAKE_BUILD_TYPE=Release \</span><br><span class="line">      -DPython3_EXECUTABLE=/mnt/home/douliyang/mlir-workspace/byteir/venv/bin/python \</span><br><span class="line">      -DLLVM_INSTALL_PATH=$(pwd)/external/llvm-project/build/install \</span><br><span class="line">      -DLLVM_EXTERNAL_LIT=/mnt/home/douliyang/mlir-workspace/byteir/venv/bin/lit \</span><br><span class="line">      -Dpybind11_DIR=/mnt/home/douliyang/mlir-workspace/byteir/venv/lib/python3.11/site-packages/pybind11/share/cmake/pybind11 \</span><br><span class="line">      -Dnanobind_DIR=/mnt/home/douliyang/mlir-workspace/byteir/venv/lib/python3.11/site-packages/nanobind/cmake \</span><br><span class="line">      -DBYTEIR_ENABLE_BINDINGS_PYTHON=ON</span><br><span class="line"></span><br><span class="line">cmake --build ./compiler/build --target check-byteir</span><br><span class="line">cmake --build ./compiler/build --target byteir-python-pack</span><br></pre></td></tr></table></figure>
-
-<p>上述一定要构建两个测试，第一个测试compiler的pipeline正确性，第二个测试python wrapper api正确性。</p>
-<p>这里构建过程中有几处坑：lit测试由于我使用了虚拟环境，所以需要cmake中显示指定python3的可执行路径。pybind11和nanobind也是同理，需要显示指定路径。</p>
-</li>
-<li><p>测试正确性（一个端到端的测试case）</p>
-<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">BYTEIR=&quot;/home/douliyang/large/mlir-workspace/byteir&quot;</span><br><span class="line"></span><br><span class="line">export PYTHONPATH=&quot;$&#123;BYTEIR&#125;/compiler/build/python_packages/byteir&quot;</span><br><span class="line"></span><br><span class="line">python3 -m byteir.tools.compiler -v \</span><br><span class="line">  &quot;$&#123;BYTEIR&#125;/compiler/test/E2E/CUDA/MLPInference/input.mlir&quot; \</span><br><span class="line">  -o out.mlir \</span><br><span class="line">  --entry_func forward \</span><br><span class="line"><span class="meta prompt_">  2&gt;</span><span class="language-bash">&amp;1 | <span class="built_in">tee</span> pipeline.log</span></span><br></pre></td></tr></table></figure></li>
-</ol>
-<p>​	<font color = red>注意，最终的wheel包生成在<code>build/python/dist</code>中，pip isntall即可。</font></p>
-<h3 id="Runtime部分构建"><a href="#Runtime部分构建" class="headerlink" title="Runtime部分构建"></a><font color = green>Runtime部分构建</font></h3><p>首先确保compiler部分构建成功，runtime部分依赖compiler部分构建的LLVM项目。</p>
-<ol>
-<li><p>获取runtime的依赖</p>
-<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">git submodule update --init --recursive -f external/mlir-hlo external/cutlass external/date external/googletest external/pybind11</span><br></pre></td></tr></table></figure>
-</li>
-<li><p>构建runtime项目</p>
-<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">cmake -H./runtime/cmake \</span><br><span class="line">      -B./runtime/build \</span><br><span class="line">      -G Ninja \</span><br><span class="line">      -DCMAKE_BUILD_TYPE=Release \</span><br><span class="line">      -DLLVM_INSTALL_PATH=$(pwd)/external/llvm-project/build/install \</span><br><span class="line">      -DCMAKE_INSTALL_PREFIX=&quot;$(pwd)/runtime/build/install&quot; \</span><br><span class="line">      -Dbrt_ENABLE_PYTHON_BINDINGS=ON \</span><br><span class="line">      -Dbrt_USE_CUDA=ON</span><br><span class="line"></span><br><span class="line">cmake --build ./runtime/build --target all --target install</span><br></pre></td></tr></table></figure>
-</li>
-<li><p>构建python wheel包，具体打包过程如下：</p>
-<p>运行<code>python3 setup.py</code></p>
-<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">(base) root@leondou-y1fkbccpmlrb-main:/openbayes/home/byteir/byteir/runtime/python# python3 setup.py bdist_wheel</span><br><span class="line">running bdist_wheel</span><br><span class="line">running build</span><br><span class="line">running build_py</span><br><span class="line">creating build</span><br><span class="line">creating build/lib.linux-x86_64-cpython-38</span><br><span class="line">creating build/lib.linux-x86_64-cpython-38/brt</span><br><span class="line">copying /output/byteir/byteir/runtime/python/brt/backend.py -&gt; build/lib.linux-x86_64-cpython-38/brt</span><br><span class="line">copying /output/byteir/byteir/runtime/python/brt/__init__.py -&gt; build/lib.linux-x86_64-cpython-38/brt</span><br><span class="line">copying /output/byteir/byteir/runtime/python/brt/version.py -&gt; build/lib.linux-x86_64-cpython-38/brt</span><br><span class="line">copying /output/byteir/byteir/runtime/python/brt/utils.py -&gt; build/lib.linux-x86_64-cpython-38/brt</span><br><span class="line">running build_ext</span><br><span class="line">/usr/local/lib/python3.8/site-packages/setuptools/_distutils/cmd.py:66: SetuptoolsDeprecationWarning: setup.py install is deprecated.</span><br><span class="line">!!</span><br><span class="line"></span><br><span class="line">        ********************************************************************************</span><br><span class="line">        Please avoid running ``setup.py`` directly.</span><br><span class="line">        Instead, use pypa/build, pypa/installer or other</span><br><span class="line">        standards-based tools.</span><br><span class="line"></span><br><span class="line">        See https://blog.ganssle.io/articles/2021/10/setup-py-deprecated.html for details.</span><br><span class="line">        ********************************************************************************</span><br><span class="line"></span><br><span class="line">!!</span><br><span class="line">  self.initialize_options()</span><br><span class="line">installing to build/bdist.linux-x86_64/wheel</span><br><span class="line">running install</span><br><span class="line">running install_lib</span><br><span class="line">creating build/bdist.linux-x86_64</span><br><span class="line">creating build/bdist.linux-x86_64/wheel</span><br><span class="line">creating build/bdist.linux-x86_64/wheel/brt</span><br><span class="line">copying build/lib.linux-x86_64-cpython-38/brt/backend.py -&gt; build/bdist.linux-x86_64/wheel/brt</span><br><span class="line">copying build/lib.linux-x86_64-cpython-38/brt/__init__.py -&gt; build/bdist.linux-x86_64/wheel/brt</span><br><span class="line">copying build/lib.linux-x86_64-cpython-38/brt/_brt.cpython-38-x86_64-linux-gnu.so -&gt; build/bdist.linux-x86_64/wheel/brt</span><br><span class="line">creating build/bdist.linux-x86_64/wheel/brt/lib</span><br><span class="line">copying build/lib.linux-x86_64-cpython-38/brt/lib/libbrt.so -&gt; build/bdist.linux-x86_64/wheel/brt/lib</span><br><span class="line">copying build/lib.linux-x86_64-cpython-38/brt/version.py -&gt; build/bdist.linux-x86_64/wheel/brt</span><br><span class="line">copying build/lib.linux-x86_64-cpython-38/brt/utils.py -&gt; build/bdist.linux-x86_64/wheel/brt</span><br><span class="line">running install_egg_info</span><br><span class="line">running egg_info</span><br><span class="line">creating /output/byteir/byteir/runtime/python/brt.egg-info</span><br><span class="line">writing /output/byteir/byteir/runtime/python/brt.egg-info/PKG-INFO</span><br><span class="line">writing dependency_links to /output/byteir/byteir/runtime/python/brt.egg-info/dependency_links.txt</span><br><span class="line">writing top-level names to /output/byteir/byteir/runtime/python/brt.egg-info/top_level.txt</span><br><span class="line">writing manifest file &#x27;/output/byteir/byteir/runtime/python/brt.egg-info/SOURCES.txt&#x27;</span><br><span class="line">reading manifest file &#x27;/output/byteir/byteir/runtime/python/brt.egg-info/SOURCES.txt&#x27;</span><br><span class="line">writing manifest file &#x27;/output/byteir/byteir/runtime/python/brt.egg-info/SOURCES.txt&#x27;</span><br><span class="line">Copying /output/byteir/byteir/runtime/python/brt.egg-info to build/bdist.linux-x86_64/wheel/brt-1.9.3.0+cpu-py3.8.egg-info</span><br><span class="line">running install_scripts</span><br><span class="line">creating build/bdist.linux-x86_64/wheel/brt-1.9.3.0+cpu.dist-info/WHEEL</span><br><span class="line">creating &#x27;dist/brt-1.9.3.0+cpu-cp38-cp38-linux_x86_64.whl&#x27; and adding &#x27;build/bdist.linux-x86_64/wheel&#x27; to it</span><br><span class="line">adding &#x27;brt/__init__.py&#x27;</span><br><span class="line">adding &#x27;brt/_brt.cpython-38-x86_64-linux-gnu.so&#x27;</span><br><span class="line">adding &#x27;brt/backend.py&#x27;</span><br><span class="line">adding &#x27;brt/utils.py&#x27;</span><br><span class="line">adding &#x27;brt/version.py&#x27;</span><br><span class="line">adding &#x27;brt/lib/libbrt.so&#x27;</span><br><span class="line">adding &#x27;brt-1.9.3.0+cpu.dist-info/METADATA&#x27;</span><br><span class="line">adding &#x27;brt-1.9.3.0+cpu.dist-info/WHEEL&#x27;</span><br><span class="line">adding &#x27;brt-1.9.3.0+cpu.dist-info/top_level.txt&#x27;</span><br><span class="line">adding &#x27;brt-1.9.3.0+cpu.dist-info/RECORD&#x27;</span><br><span class="line">removing build/bdist.linux-x86_64/wheel</span><br></pre></td></tr></table></figure></li>
-</ol>
-<p>​	<font color = red>注意：</font>最终的wheel包在&#x2F;openbayes&#x2F;home&#x2F;byteir&#x2F;byteir&#x2F;runtime&#x2F;python&#x2F;dist下，需要pip install一下才能使用。</p>
-<blockquote>
-<p>在组内服务器构建遇到的问题是，组内服务器没有cudnn，因此会报错<code>cudnn.h</code>头文件没有找到。目前暂时选择租服务器来完成构建流程，还没有解决这个问题（后续填坑）。</p>
-</blockquote>
-<p>至此成功构建好compiler部分和runtime部分（frontend部分不是研究重点，后续结合模型测试性能再研究）。</p>
-<h2 id="参考资料"><a href="#参考资料" class="headerlink" title="参考资料"></a><font color = brown>参考资料</font></h2><ol>
-<li><a href="https://byteir.ai/">ByteIR官方资料</a></li>
-<li><a href="https://github.com/bytedance/byteir?tab=readme-ov-file">ByteIR github</a></li>
-</ol>
-]]></content>
-      <categories>
-        <category>编译技术</category>
-        <category>机器学习编译</category>
-      </categories>
-      <tags>
-        <tag>机器学习编译器</tag>
-        <tag>mlir</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>BladeDISC初探</title>
-    <url>/2025/04/01/BladeDISC%E5%88%9D%E6%8E%A2/</url>
-    <content><![CDATA[<p><img src="/images/image-20250401195537142.png" alt="image-20250401195537142"></p>
-<span id="more"></span>
-
-<blockquote>
-<p>在大模型训练推理场景中，一个十分大的瓶颈是动态shape问题。比如nlp领域，处理的句子长短不一，tensor的shape是动态变化的，到runtime才能确定。这给机器学习编译器带来很大的困扰，以XLA为首的sota编译器均是静态shape的，在性能上会有一定损失。BladeDISC是阿里提出的针对动态shape的机器学习编译器，并且经过大量实验和实际生产检验。本文重点关注BladeDISC的构建，pytorch使用方式以及基础架构解读。后续文章会讲解优化流程和论文解读。</p>
-</blockquote>
-<h2 id="源码构建"><a href="#源码构建" class="headerlink" title="源码构建"></a><font color = brown>源码构建</font></h2><h4 id="Build-from-source"><a href="#Build-from-source" class="headerlink" title="Build from source"></a>Build from source</h4><ul>
-<li><p>下载<a href="https://hub.docker.com/r/bladedisc/bladedisc/tags?page=1&name=devel">BladeDisc</a>镜像</p>
-<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">docker pull bladedisc/bladedisc:latest-devel-cu118</span><br></pre></td></tr></table></figure>
-
-<ul>
-<li>使用cu118版本</li>
-</ul>
-</li>
-<li><p>运行该镜像</p>
-<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">docker run --gpus all -it -v $PWD:/disc bladedisc/bladedisc:latest-devel-cu118 bash</span><br></pre></td></tr></table></figure>
-</li>
-<li><p>修改一下<code>pytorch_blade/scripts/build_pytorch_blade.sh</code>里面的<code>TORCH_BLADE_CI_BUILD_TORCH_VERSION</code>。修改为存在的<code>requirements.txt</code>即可。</p>
-<blockquote>
-<p>构建过程中，onnx由于带宽等问题，可能会报error，添加-i <a href="https://pypi.tuna.tsinghua.edu.cn/simple%E6%8C%87%E5%AE%9Apypi%E9%95%9C%E5%83%8F%E5%8D%B3%E5%8F%AF%E3%80%82">https://pypi.tuna.tsinghua.edu.cn/simple指定pypi镜像即可。</a></p>
-</blockquote>
-</li>
-<li><p>pytorch版本构建</p>
-<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">cd pytorch_blade &amp;&amp; bash ./scripts/build_pytorch_blade.sh</span><br><span class="line">python setup.py bdist_wheel</span><br><span class="line">pip install ./pytorch_blade/dist/torch_blade-0.2.0+2.0.1.cu118-cp38-cp38-linux_x86_64.whl</span><br></pre></td></tr></table></figure></li>
-</ul>
-<h3 id="错误处理"><a href="#错误处理" class="headerlink" title="错误处理"></a><font color = green>错误处理</font></h3><p>如果报错没有安全git，在docker中用：</p>
-<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">git config --global --add safe.directory /disc</span><br></pre></td></tr></table></figure>
-
-<h4 id="quick-install"><a href="#quick-install" class="headerlink" title="quick install"></a>quick install</h4><p>参考<a href="https://github.com/alibaba/BladeDISC/blob/main/docs/install_with_docker.md">docker install</a></p>
-<h2 id="Pytorch部署BERT模型"><a href="#Pytorch部署BERT模型" class="headerlink" title="Pytorch部署BERT模型"></a><font color = brown>Pytorch部署BERT模型</font></h2><h3 id="Hugging-Face模型下载"><a href="#Hugging-Face模型下载" class="headerlink" title="Hugging Face模型下载"></a><font color = green>Hugging Face模型下载</font></h3><ul>
-<li><p>手动下载模型（适合服务器联网不稳定的情况使用）</p>
-<p>找到<a href="https://huggingface.co/nlptown/bert-base-multilingual-uncased-sentiment/tree/main">Bert sentiment inference 模型</a>，主要手动下载如下几个文件：</p>
-<p><img src="/images/image-20250306203839463.png" alt="image-20250306203839463"></p>
-<p>在python代码中使用离线下载的模型：</p>
-<figure class="highlight python"><table><tr><td class="code"><pre><span class="line">model_path = <span class="string">&quot;./model&quot;</span></span><br><span class="line">tokenizer = AutoTokenizer.from_pretrained(model_path)</span><br><span class="line">model = AutoModelForSequenceClassification.from_pretrained(model_path).cuda().<span class="built_in">eval</span>()</span><br></pre></td></tr></table></figure>
-</li>
-<li><p>直接通过transformers 包下载，该下载方式通过huggingface对应模型网页的<code>use this model</code>获取</p>
-<figure class="highlight python"><table><tr><td class="code"><pre><span class="line"><span class="comment"># Load model directly</span></span><br><span class="line"><span class="keyword">from</span> transformers <span class="keyword">import</span> AutoTokenizer, AutoModelForSequenceClassification</span><br><span class="line"></span><br><span class="line">tokenizer = AutoTokenizer.from_pretrained(<span class="string">&quot;nlptown/bert-base-multilingual-uncased-sentiment&quot;</span>)</span><br><span class="line">model = AutoModelForSequenceClassification.from_pretrained(<span class="string">&quot;nlptown/bert-base-multilingual-uncased-sentiment&quot;</span>)</span><br></pre></td></tr></table></figure>
-
-<p>确保环境有transformers包即可</p>
-</li>
-<li><p>通过<code>huggingface-cli</code>下载</p>
-<figure class="highlight python"><table><tr><td class="code"><pre><span class="line">huggingface-cli download nlptown/bert-base-multilingual-uncased-sentiment</span><br></pre></td></tr></table></figure></li>
-</ul>
-<h3 id="做BERT-Inference的testbench"><a href="#做BERT-Inference的testbench" class="headerlink" title="做BERT Inference的testbench"></a><font color = green>做BERT Inference的testbench</font></h3><p>我的测试codes如下：</p>
-<figure class="highlight python"><table><tr><td class="code"><pre><span class="line"><span class="keyword">import</span> torch</span><br><span class="line"><span class="keyword">import</span> torch_blade</span><br><span class="line"><span class="keyword">import</span> time</span><br><span class="line"></span><br><span class="line"><span class="keyword">from</span> transformers <span class="keyword">import</span> (</span><br><span class="line">    pipeline,</span><br><span class="line">    AutoTokenizer,</span><br><span class="line">    AutoModelForSequenceClassification,</span><br><span class="line">    TextClassificationPipeline,</span><br><span class="line">)</span><br><span class="line"></span><br><span class="line"><span class="comment">############################################# download model from huggingface #############################################</span></span><br><span class="line">model_path = <span class="string">&quot;./model&quot;</span></span><br><span class="line"></span><br><span class="line">tokenizer = AutoTokenizer.from_pretrained(model_path)</span><br><span class="line"></span><br><span class="line">model = AutoModelForSequenceClassification.from_pretrained(model_path).cuda().<span class="built_in">eval</span>()</span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">plain_tokenizer</span>(<span class="params">inputs_str, return_tensors</span>):</span><br><span class="line">    inputs = tokenizer(inputs_str, return_tensors=return_tensors, padding=<span class="literal">True</span>)</span><br><span class="line">    inputs = &#123;key: value.cuda() <span class="keyword">for</span> key, value <span class="keyword">in</span> inputs.items()&#125;</span><br><span class="line">    </span><br><span class="line">    <span class="comment"># torch_blade.optimize 不支持 None 作为输入</span></span><br><span class="line">    <span class="keyword">if</span> <span class="string">&quot;token_type_ids&quot;</span> <span class="keyword">in</span> inputs <span class="keyword">and</span> inputs[<span class="string">&quot;token_type_ids&quot;</span>] <span class="keyword">is</span> <span class="literal">None</span>:</span><br><span class="line">        <span class="keyword">del</span> inputs[<span class="string">&quot;token_type_ids&quot;</span>]</span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> (inputs[<span class="string">&#x27;input_ids&#x27;</span>], inputs[<span class="string">&#x27;attention_mask&#x27;</span>], inputs.get(<span class="string">&#x27;token_type_ids&#x27;</span>, <span class="literal">None</span>))</span><br><span class="line"></span><br><span class="line"><span class="keyword">class</span> <span class="title class_">PlainTextClassificationPipeline</span>(<span class="title class_ inherited__">TextClassificationPipeline</span>):</span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">_forward</span>(<span class="params">self, model_inputs</span>):</span><br><span class="line">        <span class="keyword">return</span> <span class="variable language_">self</span>.model(*model_inputs)</span><br><span class="line"></span><br><span class="line">classifier = pipeline(</span><br><span class="line">    <span class="string">&#x27;sentiment-analysis&#x27;</span>,</span><br><span class="line">    model=model,</span><br><span class="line">    tokenizer=plain_tokenizer,</span><br><span class="line">    pipeline_class=PlainTextClassificationPipeline,</span><br><span class="line">    device=<span class="number">0</span></span><br><span class="line">)</span><br><span class="line"></span><br><span class="line">input_strs = [</span><br><span class="line">    <span class="string">&quot;We are very happy to show you the story.&quot;</span>,</span><br><span class="line">    <span class="string">&quot;We hope you don&#x27;t hate it.&quot;</span></span><br><span class="line">]</span><br><span class="line"></span><br><span class="line">results = classifier(input_strs)</span><br><span class="line"></span><br><span class="line"><span class="keyword">for</span> inp_str, result <span class="keyword">in</span> <span class="built_in">zip</span>(input_strs, results):</span><br><span class="line">    <span class="built_in">print</span>(inp_str)</span><br><span class="line">    <span class="built_in">print</span>(<span class="string">f&quot; label: <span class="subst">&#123;result[<span class="string">&#x27;label&#x27;</span>]&#125;</span>, with a score: <span class="subst">&#123;<span class="built_in">round</span>(result[<span class="string">&#x27;score&#x27;</span>], <span class="number">4</span>)&#125;</span>&quot;</span>)</span><br><span class="line"></span><br><span class="line"><span class="comment">############################################# Use BladeDISC for optimization #############################################</span></span><br><span class="line">inputs_str = <span class="string">&quot;Hey, the cat is cute.&quot;</span></span><br><span class="line">inputs = plain_tokenizer(inputs_str, return_tensors=<span class="string">&quot;pt&quot;</span>)</span><br><span class="line"></span><br><span class="line">torch_config = torch_blade.config.Config()</span><br><span class="line">torch_config.enable_mlir_amp = <span class="literal">False</span>  <span class="comment"># disable mix-precision</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># Ensure inputs are properly formatted for optimization</span></span><br><span class="line">model_inputs = <span class="built_in">tuple</span>(i <span class="keyword">for</span> i <span class="keyword">in</span> inputs <span class="keyword">if</span> i <span class="keyword">is</span> <span class="keyword">not</span> <span class="literal">None</span>)</span><br><span class="line"></span><br><span class="line"><span class="keyword">with</span> torch.no_grad(), torch_config:</span><br><span class="line">    optimized_ts = torch_blade.optimize(model, allow_tracing=<span class="literal">True</span>, model_inputs=model_inputs)</span><br><span class="line"></span><br><span class="line"><span class="comment"># Move optimized model to CUDA</span></span><br><span class="line">optimized_ts = optimized_ts.cuda()</span><br><span class="line"></span><br><span class="line"><span class="comment"># Save the optimized TorchScript model</span></span><br><span class="line">torch.jit.save(optimized_ts, <span class="string">&quot;opt.disc.pt&quot;</span>)</span><br><span class="line"></span><br><span class="line"><span class="comment">############################################# testbench #############################################</span></span><br><span class="line"><span class="meta">@torch.no_grad()</span></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">benchmark</span>(<span class="params">model, inputs, num_iters=<span class="number">1000</span></span>):</span><br><span class="line">    <span class="keyword">for</span> _ <span class="keyword">in</span> <span class="built_in">range</span>(<span class="number">10</span>):</span><br><span class="line">        model(*inputs)</span><br><span class="line">    torch.cuda.synchronize()</span><br><span class="line"></span><br><span class="line">    start = time.time()</span><br><span class="line">    <span class="keyword">for</span> _ <span class="keyword">in</span> <span class="built_in">range</span>(num_iters):</span><br><span class="line">        model(*inputs)</span><br><span class="line">    torch.cuda.synchronize()</span><br><span class="line">    end = time.time()</span><br><span class="line">    <span class="keyword">return</span> (end - start) / num_iters * <span class="number">1000.0</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">bench_and_report</span>(<span class="params">input_strs</span>):</span><br><span class="line">    inputs = plain_tokenizer(input_strs, return_tensors=<span class="string">&quot;pt&quot;</span>)</span><br><span class="line">    model_inputs = <span class="built_in">tuple</span>(i <span class="keyword">for</span> i <span class="keyword">in</span> inputs <span class="keyword">if</span> i <span class="keyword">is</span> <span class="keyword">not</span> <span class="literal">None</span>)</span><br><span class="line"></span><br><span class="line">    avg_latency_baseline = benchmark(model, model_inputs)</span><br><span class="line">    avg_latency_bladedisc = benchmark(optimized_ts, model_inputs)</span><br><span class="line"></span><br><span class="line">    <span class="built_in">print</span>(<span class="string">f&quot;Seqlen: <span class="subst">&#123;[<span class="built_in">len</span>(s) <span class="keyword">for</span> s <span class="keyword">in</span> input_strs]&#125;</span>&quot;</span>)</span><br><span class="line">    <span class="built_in">print</span>(<span class="string">f&quot;Baseline: <span class="subst">&#123;avg_latency_baseline:<span class="number">.4</span>f&#125;</span> ms&quot;</span>)</span><br><span class="line">    <span class="built_in">print</span>(<span class="string">f&quot;BladeDISC: <span class="subst">&#123;avg_latency_bladedisc:<span class="number">.4</span>f&#125;</span> ms&quot;</span>)</span><br><span class="line">    <span class="built_in">print</span>(<span class="string">f&quot;BladeDISC speedup: <span class="subst">&#123;avg_latency_baseline / avg_latency_bladedisc:<span class="number">.4</span>f&#125;</span>&quot;</span>)</span><br><span class="line"></span><br><span class="line">input_strs = [</span><br><span class="line">    <span class="string">&quot;We are very happy to show you the story.&quot;</span>,</span><br><span class="line">    <span class="string">&quot;We hope you don&#x27;t hate it.&quot;</span></span><br><span class="line">]</span><br><span class="line"></span><br><span class="line">bench_and_report(input_strs)</span><br></pre></td></tr></table></figure>
-
-<p>上述codes中，BladeDISC的核心如下：</p>
-<figure class="highlight python"><table><tr><td class="code"><pre><span class="line"><span class="keyword">with</span> torch.no_grad(), torch_config:</span><br><span class="line">    optimized_ts = torch_blade.optimize(model, allow_tracing=<span class="literal">True</span>, model_inputs=model_inputs)</span><br></pre></td></tr></table></figure>
-
-<p>通过编译手段，生成优化后的pytorch script，注意：<strong>目前pytorch仅仅支持inference，尚不支持train</strong>。对于<code>HuggingFace</code>模型的pipeline有更深层兴趣的，参考<a href="https://huggingface.co/docs/transformers/quicktour">HuggingFace quick tour</a>。</p>
-<p><img src="F:\LeonBlog\source\images\image-20250427225534818.png" alt="image-20250427225534818"></p>
-<p>可以看到对比pytorch，有1.7倍左右的加速。</p>
-<h3 id="Pytorch-WorkFlow"><a href="#Pytorch-WorkFlow" class="headerlink" title="Pytorch WorkFlow"></a><font color = green>Pytorch WorkFlow</font></h3><p><img src="/images/image-20250311211223452.png" alt="image-20250311211223452"></p>
-<p><img src="/images/image-20250311220823276.png" alt="image-20250311220823276"></p>
-<p>参考<a href="https://github.com/alibaba/BladeDISC/blob/main/docs/developers/bladedisc_torch_overview.md">Torch-Blade教程</a>即可。</p>
-<h2 id="参考资料"><a href="#参考资料" class="headerlink" title="参考资料"></a><font color = brown>参考资料</font></h2><ol>
-<li><a href="https://github.com/alibaba/BladeDISC">BladeDisc github</a></li>
-</ol>
-]]></content>
-      <categories>
-        <category>编译技术</category>
-        <category>机器学习编译</category>
-        <category>动态shape</category>
-      </categories>
-      <tags>
-        <tag>机器学习编译器</tag>
-        <tag>mlir</tag>
-        <tag>动态shape</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>ByteIR初探：Runtime系统设计与实现</title>
-    <url>/2025/05/08/ByteIR%E5%88%9D%E6%8E%A2%EF%BC%9ARuntime%E7%B3%BB%E7%BB%9F%E8%AE%BE%E8%AE%A1%E4%B8%8E%E5%AE%9E%E7%8E%B0/</url>
-    <content><![CDATA[]]></content>
-  </entry>
-  <entry>
     <title>GPU 后端优化（一）</title>
     <url>/2025/05/11/GPU-%E5%90%8E%E7%AB%AF%E4%BC%98%E5%8C%96%EF%BC%88%E4%B8%80%EF%BC%89/</url>
     <content><![CDATA[<p><img src="/images/image-20250511230828794.png" alt="image-20250511230828794"></p>
@@ -1135,20 +1217,20 @@
 <p>为什么会有GPU后端优化博客？在阅读BladeDISC以及IREE等源码的过程中，发现当逐步接触后端代码生成&#x2F;运行时系统调度时，由于本人没有深入接触过GPU体系架构（基础太差），很多优化pass难以理解。这一过程使我认识到对于底层系统架构的深入理解往往比具体的编译技术，编译框架（MLIR&#x2F;LLVM）而言更为重要。本系列主要记录我补习GPU架构知识的学习历程（开个坑，主要用于激励我自学CUDA，不然太摆了）。目前初步的计划，该系列会有如下几篇博客：</p>
 <ol>
 <li>GPU后端优化（一）：主要包括GPU后端优化基础知识</li>
-<li>GPU后端优化（二）：结合<a href="http://arxiv.org/abs/2108.13191">MLIR生成高性能GPU算子</a>论文，以及<a href="https://siboehm.com/articles/22/CUDA-MMM">CUDA算子优化博客</a>，学习CUDA算子开发过程和对应算子编译手段</li>
-<li>GPU后端优化（三）：机器学习编译实战部分，包括IREE和BladeDISC代码分析</li>
+<li>GPU后端优化（二）：机器学习编译实战部分，以<a href="http://arxiv.org/abs/2108.13191">MLIR做GPU代码生成</a>论文为概览，结合IREE和BladeDISC开源代码分析</li>
+<li>GPU后端优化（三）：结合<a href="https://siboehm.com/articles/22/CUDA-MMM">CUDA算子优化博客</a>，学习CUDA算子开发过程和对应算子编译手段</li>
 <li>GPU后端优化（四）：高阶GPU体系结构，结合GPU架构书籍进行解读</li>
 </ol>
 </blockquote>
 <h2 id="GPU后端优化基础知识"><a href="#GPU后端优化基础知识" class="headerlink" title="GPU后端优化基础知识"></a><font color = brown>GPU后端优化基础知识</font></h2><p>在日常学习中，由于我的工作和编译器关联度较大，因此一般都是在阅读开源项目的pass源码。这其中如果涉及GPU相关的优化pass，遇到不懂的可能直接询问chatgpt或是一些博客寻找答案。久而久之发现自己虽然好像能够读懂编译器的后端生成pass，但往深处探讨，为什么这些pass是这样的顺序，为什么GPU需要这些pass，很多问题其实都回答不上来。归根结底，是对于GPU优化的原理知识以及优化之间的关联细节没有真正去仔细思考和学习。</p>
-<p>印度理工的学者的一篇利用MLIR搭建高性能GPU算子自动生成的文章，使我们开始的很好的起点。这篇<a href="http://arxiv.org/abs/2108.13191">文章</a>完全基于MLIR基础设施，并做少量修改，同时是一个完整的GPU优化生成流程，是十分值得学习的。本章节的目的就是尽量扫盲，使一些原本不那么清晰或是没涉及过的优化概念尽量明晰，为读懂该文章做好准备工作。</p>
+<p>印度理工的学者的一篇利用MLIR搭建高性能GPU算子自动生成的文章，是我们开始的很好的起点。这篇<a href="http://arxiv.org/abs/2108.13191">文章</a>完全基于MLIR基础设施，并做少量修改，同时是一个完整的GPU优化生成流程，是十分值得学习的。本章节的目的就是尽量扫盲，使一些原本不那么清晰或是没涉及过的优化概念尽量明晰，为读懂该文章做好准备工作。</p>
 <p><img src="/images/image-20250511233238659.png" alt="image-20250511233238659"></p>
 <p>如上图所示是论文中的GPU算子生成流水线，也是我们补足GPU后端编译优化基础知识的概览。后续内容按照流水线展开，大体内容划分如下：</p>
 <ul>
 <li>Loop Tiling优化</li>
 <li>存储优化（共享内存开辟，padding，coalesce内存）</li>
-<li>WMMA tensor core</li>
-<li>latency hiding</li>
+<li>tensor core适配（WMMA api）</li>
+<li>global memory latency hiding</li>
 </ul>
 <h3 id="Loop-Tiling优化"><a href="#Loop-Tiling优化" class="headerlink" title="Loop Tiling优化"></a><font color = green>Loop Tiling优化</font></h3><p>这一章节主要参考<a href="https://zhuanlan.zhihu.com/p/477023757">一篇文章了解 Loop Tiling 优化</a>，这篇博客讲解非常到位，强烈建议有兴趣的读者仔细阅读。本篇文章的解读顺序和原博客不太一致，选择先列出tiling算法步骤，然后以一个具体例子带着大家走一遍算法步骤，解读每一步原理。</p>
 <h4 id="Tiling算法步骤"><a href="#Tiling算法步骤" class="headerlink" title="Tiling算法步骤"></a>Tiling算法步骤</h4><blockquote>
@@ -1182,7 +1264,11 @@
 <figure class="highlight python"><table><tr><td class="code"><pre><span class="line"><span class="keyword">for</span> j_oo <span class="keyword">in</span> <span class="built_in">range</span>(<span class="number">0</span>, N, T2_j):</span><br><span class="line">  <span class="keyword">for</span> i_o <span class="keyword">in</span> <span class="built_in">range</span>(<span class="number">0</span>, N, T_i):</span><br><span class="line">    <span class="keyword">for</span> k_o <span class="keyword">in</span> <span class="built_in">range</span>(<span class="number">0</span>, N, T_k):</span><br><span class="line">      <span class="keyword">for</span> j_oi <span class="keyword">in</span> <span class="built_in">range</span>(j_oo, j_oo + T2_j, T_j):</span><br><span class="line">        <span class="keyword">for</span> i_i <span class="keyword">in</span> <span class="built_in">range</span>(<span class="number">0</span>, N, T_i):</span><br><span class="line">          <span class="keyword">for</span> k_i <span class="keyword">in</span> <span class="built_in">range</span>(k_o, k_o + T_k):</span><br><span class="line">            <span class="keyword">for</span> j_i <span class="keyword">in</span> <span class="built_in">range</span>(j_oi, j_oi + T_j):</span><br><span class="line">              C[i_i][j_i] += A[i_i][k_i] * B[k_i][j_i]</span><br><span class="line"><span class="comment"># 这样的话，内三层循环 i_i, k_i, j_i （对应的 Tile size 为 T_i, T_j, T_k）放到 L1 Cache 里。</span></span><br><span class="line"><span class="comment"># 外层循环 j_oi （对应Tile size 为 T2_j） 就可以放到更大的 L2 Cache 里。于是便在 L2 里形成了对 C[i_i][j_i] 的复用</span></span><br></pre></td></tr></table></figure>
 
 <p>同理，可以继续向上，做k_o和i_o的分块，不再详细阐述了。</p>
-<h2 id="参考资料"><a href="#参考资料" class="headerlink" title="参考资料"></a><font color = brown>参考资料</font></h2><ol>
+<h3 id="存储优化"><a href="#存储优化" class="headerlink" title="存储优化"></a><font color = green>存储优化</font></h3><p>这部分文章重点参考<a href="https://zhuanlan.zhihu.com/p/473133201">GPU global memory优化</a>。</p>
+<h2 id="CUDA编译流程"><a href="#CUDA编译流程" class="headerlink" title="CUDA编译流程"></a><font color = brown>CUDA编译流程</font></h2><p>前面几小节按照MLIR优化GEMM算子论文中的管线（pipeline），补充了面向GPU的相应优化技术点。这一小节则讲解在cuda中是如何做代码生成，讲解一个大概的流程框架。这个流程可以分为两部分来讲解，一是最常用的英伟达闭源工具nvcc编译器的编译流程，二是基于MLIR基础设施的编译流程，从mlir系统接入LLVM IR，然后借助于LLVM成熟编译器进行编译生成。</p>
+<h3 id="NVCC编译流程"><a href="#NVCC编译流程" class="headerlink" title="NVCC编译流程"></a><font color = green>NVCC编译流程</font></h3><img src="/images/image-20250512174213715.png" alt="image-20250512174213715" style="zoom:50%;" />
+
+<h3 id="NVVM-IR"><a href="#NVVM-IR" class="headerlink" title="NVVM IR"></a><font color = green>NVVM IR</font></h3><h2 id="参考资料"><a href="#参考资料" class="headerlink" title="参考资料"></a><font color = brown>参考资料</font></h2><ol>
 <li><a href="https://zhuanlan.zhihu.com/p/477023757">博客：Loop Tiling优化</a></li>
 <li><a href="https://siboehm.com/articles/22/CUDA-MMM">博客：CUDA手写算子教程</a></li>
 <li><a href="http://arxiv.org/abs/2108.13191">论文：MLIR 优化GEMM算子</a></li>
@@ -1195,201 +1281,6 @@
       <tags>
         <tag>GPU</tag>
         <tag>编译</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>MLIR basics: deepdive part1</title>
-    <url>/2025/04/22/MLIR-basics-deepdive-part1/</url>
-    <content><![CDATA[<p><img src="/images/image-20250422105012239.png" alt="image-20250422105012239"></p>
-<span id="more"></span>
-
-<blockquote>
-<p>本篇文章主要基于mlir的<a href="https://www.youtube.com/watch?v=7ofnlCFzlqg">公开talk</a>，深入理解一下mlir中的operation，attributes以及properties机制的底层实现。本文先着重解读operation的底层实现机制。</p>
-</blockquote>
-<h2 id="MLIR-Operation-Intro"><a href="#MLIR-Operation-Intro" class="headerlink" title="MLIR Operation Intro"></a><font color = brown>MLIR Operation Intro</font></h2><p><img src="/images/image-20250422105310560.png" alt="image-20250422105310560"></p>
-<p>上图来源<a href="https://www.youtube.com/watch?v=Y4SvqTtOIDk">mlir tutorial</a>。mlir operation是MLIR系统中最基本的可执行单元，其涵盖多种不同的抽象层级的计算（按照硬件相关性分类，可以分为硬件相关和硬件无关。抽象层级上，也有诸如vector operation和memref operation）。上图已经涵盖了operation op的每个细节，详情可参考<a href="https://mlir.llvm.org/doxygen/classmlir_1_1Operation.html#details">mlir operation docs</a>。</p>
-<p>具体的使用细节，可以参考<a href="https://harmonyhu.com/2021/08/17/mlir/#mliroperation">HarmonyHu MLIR技术细节整理</a>。</p>
-<p><code>mlir::Operation</code>是通用定义，包含通用的接口和属性；<code>MulOp</code>、<code>TransposeOp</code>、<code>ConstantOp</code>等等是特定定义，包含特定的属性。前者可以通过<code>llvm::dyn_cast</code>（动态）或<code>llvm::cast</code>（静态）转换成后者；后者通过<code>getOperation()</code>转换成前者。</p>
-<figure class="highlight cpp"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="type">void</span> <span class="title">processConstantOp</span><span class="params">(mlir::Operation *operation)</span> </span>&#123;</span><br><span class="line">  ConstantOp op = llvm::<span class="built_in">dyn_cast</span>&lt;ConstantOp&gt;(operation);</span><br><span class="line"></span><br><span class="line">  <span class="comment">// This operation is not an instance of `ConstantOp`.</span></span><br><span class="line">  <span class="keyword">if</span> (!op)</span><br><span class="line">    <span class="keyword">return</span>;</span><br><span class="line"></span><br><span class="line">  <span class="comment">// Get the internal operation instance wrapped by the smart pointer.</span></span><br><span class="line">  mlir::Operation *internalOperation = op.<span class="built_in">getOperation</span>();</span><br><span class="line">  <span class="built_in">assert</span>(internalOperation == operation &amp;&amp;</span><br><span class="line">         <span class="string">&quot;these operation instances are the same&quot;</span>);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<p>特定Op可以直接访问属性；<code>mlir::Operation</code>无法直接访问特定Op的属性，但可以类似如下间接访问，如下：</p>
-<figure class="highlight cpp"><table><tr><td class="code"><pre><span class="line"><span class="comment">// getAttrOfType</span></span><br><span class="line">IntegerAttr opsetAttr = op-&gt;<span class="built_in">getAttrOfType</span>&lt;::mlir::Attribute&gt;(<span class="string">&quot;onnx_opset&quot;</span>).<span class="built_in">dyn_cast_or_null</span>&lt;IntegerAttr&gt;();</span><br><span class="line"><span class="keyword">if</span> (opsetAttr)</span><br><span class="line">  opset = opsetAttr.<span class="built_in">getValue</span>().<span class="built_in">getSExtValue</span>();</span><br><span class="line"><span class="comment">// getAttr</span></span><br><span class="line">mlir::Type targetType = op-&gt;<span class="built_in">getAttr</span>(<span class="string">&quot;to&quot;</span>).<span class="built_in">cast</span>&lt;::mlir::TypeAttr&gt;().<span class="built_in">getValue</span>();</span><br></pre></td></tr></table></figure>
-
-<p>operation的具体使用方面，提供了如下接口：</p>
-<figure class="highlight cpp"><table><tr><td class="code"><pre><span class="line"><span class="function">OperationName <span class="title">getName</span><span class="params">()</span> </span>&#123; <span class="keyword">return</span> name; &#125;</span><br><span class="line"><span class="comment">/// Remove this operation from its parent block and delete it.</span></span><br><span class="line"><span class="function"><span class="type">void</span> <span class="title">erase</span><span class="params">()</span></span>;</span><br><span class="line"><span class="comment">/// Remove the operation from its parent block, but don&#x27;t delete it.</span></span><br><span class="line"><span class="function"><span class="type">void</span> <span class="title">remove</span><span class="params">()</span></span>;</span><br><span class="line"><span class="comment">/// Returns the operation block that contains this operation.</span></span><br><span class="line"><span class="function">Block *<span class="title">getBlock</span><span class="params">()</span> </span>&#123; <span class="keyword">return</span> block; &#125;</span><br><span class="line"><span class="comment">/// Return the context this operation is associated with.</span></span><br><span class="line"><span class="function">MLIRContext *<span class="title">getContext</span><span class="params">()</span></span>;</span><br><span class="line"><span class="comment">/// Returns the closest surrounding operation that contains this operation</span></span><br><span class="line"><span class="comment">/// or nullptr if this is a top-level operation.</span></span><br><span class="line"><span class="function">Operation *<span class="title">getParentOp</span><span class="params">()</span> </span>&#123; <span class="keyword">return</span> block ? block-&gt;<span class="built_in">getParentOp</span>() : <span class="literal">nullptr</span>; &#125;</span><br><span class="line"><span class="comment">/// Return the closest surrounding parent operation that is of type &#x27;OpTy&#x27;.</span></span><br><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> OpTy&gt; <span class="function">OpTy <span class="title">getParentOfType</span><span class="params">()</span></span>;</span><br><span class="line"><span class="function"><span class="type">void</span> <span class="title">dump</span><span class="params">()</span></span>;</span><br><span class="line"><span class="function"><span class="type">unsigned</span> <span class="title">getNumOperands</span><span class="params">()</span></span>;</span><br><span class="line"><span class="function">Value <span class="title">getOperand</span><span class="params">(<span class="type">unsigned</span> idx)</span> </span>&#123; <span class="keyword">return</span> <span class="built_in">getOpOperand</span>(idx).<span class="built_in">get</span>(); &#125;</span><br><span class="line"><span class="function"><span class="type">void</span> <span class="title">setOperand</span><span class="params">(<span class="type">unsigned</span> idx, Value value)</span></span>;</span><br><span class="line"><span class="function"><span class="type">unsigned</span> <span class="title">getNumResults</span><span class="params">()</span></span>;</span><br><span class="line"><span class="comment">/// Get the &#x27;idx&#x27;th result of this operation.</span></span><br><span class="line"><span class="function">OpResult <span class="title">getResult</span><span class="params">(<span class="type">unsigned</span> idx)</span> </span>&#123; <span class="keyword">return</span> <span class="built_in">OpResult</span>(<span class="keyword">this</span>, idx); &#125;</span><br><span class="line"><span class="function"><span class="type">void</span> <span class="title">replaceAllUsesWith</span><span class="params">(Operation *op)</span></span>;</span><br><span class="line"><span class="function"><span class="type">void</span> <span class="title">moveBefore</span><span class="params">(Operation *existingOp)</span></span>;</span><br><span class="line"><span class="function"><span class="type">void</span> <span class="title">moveBefore</span><span class="params">(Block *block, llvm::iplist&lt;Operation&gt;::iterator iterator)</span></span>;</span><br><span class="line"><span class="function"><span class="type">void</span> <span class="title">moveAfter</span><span class="params">(Operation *existingOp)</span></span>;</span><br><span class="line"><span class="function"><span class="type">void</span> <span class="title">moveAfter</span><span class="params">(Block *block, llvm::iplist&lt;Operation&gt;::iterator iterator)</span></span>;</span><br></pre></td></tr></table></figure>
-
-
-
-<h2 id="MLIR-Operation-Internal"><a href="#MLIR-Operation-Internal" class="headerlink" title="MLIR Operation Internal"></a><font color = brown>MLIR Operation Internal</font></h2><p>前一章节主要介绍<code>mlir operation</code>以及其使用细节，而这一章则深入挖掘operation的底层实现存储。本章主要参考<a href="https://www.youtube.com/watch?v=7ofnlCFzlqg">mlir properties talk</a>。</p>
-<p>首先我们先来看一下mlir的官方doc中，对于operation的底层细节的一些描述：</p>
-<blockquote>
-<p>An <a href="https://mlir.llvm.org/doxygen/classmlir_1_1Operation.html">Operation</a> defines zero or more SSA <code>Value</code> that we refer to as the <a href="https://mlir.llvm.org/doxygen/classmlir_1_1Operation.html">Operation</a> results. This array of <a href="https://mlir.llvm.org/doxygen/classmlir_1_1Value.html">Value</a> is actually stored in memory before the <a href="https://mlir.llvm.org/doxygen/classmlir_1_1Operation.html">Operation</a> itself in reverse order. That is for an <a href="https://mlir.llvm.org/doxygen/classmlir_1_1Operation.html">Operation</a> with 3 results we allocate the following memory layout:</p>
-<p>[Result2, Result1, Result0, <a href="https://mlir.llvm.org/doxygen/classmlir_1_1Operation.html">Operation</a>] ^ this is where <code>Operation*</code> pointer points to.</p>
-<p>A consequence of this is that this class must be heap allocated, which is handled by the various <code>create</code> methods. Each result contains:</p>
-<ul>
-<li>one pointer to the first use (see <code>OpOperand</code>)</li>
-<li>the type of the SSA <a href="https://mlir.llvm.org/doxygen/classmlir_1_1Value.html">Value</a> this result defines.</li>
-<li>the index for this result in the array. The results are defined as subclass of <code>ValueImpl</code>, and more precisely as the only two subclasses of <code>OpResultImpl</code>: <code>InlineOpResult</code> and <code>OutOfLineOpResult</code>. The former is used for the first 5 results and the latter for the subsequent ones. They differ in how they store their index: the first 5 results only need 3 bits and thus are packed with the <a href="https://mlir.llvm.org/doxygen/classmlir_1_1Type.html">Type</a> pointer, while the subsequent one have an extra <code>unsigned</code> value and thus need more space.</li>
-</ul>
-<p>An <a href="https://mlir.llvm.org/doxygen/classmlir_1_1Operation.html">Operation</a> also has zero or more operands: these are uses of SSA <a href="https://mlir.llvm.org/doxygen/classmlir_1_1Value.html">Value</a>, which can be the results of other operations or <a href="https://mlir.llvm.org/doxygen/classmlir_1_1Block.html">Block</a> arguments. Each of these uses is an instance of <code>OpOperand</code>. This optional array is initially tail allocated with the operation class itself, but can be dynamically moved out-of-line in a dynamic allocation as needed.</p>
-<p>An <a href="https://mlir.llvm.org/doxygen/classmlir_1_1Operation.html">Operation</a> may contain optionally one or multiple Regions, stored in a tail allocated array. Each <code>Region</code> is a list of Blocks. Each <code>Block</code> is itself a list of Operations. This structure is effectively forming a tree.</p>
-<p>Some operations like branches also refer to other <a href="https://mlir.llvm.org/doxygen/classmlir_1_1Block.html">Block</a>, in which case they would have an array of <code>BlockOperand</code>.</p>
-<p>An <a href="https://mlir.llvm.org/doxygen/classmlir_1_1Operation.html">Operation</a> may contain optionally a “Properties” object: this is a pre-defined C++ object with a fixed size. This object is owned by the operation and deleted with the operation. It can be converted to an <a href="https://mlir.llvm.org/doxygen/classmlir_1_1Attribute.html">Attribute</a> on demand, or loaded from an <a href="https://mlir.llvm.org/doxygen/classmlir_1_1Attribute.html">Attribute</a>.</p>
-<p>Finally an <a href="https://mlir.llvm.org/doxygen/classmlir_1_1Operation.html">Operation</a> also contain an optional <code>DictionaryAttr</code>, a <a href="https://mlir.llvm.org/doxygen/classmlir_1_1Location.html">Location</a>, and a pointer to its parent <a href="https://mlir.llvm.org/doxygen/classmlir_1_1Block.html">Block</a> (if any).</p>
-</blockquote>
-<p>总结一下，mlir operation的底层细节中，比较有趣的点：</p>
-<ul>
-<li>操作的结果是以逆序存储在operation之前，并且前5个result和之后可能的result存储大小不一样，这个机制类似llvm的llvm::SmallVector实现。</li>
-<li>operand是尾部存储的方式存储在operation之后，旨在提供可扩展和可修改性（<strong>operand本质是对SSA value的引用，在mlir中经常会有修改引用的情况，比如replaceAllUsesWith()</strong>），同时也支持动态存储在别处。</li>
-<li>一个operation会有多个region，也是尾部存储方式存储。</li>
-</ul>
-<p>针对这些有趣的点，我们后续主要挖掘operation类的具体实现，以及operation前存储和tailing存储等技术细节。</p>
-<h3 id="Operation类的定义"><a href="#Operation类的定义" class="headerlink" title="Operation类的定义"></a><font color = green>Operation类的定义</font></h3><p><img src="/images/image-20250422130653462.png" alt="image-20250422130653462"></p>
-<p>如图所示是<code>/include/mlir/ir/operation.h</code>文件，截取的是operation类的定义，继承自<code>ilist_node_with_parent</code>和<code>TrailingObjects</code>。</p>
-<h4 id="ilist-node-with-parent"><a href="#ilist-node-with-parent" class="headerlink" title="ilist_node_with_parent"></a>ilist_node_with_parent</h4><p>参考<a href="https://llvm.org/doxygen/classllvm_1_1ilist__node__with__parent-members.html">llvm member list文档</a>，其定义如下：</p>
-<p><img src="/images/image-20250422131035118.png" alt="image-20250422131035118"></p>
-<p>是一个双向链表，允许operation获取其prev节点和next节点，分别有如下api调用：</p>
-<p><img src="/images/image-20250422131140983.png" alt="image-20250422131140983"></p>
-<blockquote>
-<p>这个链表属于侵入式链表，和朴素的std::list有区别，具体参见<a href="https://www.boost.org/doc/libs/1_79_0/doc/html/intrusive/intrusive_vs_nontrusive.html">Boost侵入式链表文档</a>。这一块比较复杂，后续再学。</p>
-</blockquote>
-<h4 id="Trailing-Objects"><a href="#Trailing-Objects" class="headerlink" title="Trailing Objects"></a>Trailing Objects</h4><p>Trailing Objects的原理十分简单，如下是c++中的解释：</p>
-<blockquote>
-<p>是一个在 C++ 中的术语，指的是一个对象，它紧跟在一个类的末尾，并且其大小是动态的或不固定的。通常，尾部对象用于在类内部存储一些额外的数据，这些数据的大小在编译时是不确定的，可能根据运行时的条件或对象的使用来决定。</p>
-</blockquote>
-<p>在<code>llvm/include/support/TrailingObjects.h</code>头文件中，有对于这个类的详细定义。注释中给出一个如何定义trailing object类的例子。</p>
-<p><code>类的定义</code></p>
-<figure class="highlight cpp"><table><tr><td class="code"><pre><span class="line"><span class="comment">// 定义VarLenghObj，该对象有固定的int和可变的double数组</span></span><br><span class="line"><span class="keyword">class</span> <span class="title class_">VarLengthObj</span> : <span class="keyword">private</span> TrailingObjects&lt;VarLengthObj, <span class="type">int</span>, <span class="type">double</span>&gt; &#123;</span><br><span class="line">  <span class="keyword">friend</span> TrailingObjects; <span class="comment">// 允许模板访问私有方法</span></span><br><span class="line">  <span class="type">unsigned</span> NumInts, NumDoubles;</span><br><span class="line">  </span><br><span class="line">  <span class="function"><span class="type">size_t</span> <span class="title">numTrailingObjects</span><span class="params">(OverloadToken&lt;<span class="type">int</span>&gt;)</span> <span class="type">const</span> </span>&#123; <span class="keyword">return</span> NumInts; &#125;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
-
-<p>注意这里有一个关键点，double是尾元素，因此其长度是可变的，所以没有numTrailingObjects方法实现。</p>
-<p><code>内存分配</code></p>
-<figure class="highlight cpp"><table><tr><td class="code"><pre><span class="line"><span class="type">size_t</span> Size = VarLengthObj::<span class="built_in">totalSizeToAlloc</span>&lt;<span class="type">int</span>, <span class="type">double</span>&gt;(NumInts, NumDoubles);</span><br><span class="line"><span class="type">void</span> *Mem = <span class="keyword">operator</span> <span class="built_in">new</span>(Size);</span><br><span class="line"><span class="keyword">auto</span> *Obj = <span class="built_in">new</span> (Mem) <span class="built_in">VarLengthObj</span>();</span><br></pre></td></tr></table></figure>
-
-<p><code>访问数据</code></p>
-<figure class="highlight cpp"><table><tr><td class="code"><pre><span class="line"><span class="type">int</span> *Ints = Obj-&gt;<span class="built_in">getTrailingObjects</span>&lt;<span class="type">int</span>&gt;();    <span class="comment">// 访问 int 数组</span></span><br><span class="line"><span class="type">double</span> *Doubles = Obj-&gt;<span class="built_in">getTrailingObjects</span>&lt;<span class="type">double</span>&gt;(); <span class="comment">// 访问 double 数组</span></span><br></pre></td></tr></table></figure>
-
-<h3 id="Operation类的实现"><a href="#Operation类的实现" class="headerlink" title="Operation类的实现"></a><font color = green>Operation类的实现</font></h3><p><img src="/images/image-20250422133350287.png" alt="image-20250422133350287"></p>
-<p>这张图解释了operation的实际存储，具体如下：</p>
-<ul>
-<li>前16bytes是前序节点和后继节点，注意前序节点是ilist_node_base类型加一个int，用来表示哨兵。</li>
-<li>后续是block指针等信息，同时还有region，results等个数。</li>
-</ul>
-<p>上述的trailing objects中，只有OpOperand是编译时不确定可变的，其他均可通过operation这64bytes信息中的num值来推导实际存储位置，如下图所示：</p>
-<p><img src="/images/image-20250422133953920.png" alt="image-20250422133953920"></p>
-<p>该图展示了operation的getRegion()方法的底层实现原理。而唯一特殊的点就是OpOperand，是tail-allocated或是和operation存储分离的。该OpOperand的定位通过64bytes中的OperandStorage来辅助：</p>
-<p><img src="/images/image-20250422134301210.png" alt="image-20250422134301210"></p>
-<p>该OperandStorage中存储OpOperand指针，以及总共有多少operands。添加operands，这种模式也十分容易动态扩展。</p>
-<p>解读完OpOperand，region等信息后，operation还剩一个关键信息：result。</p>
-<p><img src="/images/image-20250422134727315.png" alt="image-20250422134727315"></p>
-<p>result的特殊性是其存储在operation存储体的前面，没有放在trailing objects中。其设计思路参考SmallVector设计，分为OutOfLineOpResult和InlineOpResult，对于少量result情况（&lt;&#x3D;6）可以有效压缩空间。其主要思路是用3bits表示有限的index索引，而超过3bits范围，则使用int表示索引范围，使得前六个result占用16bytes，其余为24个bytes。</p>
-<img src="/images/image-20250422134946924.png" alt="image-20250422134946924" style="zoom:67%;" />
-
-<p>从operation中获取指定的result，其实现如下，逻辑是比较清晰简单的：</p>
-<img src="/images/image-20250422135114847.png" alt="image-20250422135114847" style="zoom:67%;" />
-
-<p>同时也支持从result获取operation这样的操作。逻辑和上图基本一致。</p>
-<p>如下图是一张很好的operation结构总结图：</p>
-<p><img src="/images/image-20250422141744357.png" alt="image-20250422141744357"></p>
-<p>来源于<a href="https://llvm.org/devmtg/2024-04/slides/Keynote/Amini-Niu-HowSlowIsMLIR.pdf">How Slow is MLIR talk</a>。</p>
-<h2 id="Debug实战"><a href="#Debug实战" class="headerlink" title="Debug实战"></a><font color = brown>Debug实战</font></h2><p>mlir的debug tips参考[debug博客](<a href="https://micropuma.github.io/2025/04/20/MLIR-debug-tips/">MLIR debug tips | Leon’s Blog</a>)。首先打断点打在如图所示：</p>
-<p><img src="/images/image-20250422140535380.png" alt="image-20250422140535380"></p>
-<p>我们重点关注func::FuncOp的实现。</p>
-<p><img src="/images/image-20250422140614518.png" alt="image-20250422140614518"></p>
-<p>可以看到，OpState是指向operation实体的指针，其余均是OpTrait萃取或是interface接口，不属于本章节内容。</p>
-<p><img src="/images/image-20250422141259704.png" alt="image-20250422141259704"></p>
-<p>可以看到，OpState是符合前几章讲解的底层实现。</p>
-<p>至此，解读完mlir的operation的底层实现，下一章节会重点解读mlir的attributes机制的底层实现。</p>
-]]></content>
-      <categories>
-        <category>编译技术</category>
-        <category>mlir</category>
-        <category>basics</category>
-      </categories>
-      <tags>
-        <tag>mlir</tag>
-        <tag>basics</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>MLIR-basics-deepdive-part2</title>
-    <url>/2025/04/24/MLIR-basics-deepdive-part2/</url>
-    <content><![CDATA[<p><img src="/images/image-20250422105012239.png" alt="image-20250422105012239"></p>
-<span id="more"></span>
-
-<blockquote>
-<p>本篇文章主要基于mlir的<a href="https://www.youtube.com/watch?v=7ofnlCFzlqg">公开talk</a>，深入理解一下mlir中的operation，attributes以及properties机制的底层实现。本文为此系列的第二篇，着重解读mlir的attirbutes特性。</p>
-</blockquote>
-<h2 id="Attribute初探"><a href="#Attribute初探" class="headerlink" title="Attribute初探"></a><font color = brown>Attribute初探</font></h2><p>首先，我们需要先简要理解一下Attribute在MLIR编译器中的作用。根据MLIR的官方文档资料，Attribute是在一个operation中用来表达常量数据的机制。MLIR中的每一operation都关联一个属性字典，其中包含属性名称和属性值的映射。</p>
-<ul>
-<li>属性按照所属方言划分，可以分为内嵌属性和方言属性。<ul>
-<li>内嵌属性：mlir的内嵌方言提供的属性，比如我们常用的StringAttr，DenseArryAttr等。</li>
-<li>方言属性：允许方言中定义自己的属性</li>
-</ul>
-</li>
-<li>属性按照字典键是否又方言前缀，可以分为inherent attributes和discardable attributes。<ul>
-<li>inherent属性：该属性由operation的语义信息来决定</li>
-<li>discardable属性：属性自带语义，但要和operation相一致</li>
-</ul>
-</li>
-</ul>
-<p>如下图所示就是两种attribute的典型示例。<code>cmpi</code>操作的<code>谓词</code>属性和操作严格捆绑。</p>
-<img src="/images/image-20250426205915933.png" alt="image-20250426205915933" style="zoom: 50%;" />
-
-<h2 id="Attribute-底层原理"><a href="#Attribute-底层原理" class="headerlink" title="Attribute 底层原理"></a><font color = brown>Attribute 底层原理</font></h2><p><img src="/images/image-20250426210418663.png" alt="image-20250426210418663"></p>
-<p>上图是编写mlir的时候，经常用到的创建新的attribute。该逻辑是，先构造构造一个vector，然后调用<code>get()</code> API获取一个属性的指针。这里的<code>get()</code> api的特点是，如果已有DenseI64ArrayAttr的内容是offsetsVec，则返回已有的属性，否则创建返回。</p>
-<h3 id="Attribute的recap知识"><a href="#Attribute的recap知识" class="headerlink" title="Attribute的recap知识"></a><font color = green>Attribute的recap知识</font></h3><p>首先来总结一下attribute的一些特点：</p>
-<img src="/images/image-20250426210700572.png" alt="image-20250426210700572" style="zoom:50%;" />
-
-<p>其最核心的一个特点是属性是不可变的，因此其一系列底层机制都围绕不可变性展开。获取一个内容是offsetsVec的DenseI64ArrayAttr，有如下几步骤：</p>
-<ul>
-<li>在operation所在的MLIRContext中获取DenseI64Array的ParametricStorageUniquer（每个属性类型都由一个存储器管理）</li>
-<li>在该storageuniqure中，通过hash的方式查找（key是&lt;Type, int64, llvm::ArrayRef<char>&gt;&gt;）。</li>
-</ul>
-<h3 id="Attribute的get-方法底层逻辑链条"><a href="#Attribute的get-方法底层逻辑链条" class="headerlink" title="Attribute的get()方法底层逻辑链条"></a><font color = green>Attribute的get()方法底层逻辑链条</font></h3><p>首先我们写梳理整个逻辑链条相关的数据结构：</p>
-<h4 id="get方法返回什么"><a href="#get方法返回什么" class="headerlink" title="get方法返回什么"></a>get方法返回什么</h4><p><code>get()</code>方法返回的是DenseArrayAttrStorage指针，该指针包含实际存储内容和一个hash值。</p>
-<ul>
-<li>实际存储内容包含：存储数据类型，存储数据长度，数组内容。</li>
-<li>KeyTy表示hash值，是type，数据长度和实际数组的一个元组。</li>
-</ul>
-<p><img src="/images/image-20250426221014974.png" alt="image-20250426221014974"></p>
-<h4 id="通过属性类型：DenseI64ArrayAttr找寻到该类型的底层storage"><a href="#通过属性类型：DenseI64ArrayAttr找寻到该类型的底层storage" class="headerlink" title="通过属性类型：DenseI64ArrayAttr找寻到该类型的底层storage"></a>通过属性类型：DenseI64ArrayAttr找寻到该类型的底层storage</h4><p><img src="/images/image-20250426221323084.png" alt="image-20250426221323084"></p>
-<p>如上图所示，一个context上下文中，每个属性都有对应的storage。</p>
-<p><img src="/images/image-20250426221410708.png" alt="image-20250426221410708"></p>
-<p>用一个densemap存储，每个attribute都有一个type id，通过type id检索到对应的ParametricStorageUniqer指针。</p>
-<h4 id="从ParametricStorageUniqer中通过hash值创建-返回属性指针"><a href="#从ParametricStorageUniqer中通过hash值创建-返回属性指针" class="headerlink" title="从ParametricStorageUniqer中通过hash值创建&#x2F;返回属性指针"></a>从ParametricStorageUniqer中通过hash值创建&#x2F;返回属性指针</h4><p><img src="/images/image-20250426225725235.png" alt="image-20250426225725235"></p>
-<p>如下是一个完整的get流程：</p>
-<p><img src="/images/image-20250426225801721.png" alt="image-20250426225801721"></p>
-<p>值得注意的是，底层的存储BumpPtrAllocator类似于内存池，只能开辟，然后空间释放是整个Allocator管理的所有存储都释放。</p>
-<h2 id="Operation-Accessors"><a href="#Operation-Accessors" class="headerlink" title="Operation Accessors"></a><font color = brown>Operation Accessors</font></h2><p><img src="/images/image-20250426225942938.png" alt="image-20250426225942938"></p>
-<p>上图中是一个operation常用的api，其中，Operand，Result和region都是可变的，而attr是不可变的。因此看似api都是get，set，但实际底层机制attr会复杂的多。</p>
-<p>具体复杂性体现在如下slide中：</p>
-<blockquote>
-<p><img src="/images/image-20250426230139141.png" alt="image-20250426230139141"></p>
-<p>由于不可变，因此set attr的时候，针对<strong>DictionaryAttr</strong>中添加一组name和attrvalue，底层也是十分复杂的（DictionaryAttr也是属性）。</p>
-<ul>
-<li>首先将已有的dict拷贝入数组</li>
-<li>在数组中变化，添加新的value（inplace）</li>
-<li>用get方法生成新的Dictionary</li>
-</ul>
-<p>一个简单的setAttr，底层流程分为如上三步，attr的immutable特性，导致其效率较低。</p>
-</blockquote>
-<blockquote>
-<p><img src="/images/image-20250426230550008.png" alt="image-20250426230550008"></p>
-<p>上述slide是一个很好地总结。</p>
-<p>如下是一个检测理解的例子：</p>
-<p><img src="/images/image-20250426230628810.png" alt="image-20250426230628810"></p>
-<p><img src="/images/image-20250426230655927.png" alt="image-20250426230655927"></p>
-<p>显而易见，这里存在大量的vector拷贝， 以及可能的存储空间浪费。</p>
-</blockquote>
-]]></content>
-      <categories>
-        <category>编译技术</category>
-        <category>mlir</category>
-        <category>basics</category>
-      </categories>
-      <tags>
-        <tag>mlir</tag>
-        <tag>basics</tag>
       </tags>
   </entry>
   <entry>
@@ -1544,6 +1435,44 @@
     <content><![CDATA[]]></content>
   </entry>
   <entry>
+    <title>byteir初探：Compiler部分</title>
+    <url>/2025/05/08/byteir%E5%88%9D%E6%8E%A2%EF%BC%9ACompiler%E9%83%A8%E5%88%86/</url>
+    <content><![CDATA[<img src="/images/image-20250508125112166.png" alt="image-20250508125112166" style="zoom:50%;" />
+
+<span id="more"></span>
+
+<h2 id="Compiler部分概览"><a href="#Compiler部分概览" class="headerlink" title="Compiler部分概览"></a><font color = brown>Compiler部分概览</font></h2><p><img src="/images/image-20250508165752639.png" alt="image-20250508165752639"></p>
+<p>ByteIR的compiler部分设计遵循标准的mlir层级转换流程，上图所示是前端，中间compiler和后端runtime的架构图。compiler的输入是MHLO dialect（包含部分ByteIR针对特定算子的扩展），输出是mlir（host code）和ptx（默认的cuda device后端中间形式）。最终输出给到runtime做调度和GPU上执行。如下图所示是compiler的编译优化流水线架构图：</p>
+<pre class="mermaid">graph TD
+    A[Start: hlo-graph-opt] --> B[hlo-fusion-opt]
+    B --> C[linalg-tensor-opt]
+    C --> D[byre-tensor-opt]
+    D --> E[byteir-bufferize-opt]
+    E --> F[linalg-memref-opt]
+    F --> G[scf-opt]
+    G --> H[gpu-opt]
+    H --> I[inline + lccl-to-byre + gpu-launch-func-to-byre]
+    I --> J[set-op-space & set-arg-space]
+    J --> K[byre-opt]
+    K --> L[nvvm-codegenfor device]
+    K --> M[byre-hostfor host]
+    M --> N[remove-module-tag]
+    L --> O[translate_to_ptx]
+    N --> P[write host MLIR / MLIRBC]</pre>
+
+
+
+]]></content>
+      <categories>
+        <category>编译技术</category>
+        <category>机器学习编译</category>
+      </categories>
+      <tags>
+        <tag>机器学习编译器</tag>
+        <tag>mlir</tag>
+      </tags>
+  </entry>
+  <entry>
     <title>Transform Dialect tutorial1</title>
     <url>/2025/04/08/Transform-Dialect-tutorial1/</url>
     <content><![CDATA[<p><img src="/images/image-20250408184457571.png" alt="image-20250408184457571"></p>
@@ -1687,41 +1616,116 @@
       </tags>
   </entry>
   <entry>
-    <title>byteir初探：Compiler部分</title>
-    <url>/2025/05/08/byteir%E5%88%9D%E6%8E%A2%EF%BC%9ACompiler%E9%83%A8%E5%88%86/</url>
-    <content><![CDATA[<img src="/images/image-20250508125112166.png" alt="image-20250508125112166" style="zoom:50%;" />
-
+    <title>MLIR basics: deepdive part1</title>
+    <url>/2025/04/22/MLIR-basics-deepdive-part1/</url>
+    <content><![CDATA[<p><img src="/images/image-20250422105012239.png" alt="image-20250422105012239"></p>
 <span id="more"></span>
 
-<h2 id="Compiler部分概览"><a href="#Compiler部分概览" class="headerlink" title="Compiler部分概览"></a><font color = brown>Compiler部分概览</font></h2><p><img src="/images/image-20250508165752639.png" alt="image-20250508165752639"></p>
-<p>ByteIR的compiler部分设计遵循标准的mlir层级转换流程，上图所示是前端，中间compiler和后端runtime的架构图。compiler的输入是MHLO dialect（包含部分ByteIR针对特定算子的扩展），输出是mlir（host code）和ptx（默认的cuda device后端中间形式）。最终输出给到runtime做调度和GPU上执行。如下图所示是compiler的编译优化流水线架构图：</p>
-<pre class="mermaid">graph TD
-    A[Start: hlo-graph-opt] --> B[hlo-fusion-opt]
-    B --> C[linalg-tensor-opt]
-    C --> D[byre-tensor-opt]
-    D --> E[byteir-bufferize-opt]
-    E --> F[linalg-memref-opt]
-    F --> G[scf-opt]
-    G --> H[gpu-opt]
-    H --> I[inline + lccl-to-byre + gpu-launch-func-to-byre]
-    I --> J[set-op-space & set-arg-space]
-    J --> K[byre-opt]
-    K --> L[nvvm-codegenfor device]
-    K --> M[byre-hostfor host]
-    M --> N[remove-module-tag]
-    L --> O[translate_to_ptx]
-    N --> P[write host MLIR / MLIRBC]</pre>
+<blockquote>
+<p>本篇文章主要基于mlir的<a href="https://www.youtube.com/watch?v=7ofnlCFzlqg">公开talk</a>，深入理解一下mlir中的operation，attributes以及properties机制的底层实现。本文先着重解读operation的底层实现机制。</p>
+</blockquote>
+<h2 id="MLIR-Operation-Intro"><a href="#MLIR-Operation-Intro" class="headerlink" title="MLIR Operation Intro"></a><font color = brown>MLIR Operation Intro</font></h2><p><img src="/images/image-20250422105310560.png" alt="image-20250422105310560"></p>
+<p>上图来源<a href="https://www.youtube.com/watch?v=Y4SvqTtOIDk">mlir tutorial</a>。mlir operation是MLIR系统中最基本的可执行单元，其涵盖多种不同的抽象层级的计算（按照硬件相关性分类，可以分为硬件相关和硬件无关。抽象层级上，也有诸如vector operation和memref operation）。上图已经涵盖了operation op的每个细节，详情可参考<a href="https://mlir.llvm.org/doxygen/classmlir_1_1Operation.html#details">mlir operation docs</a>。</p>
+<p>具体的使用细节，可以参考<a href="https://harmonyhu.com/2021/08/17/mlir/#mliroperation">HarmonyHu MLIR技术细节整理</a>。</p>
+<p><code>mlir::Operation</code>是通用定义，包含通用的接口和属性；<code>MulOp</code>、<code>TransposeOp</code>、<code>ConstantOp</code>等等是特定定义，包含特定的属性。前者可以通过<code>llvm::dyn_cast</code>（动态）或<code>llvm::cast</code>（静态）转换成后者；后者通过<code>getOperation()</code>转换成前者。</p>
+<figure class="highlight cpp"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="type">void</span> <span class="title">processConstantOp</span><span class="params">(mlir::Operation *operation)</span> </span>&#123;</span><br><span class="line">  ConstantOp op = llvm::<span class="built_in">dyn_cast</span>&lt;ConstantOp&gt;(operation);</span><br><span class="line"></span><br><span class="line">  <span class="comment">// This operation is not an instance of `ConstantOp`.</span></span><br><span class="line">  <span class="keyword">if</span> (!op)</span><br><span class="line">    <span class="keyword">return</span>;</span><br><span class="line"></span><br><span class="line">  <span class="comment">// Get the internal operation instance wrapped by the smart pointer.</span></span><br><span class="line">  mlir::Operation *internalOperation = op.<span class="built_in">getOperation</span>();</span><br><span class="line">  <span class="built_in">assert</span>(internalOperation == operation &amp;&amp;</span><br><span class="line">         <span class="string">&quot;these operation instances are the same&quot;</span>);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>特定Op可以直接访问属性；<code>mlir::Operation</code>无法直接访问特定Op的属性，但可以类似如下间接访问，如下：</p>
+<figure class="highlight cpp"><table><tr><td class="code"><pre><span class="line"><span class="comment">// getAttrOfType</span></span><br><span class="line">IntegerAttr opsetAttr = op-&gt;<span class="built_in">getAttrOfType</span>&lt;::mlir::Attribute&gt;(<span class="string">&quot;onnx_opset&quot;</span>).<span class="built_in">dyn_cast_or_null</span>&lt;IntegerAttr&gt;();</span><br><span class="line"><span class="keyword">if</span> (opsetAttr)</span><br><span class="line">  opset = opsetAttr.<span class="built_in">getValue</span>().<span class="built_in">getSExtValue</span>();</span><br><span class="line"><span class="comment">// getAttr</span></span><br><span class="line">mlir::Type targetType = op-&gt;<span class="built_in">getAttr</span>(<span class="string">&quot;to&quot;</span>).<span class="built_in">cast</span>&lt;::mlir::TypeAttr&gt;().<span class="built_in">getValue</span>();</span><br></pre></td></tr></table></figure>
+
+<p>operation的具体使用方面，提供了如下接口：</p>
+<figure class="highlight cpp"><table><tr><td class="code"><pre><span class="line"><span class="function">OperationName <span class="title">getName</span><span class="params">()</span> </span>&#123; <span class="keyword">return</span> name; &#125;</span><br><span class="line"><span class="comment">/// Remove this operation from its parent block and delete it.</span></span><br><span class="line"><span class="function"><span class="type">void</span> <span class="title">erase</span><span class="params">()</span></span>;</span><br><span class="line"><span class="comment">/// Remove the operation from its parent block, but don&#x27;t delete it.</span></span><br><span class="line"><span class="function"><span class="type">void</span> <span class="title">remove</span><span class="params">()</span></span>;</span><br><span class="line"><span class="comment">/// Returns the operation block that contains this operation.</span></span><br><span class="line"><span class="function">Block *<span class="title">getBlock</span><span class="params">()</span> </span>&#123; <span class="keyword">return</span> block; &#125;</span><br><span class="line"><span class="comment">/// Return the context this operation is associated with.</span></span><br><span class="line"><span class="function">MLIRContext *<span class="title">getContext</span><span class="params">()</span></span>;</span><br><span class="line"><span class="comment">/// Returns the closest surrounding operation that contains this operation</span></span><br><span class="line"><span class="comment">/// or nullptr if this is a top-level operation.</span></span><br><span class="line"><span class="function">Operation *<span class="title">getParentOp</span><span class="params">()</span> </span>&#123; <span class="keyword">return</span> block ? block-&gt;<span class="built_in">getParentOp</span>() : <span class="literal">nullptr</span>; &#125;</span><br><span class="line"><span class="comment">/// Return the closest surrounding parent operation that is of type &#x27;OpTy&#x27;.</span></span><br><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> OpTy&gt; <span class="function">OpTy <span class="title">getParentOfType</span><span class="params">()</span></span>;</span><br><span class="line"><span class="function"><span class="type">void</span> <span class="title">dump</span><span class="params">()</span></span>;</span><br><span class="line"><span class="function"><span class="type">unsigned</span> <span class="title">getNumOperands</span><span class="params">()</span></span>;</span><br><span class="line"><span class="function">Value <span class="title">getOperand</span><span class="params">(<span class="type">unsigned</span> idx)</span> </span>&#123; <span class="keyword">return</span> <span class="built_in">getOpOperand</span>(idx).<span class="built_in">get</span>(); &#125;</span><br><span class="line"><span class="function"><span class="type">void</span> <span class="title">setOperand</span><span class="params">(<span class="type">unsigned</span> idx, Value value)</span></span>;</span><br><span class="line"><span class="function"><span class="type">unsigned</span> <span class="title">getNumResults</span><span class="params">()</span></span>;</span><br><span class="line"><span class="comment">/// Get the &#x27;idx&#x27;th result of this operation.</span></span><br><span class="line"><span class="function">OpResult <span class="title">getResult</span><span class="params">(<span class="type">unsigned</span> idx)</span> </span>&#123; <span class="keyword">return</span> <span class="built_in">OpResult</span>(<span class="keyword">this</span>, idx); &#125;</span><br><span class="line"><span class="function"><span class="type">void</span> <span class="title">replaceAllUsesWith</span><span class="params">(Operation *op)</span></span>;</span><br><span class="line"><span class="function"><span class="type">void</span> <span class="title">moveBefore</span><span class="params">(Operation *existingOp)</span></span>;</span><br><span class="line"><span class="function"><span class="type">void</span> <span class="title">moveBefore</span><span class="params">(Block *block, llvm::iplist&lt;Operation&gt;::iterator iterator)</span></span>;</span><br><span class="line"><span class="function"><span class="type">void</span> <span class="title">moveAfter</span><span class="params">(Operation *existingOp)</span></span>;</span><br><span class="line"><span class="function"><span class="type">void</span> <span class="title">moveAfter</span><span class="params">(Block *block, llvm::iplist&lt;Operation&gt;::iterator iterator)</span></span>;</span><br></pre></td></tr></table></figure>
 
 
 
+<h2 id="MLIR-Operation-Internal"><a href="#MLIR-Operation-Internal" class="headerlink" title="MLIR Operation Internal"></a><font color = brown>MLIR Operation Internal</font></h2><p>前一章节主要介绍<code>mlir operation</code>以及其使用细节，而这一章则深入挖掘operation的底层实现存储。本章主要参考<a href="https://www.youtube.com/watch?v=7ofnlCFzlqg">mlir properties talk</a>。</p>
+<p>首先我们先来看一下mlir的官方doc中，对于operation的底层细节的一些描述：</p>
+<blockquote>
+<p>An <a href="https://mlir.llvm.org/doxygen/classmlir_1_1Operation.html">Operation</a> defines zero or more SSA <code>Value</code> that we refer to as the <a href="https://mlir.llvm.org/doxygen/classmlir_1_1Operation.html">Operation</a> results. This array of <a href="https://mlir.llvm.org/doxygen/classmlir_1_1Value.html">Value</a> is actually stored in memory before the <a href="https://mlir.llvm.org/doxygen/classmlir_1_1Operation.html">Operation</a> itself in reverse order. That is for an <a href="https://mlir.llvm.org/doxygen/classmlir_1_1Operation.html">Operation</a> with 3 results we allocate the following memory layout:</p>
+<p>[Result2, Result1, Result0, <a href="https://mlir.llvm.org/doxygen/classmlir_1_1Operation.html">Operation</a>] ^ this is where <code>Operation*</code> pointer points to.</p>
+<p>A consequence of this is that this class must be heap allocated, which is handled by the various <code>create</code> methods. Each result contains:</p>
+<ul>
+<li>one pointer to the first use (see <code>OpOperand</code>)</li>
+<li>the type of the SSA <a href="https://mlir.llvm.org/doxygen/classmlir_1_1Value.html">Value</a> this result defines.</li>
+<li>the index for this result in the array. The results are defined as subclass of <code>ValueImpl</code>, and more precisely as the only two subclasses of <code>OpResultImpl</code>: <code>InlineOpResult</code> and <code>OutOfLineOpResult</code>. The former is used for the first 5 results and the latter for the subsequent ones. They differ in how they store their index: the first 5 results only need 3 bits and thus are packed with the <a href="https://mlir.llvm.org/doxygen/classmlir_1_1Type.html">Type</a> pointer, while the subsequent one have an extra <code>unsigned</code> value and thus need more space.</li>
+</ul>
+<p>An <a href="https://mlir.llvm.org/doxygen/classmlir_1_1Operation.html">Operation</a> also has zero or more operands: these are uses of SSA <a href="https://mlir.llvm.org/doxygen/classmlir_1_1Value.html">Value</a>, which can be the results of other operations or <a href="https://mlir.llvm.org/doxygen/classmlir_1_1Block.html">Block</a> arguments. Each of these uses is an instance of <code>OpOperand</code>. This optional array is initially tail allocated with the operation class itself, but can be dynamically moved out-of-line in a dynamic allocation as needed.</p>
+<p>An <a href="https://mlir.llvm.org/doxygen/classmlir_1_1Operation.html">Operation</a> may contain optionally one or multiple Regions, stored in a tail allocated array. Each <code>Region</code> is a list of Blocks. Each <code>Block</code> is itself a list of Operations. This structure is effectively forming a tree.</p>
+<p>Some operations like branches also refer to other <a href="https://mlir.llvm.org/doxygen/classmlir_1_1Block.html">Block</a>, in which case they would have an array of <code>BlockOperand</code>.</p>
+<p>An <a href="https://mlir.llvm.org/doxygen/classmlir_1_1Operation.html">Operation</a> may contain optionally a “Properties” object: this is a pre-defined C++ object with a fixed size. This object is owned by the operation and deleted with the operation. It can be converted to an <a href="https://mlir.llvm.org/doxygen/classmlir_1_1Attribute.html">Attribute</a> on demand, or loaded from an <a href="https://mlir.llvm.org/doxygen/classmlir_1_1Attribute.html">Attribute</a>.</p>
+<p>Finally an <a href="https://mlir.llvm.org/doxygen/classmlir_1_1Operation.html">Operation</a> also contain an optional <code>DictionaryAttr</code>, a <a href="https://mlir.llvm.org/doxygen/classmlir_1_1Location.html">Location</a>, and a pointer to its parent <a href="https://mlir.llvm.org/doxygen/classmlir_1_1Block.html">Block</a> (if any).</p>
+</blockquote>
+<p>总结一下，mlir operation的底层细节中，比较有趣的点：</p>
+<ul>
+<li>操作的结果是以逆序存储在operation之前，并且前5个result和之后可能的result存储大小不一样，这个机制类似llvm的llvm::SmallVector实现。</li>
+<li>operand是尾部存储的方式存储在operation之后，旨在提供可扩展和可修改性（<strong>operand本质是对SSA value的引用，在mlir中经常会有修改引用的情况，比如replaceAllUsesWith()</strong>），同时也支持动态存储在别处。</li>
+<li>一个operation会有多个region，也是尾部存储方式存储。</li>
+</ul>
+<p>针对这些有趣的点，我们后续主要挖掘operation类的具体实现，以及operation前存储和tailing存储等技术细节。</p>
+<h3 id="Operation类的定义"><a href="#Operation类的定义" class="headerlink" title="Operation类的定义"></a><font color = green>Operation类的定义</font></h3><p><img src="/images/image-20250422130653462.png" alt="image-20250422130653462"></p>
+<p>如图所示是<code>/include/mlir/ir/operation.h</code>文件，截取的是operation类的定义，继承自<code>ilist_node_with_parent</code>和<code>TrailingObjects</code>。</p>
+<h4 id="ilist-node-with-parent"><a href="#ilist-node-with-parent" class="headerlink" title="ilist_node_with_parent"></a>ilist_node_with_parent</h4><p>参考<a href="https://llvm.org/doxygen/classllvm_1_1ilist__node__with__parent-members.html">llvm member list文档</a>，其定义如下：</p>
+<p><img src="/images/image-20250422131035118.png" alt="image-20250422131035118"></p>
+<p>是一个双向链表，允许operation获取其prev节点和next节点，分别有如下api调用：</p>
+<p><img src="/images/image-20250422131140983.png" alt="image-20250422131140983"></p>
+<blockquote>
+<p>这个链表属于侵入式链表，和朴素的std::list有区别，具体参见<a href="https://www.boost.org/doc/libs/1_79_0/doc/html/intrusive/intrusive_vs_nontrusive.html">Boost侵入式链表文档</a>。这一块比较复杂，后续再学。</p>
+</blockquote>
+<h4 id="Trailing-Objects"><a href="#Trailing-Objects" class="headerlink" title="Trailing Objects"></a>Trailing Objects</h4><p>Trailing Objects的原理十分简单，如下是c++中的解释：</p>
+<blockquote>
+<p>是一个在 C++ 中的术语，指的是一个对象，它紧跟在一个类的末尾，并且其大小是动态的或不固定的。通常，尾部对象用于在类内部存储一些额外的数据，这些数据的大小在编译时是不确定的，可能根据运行时的条件或对象的使用来决定。</p>
+</blockquote>
+<p>在<code>llvm/include/support/TrailingObjects.h</code>头文件中，有对于这个类的详细定义。注释中给出一个如何定义trailing object类的例子。</p>
+<p><code>类的定义</code></p>
+<figure class="highlight cpp"><table><tr><td class="code"><pre><span class="line"><span class="comment">// 定义VarLenghObj，该对象有固定的int和可变的double数组</span></span><br><span class="line"><span class="keyword">class</span> <span class="title class_">VarLengthObj</span> : <span class="keyword">private</span> TrailingObjects&lt;VarLengthObj, <span class="type">int</span>, <span class="type">double</span>&gt; &#123;</span><br><span class="line">  <span class="keyword">friend</span> TrailingObjects; <span class="comment">// 允许模板访问私有方法</span></span><br><span class="line">  <span class="type">unsigned</span> NumInts, NumDoubles;</span><br><span class="line">  </span><br><span class="line">  <span class="function"><span class="type">size_t</span> <span class="title">numTrailingObjects</span><span class="params">(OverloadToken&lt;<span class="type">int</span>&gt;)</span> <span class="type">const</span> </span>&#123; <span class="keyword">return</span> NumInts; &#125;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<p>注意这里有一个关键点，double是尾元素，因此其长度是可变的，所以没有numTrailingObjects方法实现。</p>
+<p><code>内存分配</code></p>
+<figure class="highlight cpp"><table><tr><td class="code"><pre><span class="line"><span class="type">size_t</span> Size = VarLengthObj::<span class="built_in">totalSizeToAlloc</span>&lt;<span class="type">int</span>, <span class="type">double</span>&gt;(NumInts, NumDoubles);</span><br><span class="line"><span class="type">void</span> *Mem = <span class="keyword">operator</span> <span class="built_in">new</span>(Size);</span><br><span class="line"><span class="keyword">auto</span> *Obj = <span class="built_in">new</span> (Mem) <span class="built_in">VarLengthObj</span>();</span><br></pre></td></tr></table></figure>
+
+<p><code>访问数据</code></p>
+<figure class="highlight cpp"><table><tr><td class="code"><pre><span class="line"><span class="type">int</span> *Ints = Obj-&gt;<span class="built_in">getTrailingObjects</span>&lt;<span class="type">int</span>&gt;();    <span class="comment">// 访问 int 数组</span></span><br><span class="line"><span class="type">double</span> *Doubles = Obj-&gt;<span class="built_in">getTrailingObjects</span>&lt;<span class="type">double</span>&gt;(); <span class="comment">// 访问 double 数组</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="Operation类的实现"><a href="#Operation类的实现" class="headerlink" title="Operation类的实现"></a><font color = green>Operation类的实现</font></h3><p><img src="/images/image-20250422133350287.png" alt="image-20250422133350287"></p>
+<p>这张图解释了operation的实际存储，具体如下：</p>
+<ul>
+<li>前16bytes是前序节点和后继节点，注意前序节点是ilist_node_base类型加一个int，用来表示哨兵。</li>
+<li>后续是block指针等信息，同时还有region，results等个数。</li>
+</ul>
+<p>上述的trailing objects中，只有OpOperand是编译时不确定可变的，其他均可通过operation这64bytes信息中的num值来推导实际存储位置，如下图所示：</p>
+<p><img src="/images/image-20250422133953920.png" alt="image-20250422133953920"></p>
+<p>该图展示了operation的getRegion()方法的底层实现原理。而唯一特殊的点就是OpOperand，是tail-allocated或是和operation存储分离的。该OpOperand的定位通过64bytes中的OperandStorage来辅助：</p>
+<p><img src="/images/image-20250422134301210.png" alt="image-20250422134301210"></p>
+<p>该OperandStorage中存储OpOperand指针，以及总共有多少operands。添加operands，这种模式也十分容易动态扩展。</p>
+<p>解读完OpOperand，region等信息后，operation还剩一个关键信息：result。</p>
+<p><img src="/images/image-20250422134727315.png" alt="image-20250422134727315"></p>
+<p>result的特殊性是其存储在operation存储体的前面，没有放在trailing objects中。其设计思路参考SmallVector设计，分为OutOfLineOpResult和InlineOpResult，对于少量result情况（&lt;&#x3D;6）可以有效压缩空间。其主要思路是用3bits表示有限的index索引，而超过3bits范围，则使用int表示索引范围，使得前六个result占用16bytes，其余为24个bytes。</p>
+<img src="/images/image-20250422134946924.png" alt="image-20250422134946924" style="zoom:67%;" />
+
+<p>从operation中获取指定的result，其实现如下，逻辑是比较清晰简单的：</p>
+<img src="/images/image-20250422135114847.png" alt="image-20250422135114847" style="zoom:67%;" />
+
+<p>同时也支持从result获取operation这样的操作。逻辑和上图基本一致。</p>
+<p>如下图是一张很好的operation结构总结图：</p>
+<p><img src="/images/image-20250422141744357.png" alt="image-20250422141744357"></p>
+<p>来源于<a href="https://llvm.org/devmtg/2024-04/slides/Keynote/Amini-Niu-HowSlowIsMLIR.pdf">How Slow is MLIR talk</a>。</p>
+<h2 id="Debug实战"><a href="#Debug实战" class="headerlink" title="Debug实战"></a><font color = brown>Debug实战</font></h2><p>mlir的debug tips参考[debug博客](<a href="https://micropuma.github.io/2025/04/20/MLIR-debug-tips/">MLIR debug tips | Leon’s Blog</a>)。首先打断点打在如图所示：</p>
+<p><img src="/images/image-20250422140535380.png" alt="image-20250422140535380"></p>
+<p>我们重点关注func::FuncOp的实现。</p>
+<p><img src="/images/image-20250422140614518.png" alt="image-20250422140614518"></p>
+<p>可以看到，OpState是指向operation实体的指针，其余均是OpTrait萃取或是interface接口，不属于本章节内容。</p>
+<p><img src="/images/image-20250422141259704.png" alt="image-20250422141259704"></p>
+<p>可以看到，OpState是符合前几章讲解的底层实现。</p>
+<p>至此，解读完mlir的operation的底层实现，下一章节会重点解读mlir的attributes机制的底层实现。</p>
 ]]></content>
       <categories>
         <category>编译技术</category>
-        <category>机器学习编译</category>
+        <category>mlir</category>
+        <category>basics</category>
       </categories>
       <tags>
-        <tag>机器学习编译器</tag>
         <tag>mlir</tag>
+        <tag>basics</tag>
       </tags>
   </entry>
   <entry>
@@ -1801,6 +1805,43 @@
       </tags>
   </entry>
   <entry>
+    <title>初探minitorch</title>
+    <url>/2025/04/27/%E5%88%9D%E6%8E%A2minitorch/</url>
+    <content><![CDATA[<p><img src="/images/image-20250427110245462.png" alt="image-20250427110245462"></p>
+<span id="more"></span>
+
+<blockquote>
+<p>本篇文章主要介绍minitorch项目的module0所需要的基础工具以及一些python知识。</p>
+</blockquote>
+<h2 id="Functional-Python"><a href="#Functional-Python" class="headerlink" title="Functional Python"></a><font color = brown>Functional Python</font></h2><h3 id="为什么用Functional-Python"><a href="#为什么用Functional-Python" class="headerlink" title="为什么用Functional Python"></a><font color = green>为什么用Functional Python</font></h3><p>重点参考<a href="https://minitorch.github.io/module0/functional/">Functional tutorial</a>文档。首先我们需要弄清楚为什么使用Functional python。MiniTorch 对外的接口（API）模仿 PyTorch 的标准用法，降低用户学习成本。而在内部，库的核心逻辑采用<strong>函数式编程</strong>风格，即通过纯函数（无副作用）和组合函数的方式构建计算逻辑。关于函数式编程，可以参考<a href="https://liaoxuefeng.com/books/python/functional/index.html">廖雪峰python博客</a>（后续会专门开一个博客内容学习讲解函数式编程，函数是编程是一个很重要且复杂的topic）。函数式编程有如下两个优点：</p>
+<ol>
+<li>更易测试</li>
+<li>更易优化</li>
+</ol>
+<p>函数式编程允许如下两件事情：</p>
+<ol>
+<li>将一个函数作为参数传入另一个函数</li>
+<li>将一个函数作为返回值返回</li>
+</ol>
+<h3 id="一个简单的例子"><a href="#一个简单的例子" class="headerlink" title="一个简单的例子"></a><font color = green>一个简单的例子</font></h3><figure class="highlight python"><table><tr><td class="code"><pre><span class="line"><span class="comment"># 支持type hints</span></span><br><span class="line"><span class="keyword">from</span> typing <span class="keyword">import</span> <span class="type">Callable</span>, Iterable</span><br><span class="line"></span><br><span class="line"><span class="comment"># 定义一个函数，返回一个函数，该函数将传入的filter function参数应用到参数数组上</span></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">apply_filter</span>(<span class="params"><span class="built_in">filter</span>: <span class="type">Callable</span>[[<span class="built_in">float</span>], <span class="built_in">bool</span>]</span>) -&gt; <span class="type">Callable</span>[[Iterable[<span class="built_in">float</span>]], Iterable[<span class="built_in">float</span>]]:</span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">func</span>(<span class="params">ls: Iterable[<span class="built_in">float</span>]</span>):</span><br><span class="line">        res = []</span><br><span class="line">        <span class="keyword">for</span> a <span class="keyword">in</span> ls:</span><br><span class="line">            <span class="keyword">if</span> <span class="built_in">filter</span>(a):</span><br><span class="line">                res.append(a)</span><br><span class="line"></span><br><span class="line">        <span class="keyword">return</span> res</span><br><span class="line">    <span class="keyword">return</span> func</span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">more_than_4</span>(<span class="params">a: <span class="built_in">float</span></span>) -&gt; <span class="built_in">bool</span>:</span><br><span class="line">    <span class="keyword">return</span> a &gt; <span class="number">4</span></span><br><span class="line"></span><br><span class="line">array = [<span class="number">1</span>, <span class="number">3</span>, <span class="number">4</span>, <span class="number">5</span>, <span class="number">6</span>, <span class="number">7</span>]</span><br><span class="line">filter_fn = apply_filter(more_than_4) </span><br><span class="line"><span class="built_in">print</span>(filter_fn(array))</span><br></pre></td></tr></table></figure>
+
+<p>通过上述例子，来辅助我们的理解。上述例子需要完成一个任务：从一个数组中，挑选出数值大于4的数字并重新组合返回。如果使用传统写法，则针对不同的筛选条件，都要遍历并筛选，之间会有大量逻辑重复。通过使用函数式编程范式，将filter封装成一个函数并传参，可减少重复代码，且有更强的可扩展性。</p>
+<h2 id="MiniTorch项目的辅助工具"><a href="#MiniTorch项目的辅助工具" class="headerlink" title="MiniTorch项目的辅助工具"></a><font color = brown>MiniTorch项目的辅助工具</font></h2><p>MiniTorch项目学习起来一个最大的优点，就是其对于测试，coding等规范性均做了详细的要求和工具辅助。<code>black</code>和<code>flake</code>等代码规范性检测工具，<code>PyTest</code>测试框架以及<code>github CI</code>版本管理和测试流程，以上均是本章讲解的重点。</p>
+<h3 id="PyTest框架"><a href="#PyTest框架" class="headerlink" title="PyTest框架"></a><font color = green>PyTest框架</font></h3><h2 id="References"><a href="#References" class="headerlink" title="References"></a><font color = brown>References</font></h2><ol>
+<li><a href="https://minitorch.github.io/">MiniTorch官网</a></li>
+<li><a href="https://dezeming.top/wp-content/uploads/2022/02/MiniTorch-%E5%AD%A6%E4%B9%A0%E5%85%A8%E6%94%BB%E7%95%A5.pdf">MiniTorch学习参考攻略</a></li>
+</ol>
+]]></content>
+      <categories>
+        <category>pytorch</category>
+        <category>机器学习系统</category>
+      </categories>
+      <tags>
+        <tag>机器学习</tag>
+        <tag>机器学习系统</tag>
+      </tags>
+  </entry>
+  <entry>
     <title>tpu-mlir初探</title>
     <url>/2025/04/08/tpu-mlir%E5%88%9D%E6%8E%A2/</url>
     <content><![CDATA[<p><img src="/images/image-20250411150531193.png" alt="image-20250411150531193"></p>
@@ -1861,6 +1902,98 @@
         <tag>机器学习编译器</tag>
         <tag>mlir</tag>
         <tag>异构计算系统</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>计算密集算子融合</title>
+    <url>/2025/03/31/%E8%AE%A1%E7%AE%97%E5%AF%86%E9%9B%86%E7%AE%97%E5%AD%90%E8%9E%8D%E5%90%88/</url>
+    <content><![CDATA[<p><img src="/images/image-20250331211738664.png" alt="image-20250331211738664"></p>
+<span id="more"></span>
+
+<blockquote>
+<p>机器学习中算子可以分为<strong>计算密集算子</strong>和<strong>访存密集算子</strong>，之前的博客已经讲解了<strong>访存密集算子融合技术</strong>，本文重点解读计算密集算子融合，即针对gemm等算子的计算优化。本文主要结合BladeDISC和Rammer等文章加以解读</p>
+</blockquote>
+<h2 id="BladeDISC的计算密集算子融合"><a href="#BladeDISC的计算密集算子融合" class="headerlink" title="BladeDISC的计算密集算子融合"></a><font color = brown>BladeDISC的计算密集算子融合</font></h2><h3 id="计算密集算子融合pipeline-overview"><a href="#计算密集算子融合pipeline-overview" class="headerlink" title="计算密集算子融合pipeline overview"></a><font color = green>计算密集算子融合pipeline overview</font></h3><p>在<code>BladeDISC</code>项目的pipeline中，涉及计算密集算子融合有三处：</p>
+<h4 id="针对简单的mhlo-dot算子做融合"><a href="#针对简单的mhlo-dot算子做融合" class="headerlink" title="针对简单的mhlo_dot算子做融合"></a>针对简单的mhlo_dot算子做融合</h4><p><img src="/images/image-20250403152318767.png" alt="image-20250403152318767"></p>
+<p>具体流程图如下：</p>
+<pre class="mermaid">flowchart TD
+    A[开始: DiscDotMergePass] --> B[执行共享操作数合并]
+    B --> C[执行批量合并]
+    C --> D{合并成功?}
+    D -->|是| E[结束]
+    D -->|否| F[标记失败]
+
+    subgraph 共享操作数合并流程
+        B1[遍历所有基本块] --> B2[初始化ShareOperandMap]
+        B2 --> B3[遍历block中的DotGeneralOp]
+        B3 --> B4[提取共享操作数和维度信息]
+        B4 --> B5[构建聚类映射]
+        B5 --> B6[检测循环依赖]
+        B6 --> B7[尝试合并聚类]
+        B7 --> B8[应用合并操作]
+        B8 --> B9[清理原始操作]
+    end
+
+    subgraph 批量合并流程
+        C1[形状分析] --> C2[构建MergingShapeMap]
+        C2 --> C3[检测可合并聚类]
+        C3 --> C4[维度扩展操作]
+        C4 --> C5[创建批量concat]
+        C5 --> C6[生成批量dot]
+        C6 --> C7[切片替换原始操作]
+        C7 --> C8[清理原始操作]
+    end
+
+    B -->|核心操作| B1
+    C -->|核心操作| C1
+    B9 -->|清理后| C
+    C8 --> D</pre>
+
+<h4 id="混合精度优化"><a href="#混合精度优化" class="headerlink" title="混合精度优化"></a>混合精度优化</h4><p><img src="/images/image-20250402205232495.png" alt="image-20250402205232495"></p>
+<h4 id="针对GEMM做layout优化"><a href="#针对GEMM做layout优化" class="headerlink" title="针对GEMM做layout优化"></a>针对GEMM做layout优化</h4><p><img src="/images/image-20250402205308725.png" alt="image-20250402205308725"></p>
+<p>具体流程图如下：</p>
+<pre class="mermaid">graph TD
+    A[原始卷积操作 mhlo::ConvolutionOp] --> B[转换为 DynamicConvOp]
+    B --> C[提取卷积参数]
+    C --> D[推断预期布局]
+    D --> E{当前布局符合预期?}
+    E -->|是| F[保持原布局]
+    E -->|否| G[插入转置操作调整布局]
+    G --> H[输入布局调整]
+    G --> I[滤波器布局调整]
+    G --> J[输出布局调整]
+    H --> K[更新输入布局]
+    I --> L[更新滤波器布局]
+    J --> M[更新输出布局]
+    K --> N[更新卷积属性]
+    L --> N
+    M --> N
+    N --> O[优化后的卷积操作]
+    
+    P[量化卷积操作 QuantizedDynamicConvOp] --> C
+    Q[GPU/CUDA环境] --> D
+    R[CPU环境] --> D
+    
+    style A fill:#f9d,stroke:#333
+    style P fill:#f9d,stroke:#333
+    style B fill:#bbf,stroke:#333
+    style C fill:#cfc,stroke:#333
+    style D fill:#cfc,stroke:#333
+    style E fill:#ffd,stroke:#333
+    style G fill:#fcc,stroke:#333
+    style N fill:#cfc,stroke:#333
+    style O fill:#9f9,stroke:#333</pre>
+
+]]></content>
+      <categories>
+        <category>编译技术</category>
+        <category>机器学习编译</category>
+        <category>计算优化</category>
+      </categories>
+      <tags>
+        <tag>机器学习编译器</tag>
+        <tag>mlir</tag>
+        <tag>算子融合技术</tag>
       </tags>
   </entry>
   <entry>
@@ -1970,135 +2103,6 @@
         <tag>机器学习编译器</tag>
         <tag>mlir</tag>
         <tag>异构计算系统</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>初探minitorch</title>
-    <url>/2025/04/27/%E5%88%9D%E6%8E%A2minitorch/</url>
-    <content><![CDATA[<p><img src="/images/image-20250427110245462.png" alt="image-20250427110245462"></p>
-<span id="more"></span>
-
-<blockquote>
-<p>本篇文章主要介绍minitorch项目的module0所需要的基础工具以及一些python知识。</p>
-</blockquote>
-<h2 id="Functional-Python"><a href="#Functional-Python" class="headerlink" title="Functional Python"></a><font color = brown>Functional Python</font></h2><h3 id="为什么用Functional-Python"><a href="#为什么用Functional-Python" class="headerlink" title="为什么用Functional Python"></a><font color = green>为什么用Functional Python</font></h3><p>重点参考<a href="https://minitorch.github.io/module0/functional/">Functional tutorial</a>文档。首先我们需要弄清楚为什么使用Functional python。MiniTorch 对外的接口（API）模仿 PyTorch 的标准用法，降低用户学习成本。而在内部，库的核心逻辑采用<strong>函数式编程</strong>风格，即通过纯函数（无副作用）和组合函数的方式构建计算逻辑。关于函数式编程，可以参考<a href="https://liaoxuefeng.com/books/python/functional/index.html">廖雪峰python博客</a>（后续会专门开一个博客内容学习讲解函数式编程，函数是编程是一个很重要且复杂的topic）。函数式编程有如下两个优点：</p>
-<ol>
-<li>更易测试</li>
-<li>更易优化</li>
-</ol>
-<p>函数式编程允许如下两件事情：</p>
-<ol>
-<li>将一个函数作为参数传入另一个函数</li>
-<li>将一个函数作为返回值返回</li>
-</ol>
-<h3 id="一个简单的例子"><a href="#一个简单的例子" class="headerlink" title="一个简单的例子"></a><font color = green>一个简单的例子</font></h3><figure class="highlight python"><table><tr><td class="code"><pre><span class="line"><span class="comment"># 支持type hints</span></span><br><span class="line"><span class="keyword">from</span> typing <span class="keyword">import</span> <span class="type">Callable</span>, Iterable</span><br><span class="line"></span><br><span class="line"><span class="comment"># 定义一个函数，返回一个函数，该函数将传入的filter function参数应用到参数数组上</span></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">apply_filter</span>(<span class="params"><span class="built_in">filter</span>: <span class="type">Callable</span>[[<span class="built_in">float</span>], <span class="built_in">bool</span>]</span>) -&gt; <span class="type">Callable</span>[[Iterable[<span class="built_in">float</span>]], Iterable[<span class="built_in">float</span>]]:</span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">func</span>(<span class="params">ls: Iterable[<span class="built_in">float</span>]</span>):</span><br><span class="line">        res = []</span><br><span class="line">        <span class="keyword">for</span> a <span class="keyword">in</span> ls:</span><br><span class="line">            <span class="keyword">if</span> <span class="built_in">filter</span>(a):</span><br><span class="line">                res.append(a)</span><br><span class="line"></span><br><span class="line">        <span class="keyword">return</span> res</span><br><span class="line">    <span class="keyword">return</span> func</span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">more_than_4</span>(<span class="params">a: <span class="built_in">float</span></span>) -&gt; <span class="built_in">bool</span>:</span><br><span class="line">    <span class="keyword">return</span> a &gt; <span class="number">4</span></span><br><span class="line"></span><br><span class="line">array = [<span class="number">1</span>, <span class="number">3</span>, <span class="number">4</span>, <span class="number">5</span>, <span class="number">6</span>, <span class="number">7</span>]</span><br><span class="line">filter_fn = apply_filter(more_than_4) </span><br><span class="line"><span class="built_in">print</span>(filter_fn(array))</span><br></pre></td></tr></table></figure>
-
-<p>通过上述例子，来辅助我们的理解。上述例子需要完成一个任务：从一个数组中，挑选出数值大于4的数字并重新组合返回。如果使用传统写法，则针对不同的筛选条件，都要遍历并筛选，之间会有大量逻辑重复。通过使用函数式编程范式，将filter封装成一个函数并传参，可减少重复代码，且有更强的可扩展性。</p>
-<h2 id="MiniTorch项目的辅助工具"><a href="#MiniTorch项目的辅助工具" class="headerlink" title="MiniTorch项目的辅助工具"></a><font color = brown>MiniTorch项目的辅助工具</font></h2><p>MiniTorch项目学习起来一个最大的优点，就是其对于测试，coding等规范性均做了详细的要求和工具辅助。<code>black</code>和<code>flake</code>等代码规范性检测工具，<code>PyTest</code>测试框架以及<code>github CI</code>版本管理和测试流程，以上均是本章讲解的重点。</p>
-<h3 id="PyTest框架"><a href="#PyTest框架" class="headerlink" title="PyTest框架"></a><font color = green>PyTest框架</font></h3><h2 id="References"><a href="#References" class="headerlink" title="References"></a><font color = brown>References</font></h2><ol>
-<li><a href="https://minitorch.github.io/">MiniTorch官网</a></li>
-<li><a href="https://dezeming.top/wp-content/uploads/2022/02/MiniTorch-%E5%AD%A6%E4%B9%A0%E5%85%A8%E6%94%BB%E7%95%A5.pdf">MiniTorch学习参考攻略</a></li>
-</ol>
-]]></content>
-      <categories>
-        <category>pytorch</category>
-        <category>机器学习系统</category>
-      </categories>
-      <tags>
-        <tag>机器学习</tag>
-        <tag>机器学习系统</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>计算密集算子融合</title>
-    <url>/2025/03/31/%E8%AE%A1%E7%AE%97%E5%AF%86%E9%9B%86%E7%AE%97%E5%AD%90%E8%9E%8D%E5%90%88/</url>
-    <content><![CDATA[<p><img src="/images/image-20250331211738664.png" alt="image-20250331211738664"></p>
-<span id="more"></span>
-
-<blockquote>
-<p>机器学习中算子可以分为<strong>计算密集算子</strong>和<strong>访存密集算子</strong>，之前的博客已经讲解了<strong>访存密集算子融合技术</strong>，本文重点解读计算密集算子融合，即针对gemm等算子的计算优化。本文主要结合BladeDISC和Rammer等文章加以解读</p>
-</blockquote>
-<h2 id="BladeDISC的计算密集算子融合"><a href="#BladeDISC的计算密集算子融合" class="headerlink" title="BladeDISC的计算密集算子融合"></a><font color = brown>BladeDISC的计算密集算子融合</font></h2><h3 id="计算密集算子融合pipeline-overview"><a href="#计算密集算子融合pipeline-overview" class="headerlink" title="计算密集算子融合pipeline overview"></a><font color = green>计算密集算子融合pipeline overview</font></h3><p>在<code>BladeDISC</code>项目的pipeline中，涉及计算密集算子融合有三处：</p>
-<h4 id="针对简单的mhlo-dot算子做融合"><a href="#针对简单的mhlo-dot算子做融合" class="headerlink" title="针对简单的mhlo_dot算子做融合"></a>针对简单的mhlo_dot算子做融合</h4><p><img src="/images/image-20250403152318767.png" alt="image-20250403152318767"></p>
-<p>具体流程图如下：</p>
-<pre class="mermaid">flowchart TD
-    A[开始: DiscDotMergePass] --> B[执行共享操作数合并]
-    B --> C[执行批量合并]
-    C --> D{合并成功?}
-    D -->|是| E[结束]
-    D -->|否| F[标记失败]
-
-    subgraph 共享操作数合并流程
-        B1[遍历所有基本块] --> B2[初始化ShareOperandMap]
-        B2 --> B3[遍历block中的DotGeneralOp]
-        B3 --> B4[提取共享操作数和维度信息]
-        B4 --> B5[构建聚类映射]
-        B5 --> B6[检测循环依赖]
-        B6 --> B7[尝试合并聚类]
-        B7 --> B8[应用合并操作]
-        B8 --> B9[清理原始操作]
-    end
-
-    subgraph 批量合并流程
-        C1[形状分析] --> C2[构建MergingShapeMap]
-        C2 --> C3[检测可合并聚类]
-        C3 --> C4[维度扩展操作]
-        C4 --> C5[创建批量concat]
-        C5 --> C6[生成批量dot]
-        C6 --> C7[切片替换原始操作]
-        C7 --> C8[清理原始操作]
-    end
-
-    B -->|核心操作| B1
-    C -->|核心操作| C1
-    B9 -->|清理后| C
-    C8 --> D</pre>
-
-<h4 id="混合精度优化"><a href="#混合精度优化" class="headerlink" title="混合精度优化"></a>混合精度优化</h4><p><img src="/images/image-20250402205232495.png" alt="image-20250402205232495"></p>
-<h4 id="针对GEMM做layout优化"><a href="#针对GEMM做layout优化" class="headerlink" title="针对GEMM做layout优化"></a>针对GEMM做layout优化</h4><p><img src="/images/image-20250402205308725.png" alt="image-20250402205308725"></p>
-<p>具体流程图如下：</p>
-<pre class="mermaid">graph TD
-    A[原始卷积操作 mhlo::ConvolutionOp] --> B[转换为 DynamicConvOp]
-    B --> C[提取卷积参数]
-    C --> D[推断预期布局]
-    D --> E{当前布局符合预期?}
-    E -->|是| F[保持原布局]
-    E -->|否| G[插入转置操作调整布局]
-    G --> H[输入布局调整]
-    G --> I[滤波器布局调整]
-    G --> J[输出布局调整]
-    H --> K[更新输入布局]
-    I --> L[更新滤波器布局]
-    J --> M[更新输出布局]
-    K --> N[更新卷积属性]
-    L --> N
-    M --> N
-    N --> O[优化后的卷积操作]
-    
-    P[量化卷积操作 QuantizedDynamicConvOp] --> C
-    Q[GPU/CUDA环境] --> D
-    R[CPU环境] --> D
-    
-    style A fill:#f9d,stroke:#333
-    style P fill:#f9d,stroke:#333
-    style B fill:#bbf,stroke:#333
-    style C fill:#cfc,stroke:#333
-    style D fill:#cfc,stroke:#333
-    style E fill:#ffd,stroke:#333
-    style G fill:#fcc,stroke:#333
-    style N fill:#cfc,stroke:#333
-    style O fill:#9f9,stroke:#333</pre>
-
-]]></content>
-      <categories>
-        <category>编译技术</category>
-        <category>机器学习编译</category>
-        <category>计算优化</category>
-      </categories>
-      <tags>
-        <tag>机器学习编译器</tag>
-        <tag>mlir</tag>
-        <tag>算子融合技术</tag>
       </tags>
   </entry>
   <entry>
