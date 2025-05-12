@@ -1,0 +1,729 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 7.3.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"example.com","root":"/","scheme":"Pisces","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":true,"show_result":true,"style":"mac"},"back2top":{"enable":true,"sidebar":false,"scrollpercent":true},"bookmark":{"enable":true,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":"gitalk","storage":true,"lazyload":false,"nav":null,"activeClass":"gitalk"},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":5,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta property="og:type" content="article">
+<meta property="og:title" content="GPU 后端优化（二）">
+<meta property="og:url" content="http://example.com/2025/05/12/GPU-%E5%90%8E%E7%AB%AF%E4%BC%98%E5%8C%96%EF%BC%88%E4%BA%8C%EF%BC%89/index.html">
+<meta property="og:site_name" content="Leon&#39;s Blog">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://example.com/images/image-20250512225158784.png">
+<meta property="article:published_time" content="2025-05-12T14:48:08.000Z">
+<meta property="article:modified_time" content="2025-05-12T16:10:08.409Z">
+<meta property="article:author" content="Leon Dou">
+<meta property="article:tag" content="GPU">
+<meta property="article:tag" content="编译">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://example.com/images/image-20250512225158784.png">
+
+<link rel="canonical" href="http://example.com/2025/05/12/GPU-%E5%90%8E%E7%AB%AF%E4%BC%98%E5%8C%96%EF%BC%88%E4%BA%8C%EF%BC%89/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>GPU 后端优化（二） | Leon's Blog</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">Leon's Blog</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">分享一点有趣的技术</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocapitalize="off"
+           placeholder="搜索..." spellcheck="false"
+           type="search" class="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result">
+  <div id="no-result">
+    <i class="fa fa-spinner fa-pulse fa-5x fa-fw"></i>
+  </div>
+</div>
+
+    </div>
+  </div>
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+  <div class="reading-progress-bar"></div>
+  <a role="button" class="book-mark-link book-mark-link-fixed"></a>
+
+  <a href="https://github.com/micropuma" class="github-corner" title="Follow me on GitHub" aria-label="Follow me on GitHub" rel="noopener" target="_blank"><svg width="80" height="80" viewBox="0 0 250 250" aria-hidden="true"><path d="M0,0 L115,115 L130,115 L142,142 L250,250 L250,0 Z"></path><path d="M128.3,109.0 C113.8,99.7 119.0,89.6 119.0,89.6 C122.0,82.7 120.5,78.6 120.5,78.6 C119.2,72.0 123.4,76.3 123.4,76.3 C127.3,80.9 125.5,87.3 125.5,87.3 C122.9,97.6 130.6,101.9 134.4,103.2" fill="currentColor" style="transform-origin: 130px 106px;" class="octo-arm"></path><path d="M115.0,115.0 C114.9,115.1 118.7,116.5 119.8,115.4 L133.7,101.6 C136.9,99.2 139.9,98.4 142.2,98.6 C133.8,88.0 127.5,74.4 143.8,58.0 C148.5,53.4 154.0,51.2 159.7,51.0 C160.3,49.4 163.2,43.6 171.4,40.1 C171.4,40.1 176.1,42.5 178.8,56.2 C183.1,58.6 187.2,61.8 190.9,65.4 C194.5,69.0 197.7,73.2 200.1,77.6 C213.8,80.2 216.3,84.9 216.3,84.9 C212.7,93.1 206.9,96.0 205.4,96.6 C205.1,102.4 203.0,107.8 198.3,112.5 C181.9,128.9 168.3,122.5 157.7,114.1 C157.9,116.9 156.7,120.9 152.7,124.9 L141.0,136.5 C139.8,137.7 141.6,141.9 141.8,141.8 Z" fill="currentColor" class="octo-body"></path></svg></a>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://example.com/2025/05/12/GPU-%E5%90%8E%E7%AB%AF%E4%BC%98%E5%8C%96%EF%BC%88%E4%BA%8C%EF%BC%89/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="Leon Dou">
+      <meta itemprop="description" content="关注领域：体系结构，编译技术">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Leon's Blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          GPU 后端优化（二）
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2025-05-12 22:48:08" itemprop="dateCreated datePublished" datetime="2025-05-12T22:48:08+08:00">2025-05-12</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2025-05-13 00:10:08" itemprop="dateModified" datetime="2025-05-13T00:10:08+08:00">2025-05-13</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/GPU/" itemprop="url" rel="index"><span itemprop="name">GPU</span></a>
+                </span>
+                  ，
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/GPU/%E7%BC%96%E8%AF%91/" itemprop="url" rel="index"><span itemprop="name">编译</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span><br>
+            <span class="post-meta-item" title="本文字数">
+              <span class="post-meta-item-icon">
+                <i class="far fa-file-word"></i>
+              </span>
+                <span class="post-meta-item-text">本文字数：</span>
+              <span>11k</span>
+            </span>
+            <span class="post-meta-item" title="阅读时长">
+              <span class="post-meta-item-icon">
+                <i class="far fa-clock"></i>
+              </span>
+                <span class="post-meta-item-text">阅读时长 &asymp;</span>
+              <span>10 分钟</span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p><img src="/images/image-20250512225158784.png" alt="image-20250512225158784"></p>
+<span id="more"></span>
+
+<blockquote>
+<p>这是本系列的第二篇文章，主要结合印度理工学院搭建的面向GPU tensor core代码生成的论文，以及IREE开源项目，解读如何基于MLIR系统完成GPU的代码生成。</p>
+</blockquote>
+<h2 id="IREE-Tensor-Core代码生成"><a href="#IREE-Tensor-Core代码生成" class="headerlink" title="IREE  Tensor Core代码生成"></a><font color = brown>IREE  Tensor Core代码生成</font></h2><p>IREE是一个端到端的开源机器学习编译器，支持在边缘设备进行高效部署。本章节主要讲解IREE项目是如何做面向Nvidia GPU的代码生成的。</p>
+<h3 id="IREE-后端代码生成管线概览"><a href="#IREE-后端代码生成管线概览" class="headerlink" title="IREE 后端代码生成管线概览"></a><font color = green>IREE 后端代码生成管线概览</font></h3><h3 id="详解matmul算子生成"><a href="#详解matmul算子生成" class="headerlink" title="详解matmul算子生成"></a><font color = green>详解matmul算子生成</font></h3><p>结合前一章节的论文解读，我们重点关注IREE的matmul代码生成部分。在<code>compiler/src/iree/compiler/Codegen/LLVMGPU/LLVMGPULowerExecutableTarget.cpp</code>代码中，有如下代码生成dispatch实现：</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 根据translation info，选择对应的executable生成的dispatch lowering pipeline</span></span><br><span class="line">  <span class="keyword">switch</span> (translationInfo.<span class="built_in">getDispatchLoweringPassPipeline</span>()) &#123;</span><br><span class="line">  <span class="keyword">case</span> IREE::Codegen::DispatchLoweringPassPipeline::LLVMGPUDefault:</span><br><span class="line">    <span class="built_in">addGPUDefaultPassPipeline</span>(pipeline, pipelineOptions);</span><br><span class="line">    <span class="keyword">break</span>;</span><br><span class="line">  <span class="keyword">case</span> IREE::Codegen::DispatchLoweringPassPipeline::LLVMGPUBaseLowering:</span><br><span class="line">    <span class="built_in">addGPUBaseLoweringPassPipeline</span>(pipeline);</span><br><span class="line">    <span class="keyword">break</span>;</span><br><span class="line">  <span class="keyword">case</span> IREE::Codegen::DispatchLoweringPassPipeline::LLVMGPUDistribute:</span><br><span class="line">    <span class="built_in">addGPUSimpleDistributePassPipeline</span>(pipeline);</span><br><span class="line">    <span class="keyword">break</span>;</span><br><span class="line">  <span class="keyword">case</span> IREE::Codegen::DispatchLoweringPassPipeline::LLVMGPUVectorize:</span><br><span class="line">    <span class="built_in">addGPUVectorizationPassPipeline</span>(pipeline);</span><br><span class="line">    <span class="keyword">break</span>;</span><br><span class="line">  <span class="keyword">case</span> IREE::Codegen::DispatchLoweringPassPipeline::LLVMGPUWinogradVectorize:</span><br><span class="line">    <span class="built_in">addGPUWinogradVectorizePassPipeline</span>(pipeline);</span><br><span class="line">    <span class="keyword">break</span>;</span><br><span class="line">  <span class="keyword">case</span> IREE::Codegen::DispatchLoweringPassPipeline::LLVMGPUMatmulSimt:</span><br><span class="line">    <span class="built_in">addGPUMatmulSimtPassPipeline</span>(pipeline, pipelineOptions);</span><br><span class="line">    <span class="keyword">break</span>;</span><br><span class="line">  <span class="keyword">case</span> IREE::Codegen::DispatchLoweringPassPipeline::LLVMGPUMatmulTensorCore: &#123;</span><br><span class="line">    <span class="comment">// 这个pass pipeline比较有意思，可以debug一下</span></span><br><span class="line">    <span class="comment">// tensor core生成逻辑</span></span><br><span class="line">    <span class="comment">// Tile and distribute operations to workgroups</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">// 这个函数自动获取pipeline元信息</span></span><br><span class="line">    FailureOr&lt;<span class="type">int64_t</span>&gt; maybeDepth =</span><br><span class="line">        <span class="built_in">getSoftwarePipelineDepth</span>(translationInfo.<span class="built_in">getConfiguration</span>());</span><br><span class="line">    <span class="keyword">if</span> (<span class="built_in">failed</span>(maybeDepth)) &#123;</span><br><span class="line">      funcOp.<span class="built_in">emitOpError</span>(</span><br><span class="line">          <span class="string">&quot;invalid matmul configuration without software pipelining config&quot;</span>);</span><br><span class="line">      <span class="keyword">return</span> <span class="built_in">signalPassFailure</span>();</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="built_in">addGPUMatmulTensorCorePassPipeline</span>(pipeline, pipelineOptions, *maybeDepth);</span><br><span class="line">    <span class="keyword">break</span>;</span><br><span class="line">  &#125;</span><br><span class="line">  <span class="keyword">case</span> IREE::Codegen::DispatchLoweringPassPipeline::</span><br><span class="line">      LLVMGPUMatmulTensorCoreMmaSync: &#123;</span><br><span class="line">    FailureOr&lt;<span class="type">int64_t</span>&gt; maybeDepth =</span><br><span class="line">        <span class="built_in">getSoftwarePipelineDepth</span>(translationInfo.<span class="built_in">getConfiguration</span>());</span><br><span class="line">    <span class="keyword">if</span> (<span class="built_in">failed</span>(maybeDepth)) &#123;</span><br><span class="line">      funcOp.<span class="built_in">emitOpError</span>(</span><br><span class="line">          <span class="string">&quot;invalid matmul configuration without software pipelining config&quot;</span>);</span><br><span class="line">      <span class="keyword">return</span> <span class="built_in">signalPassFailure</span>();</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="built_in">addGPUMatmulTensorCoreMmaSyncPassPipeline</span>(pipeline, pipelineOptions,</span><br><span class="line">                                              *maybeDepth);</span><br><span class="line">    <span class="keyword">break</span>;</span><br><span class="line">  &#125;</span><br><span class="line">  <span class="keyword">case</span> IREE::Codegen::DispatchLoweringPassPipeline::LLVMGPUTransposeSharedMem:</span><br><span class="line">    <span class="built_in">addGPUTransposePassPipeline</span>(pipeline, pipelineOptions);</span><br><span class="line">    <span class="keyword">break</span>;</span><br><span class="line">  <span class="keyword">case</span> IREE::Codegen::DispatchLoweringPassPipeline::LLVMGPUVectorDistribute:</span><br><span class="line">    <span class="built_in">addGPUVectorDistributePassPipeline</span>(pipeline, pipelineOptions,</span><br><span class="line">                                       <span class="comment">/*usePadToModelSharedMemcpy=*/</span><span class="literal">false</span>);</span><br><span class="line">    <span class="keyword">break</span>;</span><br><span class="line">  <span class="keyword">case</span> IREE::Codegen::DispatchLoweringPassPipeline::</span><br><span class="line">      LLVMGPUPadAndVectorDistribute:</span><br><span class="line">    <span class="built_in">addGPUVectorDistributePassPipeline</span>(pipeline, pipelineOptions,</span><br><span class="line">                                       <span class="comment">/*usePadToModelSharedMemcpy=*/</span><span class="literal">true</span>);</span><br><span class="line">    <span class="keyword">break</span>;</span><br><span class="line">  <span class="keyword">case</span> IREE::Codegen::DispatchLoweringPassPipeline::LLVMGPUWarpReduction:</span><br><span class="line">    <span class="built_in">addGPUWarpReductionPassPipeline</span>(pipeline);</span><br><span class="line">    <span class="keyword">break</span>;</span><br><span class="line">  <span class="keyword">case</span> IREE::Codegen::DispatchLoweringPassPipeline::LLVMGPUPackUnPack:</span><br><span class="line">    <span class="built_in">addGPUPackUnPackPasses</span>(pipeline);</span><br><span class="line">    <span class="keyword">break</span>;</span><br><span class="line">  <span class="keyword">case</span> IREE::Codegen::DispatchLoweringPassPipeline::LLVMGPUTileAndFuse:</span><br><span class="line">    <span class="built_in">addGPUTileAndFusePassPipeline</span>(pipeline, pipelineOptions);</span><br><span class="line">    <span class="keyword">break</span>;</span><br><span class="line">  <span class="comment">// no pipeline specified, nothing to do.</span></span><br><span class="line">  <span class="keyword">case</span> IREE::Codegen::DispatchLoweringPassPipeline::None:</span><br><span class="line">    <span class="keyword">return</span>;</span><br><span class="line">  <span class="keyword">default</span>:</span><br><span class="line">    funcOp.<span class="built_in">emitOpError</span>(<span class="string">&quot;unsupported pipeline on GPU target.&quot;</span>);</span><br><span class="line">    <span class="keyword">return</span> <span class="built_in">signalPassFailure</span>();</span><br><span class="line">  &#125;</span><br></pre></td></tr></table></figure>
+
+<p>可以看到，结合不同的<code>translation info</code>，IREE针对每个可执行变种（IREE中叫execute.variant）派发不同的代码生成逻辑。这里我们重点关注<code>LLVMGPUMatmulTensorCore</code>，该管线是面向Nvidia gpu的tensor core硬件的适配编译流水线。接下来结合 </p>
+<h4 id="测试输入"><a href="#测试输入" class="headerlink" title="测试输入"></a>测试输入</h4><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">#compilation0 = #iree_codegen.compilation_info&lt;</span><br><span class="line">  lowering_config = #iree_codegen.lowering_config&lt;tile_sizes = [[<span class="number">32</span>, <span class="number">32</span>, <span class="number">16</span>]]&gt;,</span><br><span class="line">  translation_info = #iree_codegen.translation_info&lt;pipeline = LLVMGPUMatmulTensorCore workgroup_size = [<span class="number">64</span>, <span class="number">2</span>, <span class="number">1</span>]</span><br><span class="line">  ,</span><br><span class="line">  &#123; pipeline_depth = <span class="number">3</span>, store_stage = <span class="number">1</span>&#125;&gt;&gt;</span><br><span class="line">func.func @<span class="built_in">matmul_accumulate_512x128xf16_times_128x512xf16_into_512x512xf16_for_LLVMGPUMatmulTensorCore_32_32_16_64_2_1</span>(%lhs: tensor&lt;<span class="number">512</span>x128xf16&gt;, %rhs: tensor&lt;<span class="number">128</span>x512xf16&gt;, %acc: tensor&lt;<span class="number">512</span>x512xf16&gt;) -&gt; tensor&lt;<span class="number">512</span>x512xf16&gt; &#123;</span><br><span class="line">  %result = linalg.matmul &#123;compilation_info = #compilation0&#125; <span class="built_in">ins</span>(%lhs, %rhs: tensor&lt;<span class="number">512</span>x128xf16&gt;, tensor&lt;<span class="number">128</span>x512xf16&gt;) <span class="built_in">outs</span>(%acc: tensor&lt;<span class="number">512</span>x512xf16&gt;) -&gt; tensor&lt;<span class="number">512</span>x512xf16&gt;</span><br><span class="line">  <span class="keyword">return</span> %result: tensor&lt;<span class="number">512</span>x512xf16&gt;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>这个测试例子是一个简单的矩阵乘运算，维度是&lt;512x128xf16&gt; x &lt;128x512xf16&gt; &#x3D; &lt;512x512xf16&gt;。这段测试核心点事compiler配置attribute：</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">#compilation0 = #iree_codegen.compilation_info&lt;</span><br><span class="line">  lowering_config = #iree_codegen.lowering_config&lt;tile_sizes = [[<span class="number">32</span>, <span class="number">32</span>, <span class="number">16</span>]]&gt;,</span><br><span class="line">  translation_info = #iree_codegen.translation_info&lt;pipeline = LLVMGPUMatmulTensorCore workgroup_size = [<span class="number">64</span>, <span class="number">2</span>, <span class="number">1</span>]</span><br><span class="line">  ,</span><br><span class="line">  &#123; pipeline_depth = <span class="number">3</span>, store_stage = <span class="number">1</span>&#125;&gt;&gt;</span><br></pre></td></tr></table></figure>
+
+<p>其中，定义了如下元数据：</p>
+<ul>
+<li>workgroup（即threadBlock）维度是[64, 2, 1]</li>
+<li>tile分块的维度是[32, 32, 16]。</li>
+<li>流水线深度为3，注意3是GPU最小流水线深度（存，取，执行）。</li>
+<li>storage_stage是1，这个具体含义尚不明晰。</li>
+</ul>
+<p>针对这个测试，我们的测试脚本如下：</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">iree-compile --iree-hal-target-backends=cuda \</span><br><span class="line">  --iree-cuda-target=sm_86 \</span><br><span class="line">  --mlir-disable-threading \</span><br><span class="line">  --mlir-elide-elementsattrs-if-larger=10 \</span><br><span class="line">  --mlir-print-ir-after-all \</span><br><span class="line">  matmul.mlir -o test.vmfb \</span><br><span class="line"><span class="meta prompt_">  2&gt;</span><span class="language-bash">&amp;1 | <span class="built_in">tee</span> output.dump</span></span><br></pre></td></tr></table></figure>
+
+<h4 id="Tensor-Core-verifier"><a href="#Tensor-Core-verifier" class="headerlink" title="Tensor Core verifier"></a>Tensor Core verifier</h4><p>现在我们有了输入和测试脚本，IREE在根据我们的代码和配置做tensor core转换之前，会先检查一下参数是否适配。具体地参考<code>compiler/src/iree/compiler/Codegen/LLVMGPU/Verifiers.cpp</code>中关于<code>compilation_info</code>和<code>work_group</code>等参数的约束判断逻辑。这里通过几张表格的方式简单解释下各个参数背后的具体意义和相应约束：</p>
+<p><strong>核心概念</strong></p>
+<table>
+<thead>
+<tr>
+<th align="center"><strong>概念</strong></th>
+<th align="center"><strong>代码对应变量&#x2F;参数</strong></th>
+<th align="center"><strong>含义与作用</strong></th>
+<th align="center"><strong>约束来源</strong></th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="center"><strong>Workgroup Size</strong></td>
+<td align="center"><code>workgroup_size</code></td>
+<td align="center">线程块（Thread Block）的维度配置（如<code>[64,2,1]</code>），总线程数 ≤ 1024</td>
+<td align="center">CUDA硬件限制</td>
+</tr>
+<tr>
+<td align="center"><strong>Tile Size</strong></td>
+<td align="center"><code>tile_sizes</code></td>
+<td align="center">矩阵分块尺寸（如<code>[32,32,16]</code>），决定每个线程块处理的数据块大小</td>
+<td align="center">算法优化需求</td>
+</tr>
+<tr>
+<td align="center"><strong>Thread Block Shape</strong></td>
+<td align="center"><code>threadBlockShape</code></td>
+<td align="center">线程块内各维度的分块尺寸（如<code>[32,32,16]</code>），与Tile Size直接相关</td>
+<td align="center">分块策略与硬件匹配</td>
+</tr>
+<tr>
+<td align="center"><strong>Warp数量</strong></td>
+<td align="center"><code>numWarps</code></td>
+<td align="center">线程块内各维度的Warp数量（如<code>[2,2,1]</code>），由Workgroup Size除以Warp Size（32）计算</td>
+<td align="center">SM硬件架构</td>
+</tr>
+<tr>
+<td align="center"><strong>Warp Shape</strong></td>
+<td align="center"><code>warpShape</code></td>
+<td align="center">单个Warp处理的分块子矩阵尺寸（如<code>[16,16,16]</code>）</td>
+<td align="center">线程调度与指令级并行</td>
+</tr>
+<tr>
+<td align="center"><strong>Instruction Shape</strong></td>
+<td align="center"><code>instructionShape</code></td>
+<td align="center">Tensor Core硬件指令支持的矩阵尺寸（如<code>FP16→16x16x16</code>，<code>FP32→16x16x8</code>）</td>
+<td align="center">Tensor Core架构规范</td>
+</tr>
+</tbody></table>
+<p><strong>TensorCore约束检测逻辑</strong></p>
+<table>
+<thead>
+<tr>
+<th align="center"><strong>验证项</strong></th>
+<th align="center"><strong>验证条件</strong></th>
+<th align="center"><strong>失败后果</strong></th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="center">Workgroup总线程数</td>
+<td align="center"><code>workgroupSize[X] * Y * Z ≤ 1024</code></td>
+<td align="center">超过GPU线程块容量限制，无法执行</td>
+</tr>
+<tr>
+<td align="center">Z维度线程数</td>
+<td align="center"><code>workgroupSize[Z] == 1</code></td>
+<td align="center">Tensor Core设计为二维计算，Z维度扩展会破坏数据局部性</td>
+</tr>
+<tr>
+<td align="center">X维度线程数</td>
+<td align="center"><code>workgroupSize[X] % 32 == 0</code></td>
+<td align="center">Warp调度需要X维度为32的整数倍（每个Warp含32线程）</td>
+</tr>
+</tbody></table>
+<table>
+<thead>
+<tr>
+<th align="center"><strong>验证项</strong></th>
+<th align="center"><strong>验证条件</strong></th>
+<th align="center"><strong>失败后果</strong></th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="center">矩阵尺寸对齐</td>
+<td align="center"><code>matmulShape[M/N/K] % threadBlockShape[M/N/K] == 0</code></td>
+<td align="center">分块无法均匀覆盖原矩阵，导致计算错误或性能下降</td>
+</tr>
+<tr>
+<td align="center">Warp分块对齐</td>
+<td align="center"><code>warpShape[M/N/K] % instructionShape[M/N/K] == 0</code></td>
+<td align="center">Tensor Core指令无法覆盖Warp分块，硬件资源利用率不足</td>
+</tr>
+</tbody></table>
+<p>这部分的计算逻辑比较复杂，详细阅读下面代码的注释能够获得全面的了理解：</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// Number of warps in x, y, and z dim.</span></span><br><span class="line"><span class="comment">// 计算一个workgroup的warp数目</span></span><br><span class="line"><span class="comment">// warp一般为32，如果一个workgroup是[64,2,1]，则这里得到[2,2,1]维度的warp</span></span><br><span class="line">SmallVector&lt;<span class="type">int64_t</span>&gt; numWarps&#123;workgroupSize[kDimX] / kWarpSize,</span><br><span class="line">                            workgroupSize[kDimY], workgroupSize[kDimZ]&#125;;</span><br><span class="line"></span><br><span class="line"><span class="comment">// Matrix-multiply problem shape in number of elements in M, N, and K dim.</span></span><br><span class="line"><span class="comment">// matmulshape为[512, 512, 128]</span></span><br><span class="line"><span class="comment">// 获取矩阵最本元的MNK参数。</span></span><br><span class="line">SmallVector&lt;<span class="type">int64_t</span>&gt; matmulShape&#123;lhsShape[<span class="number">0</span>], rhsShape[<span class="number">1</span>], lhsShape[<span class="number">1</span>]&#125;;</span><br><span class="line"></span><br><span class="line"><span class="comment">// Warp tile shape in number of elements in M, N, and K dim.</span></span><br><span class="line"><span class="comment">// Note that num warp in (x, y, z) dim are mapped to problem (M, N, K) dim as:</span></span><br><span class="line"><span class="comment">// DimY -&gt; ProblemDimM, DimX -&gt; ProblemDimN, DimZ -&gt; ProblemDimK.</span></span><br><span class="line"><span class="comment">/*</span></span><br><span class="line"><span class="comment">将线程块（thread block）形状均匀划分给各个 warp。</span></span><br><span class="line"><span class="comment">注意：注释中说明了 warp 在 (x, y, z) 维度的分布映射到矩阵问题的 (M, N, K) 上，其中：</span></span><br><span class="line"><span class="comment">  y 维度 warp 对应问题的 M；</span></span><br><span class="line"><span class="comment">  x 维度 warp 对应问题的 N；</span></span><br><span class="line"><span class="comment">  z 维度 warp 对应问题的 K；</span></span><br><span class="line"><span class="comment">*/</span></span><br><span class="line"><span class="comment">// [32/2, 32/2, 16/1] = [16, 16, 16]表征每个warp所要干的工作</span></span><br><span class="line">SmallVector&lt;<span class="type">int64_t</span>&gt; warpShape&#123;threadBlockShape[kM] / numWarps[kDimY],</span><br><span class="line">                             threadBlockShape[kN] / numWarps[kDimX],</span><br><span class="line">                             threadBlockShape[kK] / numWarps[kDimZ]&#125;;</span><br><span class="line"></span><br><span class="line"><span class="comment">// Instruction shape in number of elements in M, N, and K dim.</span></span><br><span class="line"><span class="comment">// 获取tensor core指令形状</span></span><br><span class="line">SmallVector&lt;<span class="type">int64_t</span>&gt; instructionShape;</span><br><span class="line"><span class="comment">// f16 和 bf16 类型对应的指令形状为 &#123;16, 16, 16&#125;，而 f32 类型对应 &#123;16, 16, 8&#125; </span></span><br><span class="line"><span class="keyword">if</span> (<span class="built_in">failed</span>(<span class="built_in">getInstructionShape</span>(</span><br><span class="line">      op, pipeline, llvm::<span class="built_in">cast</span>&lt;ShapedType&gt;(lhsType).<span class="built_in">getElementType</span>(),</span><br><span class="line">      instructionShape))) &#123;</span><br><span class="line"><span class="keyword">return</span> <span class="built_in">failure</span>();</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// Verify that matmul problem shape can be tiled with the thread block shape.</span></span><br><span class="line"><span class="comment">// <span class="doctag">TODO:</span> This check should be relaxed as we allow unaligned matmul shapes.</span></span><br><span class="line"><span class="comment">// 要求矩阵问题的每个维度（M、N、K）能够被tile设定的维度整除，来决策是否可以做tiling运算</span></span><br><span class="line"><span class="comment">// 检测[512%32, 512%32, 128%16]</span></span><br><span class="line"><span class="keyword">if</span> (matmulShape[kM] % threadBlockShape[kM] != <span class="number">0</span> ||</span><br><span class="line">  matmulShape[kN] % threadBlockShape[kN] != <span class="number">0</span> ||</span><br><span class="line">  matmulShape[kK] % threadBlockShape[kK] != <span class="number">0</span>) &#123;</span><br><span class="line"><span class="keyword">return</span> op-&gt;<span class="built_in">emitError</span>(<span class="string">&quot;Thread block shape &quot;</span>)</span><br><span class="line">       &lt;&lt; threadBlockShape &lt;&lt; <span class="string">&quot; cannot be tiled on matmul shape &quot;</span></span><br><span class="line">       &lt;&lt; matmulShape &lt;&lt; <span class="string">&quot; with compilation pipeline &quot;</span> &lt;&lt; pipelineName;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// Verify that if warp shape can be tiled using warp-level Tensor core</span></span><br><span class="line"><span class="comment">// instruction shape.</span></span><br><span class="line"><span class="comment">// 确保每个 warp tile（即 warpShape）在 M、N、K 维度上均可以被对应的 Tensor Core 指令形状整除。</span></span><br><span class="line"><span class="comment">// 若不满足，则说明硬件的计算单元（Tensor Core）无法完美地覆盖 warp tile</span></span><br><span class="line"><span class="comment">// 以f16为例，为[16,16,16]，即每个warp的计算，是否可以生成Tensor Core指令</span></span><br><span class="line"><span class="keyword">if</span> (warpShape[kM] % instructionShape[kM] != <span class="number">0</span> ||</span><br><span class="line">  warpShape[kN] % instructionShape[kN] != <span class="number">0</span> ||</span><br><span class="line">  warpShape[kK] % instructionShape[kK] != <span class="number">0</span>) &#123;</span><br><span class="line"><span class="keyword">return</span> op-&gt;<span class="built_in">emitError</span>(<span class="string">&quot;Tensor Core instruction shape &quot;</span>)</span><br><span class="line">       &lt;&lt; instructionShape &lt;&lt; <span class="string">&quot; cannot be tiled on warp shape &quot;</span> &lt;&lt; warpShape</span><br><span class="line">       &lt;&lt; <span class="string">&quot; with compilation pipeline &quot;</span> &lt;&lt; pipelineName;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h4 id="矩阵乘tensor-core生成流程概览"><a href="#矩阵乘tensor-core生成流程概览" class="headerlink" title="矩阵乘tensor core生成流程概览"></a>矩阵乘tensor core生成流程概览</h4><p>iree的tensor core生成管线的流程代码如下所示：</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="type">void</span> <span class="title">addGPUMatmulTensorCorePassPipeline</span><span class="params">(OpPassManager &amp;funcPassManager,</span></span></span><br><span class="line"><span class="params"><span class="function">                                        <span class="type">const</span> GPUPipelineOptions &amp;options,</span></span></span><br><span class="line"><span class="params"><span class="function">                                        <span class="type">unsigned</span> pipelineDepth)</span> </span>&#123;</span><br><span class="line">  <span class="built_in">tileAndBufferize</span>(funcPassManager);</span><br><span class="line"></span><br><span class="line">  <span class="comment">// Distribute linalg onto warps within the workgroup.</span></span><br><span class="line">  funcPassManager.<span class="built_in">addPass</span>(</span><br><span class="line">      <span class="built_in">createLLVMGPUTileAndDistributePass</span>(<span class="comment">/*distributeToWarp=*/</span><span class="literal">true</span>));</span><br><span class="line">  funcPassManager.<span class="built_in">addPass</span>(<span class="built_in">createRemoveSingleIterationLoopPass</span>());</span><br><span class="line">  <span class="keyword">if</span> (pipelineDepth &gt; <span class="number">1</span>) &#123;</span><br><span class="line">    funcPassManager.<span class="built_in">addPass</span>(<span class="built_in">createGPUMultiBufferingPass</span>(</span><br><span class="line">        GPUMultiBufferingPassOptions&#123;pipelineDepth&#125;));</span><br><span class="line">  &#125;</span><br><span class="line">  funcPassManager.<span class="built_in">addPass</span>(<span class="built_in">createCanonicalizerPass</span>());</span><br><span class="line">  funcPassManager.<span class="built_in">addPass</span>(<span class="built_in">createCSEPass</span>());</span><br><span class="line"></span><br><span class="line">  funcPassManager.<span class="built_in">addPass</span>(<span class="built_in">createRemoveSingleIterationLoopPass</span>());</span><br><span class="line"></span><br><span class="line">  ReorderWorkgroupsStrategy reorderStrategy =</span><br><span class="line">      <span class="built_in">getReorderWorkgroupsStrategy</span>(options.reorderStrategy);</span><br><span class="line">  funcPassManager.<span class="built_in">addPass</span>(</span><br><span class="line">      <span class="built_in">createReorderWorkgroups</span>(reorderStrategy, canReorderWorkgroups));</span><br><span class="line"></span><br><span class="line">  funcPassManager.<span class="built_in">addPass</span>(<span class="built_in">createCanonicalizerPass</span>());</span><br><span class="line">  funcPassManager.<span class="built_in">addPass</span>(<span class="built_in">createCSEPass</span>());</span><br><span class="line"></span><br><span class="line">  <span class="comment">// Linalg -&gt; vector</span></span><br><span class="line">  funcPassManager.<span class="built_in">addPass</span>(</span><br><span class="line">      <span class="built_in">createLLVMGPUTensorCoreVectorizationPass</span>(GPUTensorCoreType::WMMA));</span><br><span class="line">  funcPassManager.<span class="built_in">addPass</span>(memref::<span class="built_in">createFoldMemRefAliasOpsPass</span>());</span><br><span class="line">  funcPassManager.<span class="built_in">addPass</span>(<span class="built_in">createCSEPass</span>());</span><br><span class="line">  funcPassManager.<span class="built_in">addPass</span>(<span class="built_in">createOptimizeVectorTransferPass</span>());</span><br><span class="line">  funcPassManager.<span class="built_in">addPass</span>(<span class="built_in">createOptimizeTensorInsertExtractSlicesPass</span>());</span><br><span class="line"></span><br><span class="line">  <span class="comment">// Distribute shared memory copies.</span></span><br><span class="line">  funcPassManager.<span class="built_in">addPass</span>(<span class="built_in">createMemrefCopyToLinalgPass</span>());</span><br><span class="line">  funcPassManager.<span class="built_in">addPass</span>(<span class="built_in">createGPUDistributeSharedMemoryCopyPass</span>());</span><br><span class="line">  funcPassManager.<span class="built_in">addPass</span>(<span class="built_in">createCanonicalizerPass</span>());</span><br><span class="line">  funcPassManager.<span class="built_in">addPass</span>(<span class="built_in">createCSEPass</span>());</span><br><span class="line">  <span class="keyword">if</span> (options.enableReduceSharedMemoryBankConflicts) &#123;</span><br><span class="line">    funcPassManager.<span class="built_in">addPass</span>(<span class="built_in">createGPUReduceBankConflictsPass</span>());</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="comment">// Vector -&gt; MMA ops</span></span><br><span class="line">  funcPassManager.<span class="built_in">addPass</span>(memref::<span class="built_in">createFoldMemRefAliasOpsPass</span>());</span><br><span class="line">  funcPassManager.<span class="built_in">addPass</span>(<span class="built_in">createCanonicalizerPass</span>());</span><br><span class="line">  funcPassManager.<span class="built_in">addPass</span>(<span class="built_in">createCSEPass</span>());</span><br><span class="line">  funcPassManager.<span class="built_in">addPass</span>(</span><br><span class="line">      <span class="built_in">createLLVMGPUVectorToGPUPass</span>(GPUTensorCoreType::WMMA));</span><br><span class="line">  funcPassManager.<span class="built_in">addPass</span>(<span class="built_in">createCanonicalizerPass</span>());</span><br><span class="line">  funcPassManager.<span class="built_in">addPass</span>(<span class="built_in">createCSEPass</span>());</span><br><span class="line"></span><br><span class="line">  <span class="comment">// Hoist loop invariant code to avoid pipelining it.</span></span><br><span class="line">  funcPassManager.<span class="built_in">addPass</span>(<span class="built_in">createIREELoopInvariantCodeMotionPass</span>());</span><br><span class="line">  <span class="comment">// Pipeline memory operations.</span></span><br><span class="line">  GPUPipeliningPassOptions pipelieningOptions = &#123;&#125;;</span><br><span class="line">  pipelieningOptions.epiloguePeeling = <span class="literal">false</span>;</span><br><span class="line">  pipelieningOptions.depth = pipelineDepth;</span><br><span class="line">  pipelieningOptions.scheduleIndex =</span><br><span class="line">      llvm::<span class="built_in">to_underlying</span>(PipeliningSchedulingStrategy::loadGlobalStage0);</span><br><span class="line">  funcPassManager.<span class="built_in">addPass</span>(<span class="built_in">createGPUPipeliningPass</span>(pipelieningOptions));</span><br><span class="line">  <span class="comment">// Optimize shared memory usage.</span></span><br><span class="line">  funcPassManager.<span class="built_in">addPass</span>(<span class="built_in">createLLVMGPUPackSharedMemoryAllocPass</span>());</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+
+
+
+
+
+
+<h2 id="参考资料"><a href="#参考资料" class="headerlink" title="参考资料"></a><font color = brown>参考资料</font></h2><ol>
+<li><a target="_blank" rel="noopener" href="http://arxiv.org/abs/2108.13191">MLIR GPU代码生成工作</a></li>
+<li><a href=""></a></li>
+</ol>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/GPU/" rel="tag"># GPU</a>
+              <a href="/tags/%E7%BC%96%E8%AF%91/" rel="tag"># 编译</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2025/05/11/GPU-%E5%90%8E%E7%AB%AF%E4%BC%98%E5%8C%96%EF%BC%88%E4%B8%80%EF%BC%89/" rel="prev" title="GPU 后端优化（一）">
+      <i class="fa fa-chevron-left"></i> GPU 后端优化（一）
+    </a></div>
+      <div class="post-nav-item"></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+    <div class="comments" id="gitalk-container"></div>
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#IREE-Tensor-Core%E4%BB%A3%E7%A0%81%E7%94%9F%E6%88%90"><span class="nav-number">1.</span> <span class="nav-text">IREE  Tensor Core代码生成</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#IREE-%E5%90%8E%E7%AB%AF%E4%BB%A3%E7%A0%81%E7%94%9F%E6%88%90%E7%AE%A1%E7%BA%BF%E6%A6%82%E8%A7%88"><span class="nav-number">1.1.</span> <span class="nav-text">IREE 后端代码生成管线概览</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E8%AF%A6%E8%A7%A3matmul%E7%AE%97%E5%AD%90%E7%94%9F%E6%88%90"><span class="nav-number">1.2.</span> <span class="nav-text">详解matmul算子生成</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#%E6%B5%8B%E8%AF%95%E8%BE%93%E5%85%A5"><span class="nav-number">1.2.1.</span> <span class="nav-text">测试输入</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#Tensor-Core-verifier"><span class="nav-number">1.2.2.</span> <span class="nav-text">Tensor Core verifier</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E7%9F%A9%E9%98%B5%E4%B9%98tensor-core%E7%94%9F%E6%88%90%E6%B5%81%E7%A8%8B%E6%A6%82%E8%A7%88"><span class="nav-number">1.2.3.</span> <span class="nav-text">矩阵乘tensor core生成流程概览</span></a></li></ol></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%8F%82%E8%80%83%E8%B5%84%E6%96%99"><span class="nav-number">2.</span> <span class="nav-text">参考资料</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">Leon Dou</p>
+  <div class="site-description" itemprop="description">关注领域：体系结构，编译技术</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">22</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">18</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">14</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2025</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Leon Dou</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-area"></i>
+    </span>
+      <span class="post-meta-item-text">站点总字数：</span>
+    <span title="站点总字数">167k</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+      <span class="post-meta-item-text">站点阅读时长 &asymp;</span>
+    <span title="站点阅读时长">2:32</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://pisces.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Pisces</a> 强力驱动
+  </div>
+
+        
+<div class="busuanzi-count">
+  <script data-pjax async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/pjax/pjax.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+<script src="/js/bookmark.js"></script>
+
+  <script>
+var pjax = new Pjax({
+  selectors: [
+    'head title',
+    '#page-configurations',
+    '.content-wrap',
+    '.post-toc-wrap',
+    '.languages',
+    '#pjax'
+  ],
+  switches: {
+    '.post-toc-wrap': Pjax.switches.innerHTML
+  },
+  analytics: false,
+  cacheBust: false,
+  scrollTo : !CONFIG.bookmark.enable
+});
+
+window.addEventListener('pjax:success', () => {
+  document.querySelectorAll('script[data-pjax], script#page-configurations, #pjax script').forEach(element => {
+    var code = element.text || element.textContent || element.innerHTML || '';
+    var parent = element.parentNode;
+    parent.removeChild(element);
+    var script = document.createElement('script');
+    if (element.id) {
+      script.id = element.id;
+    }
+    if (element.className) {
+      script.className = element.className;
+    }
+    if (element.type) {
+      script.type = element.type;
+    }
+    if (element.src) {
+      script.src = element.src;
+      // Force synchronous loading of peripheral JS.
+      script.async = false;
+    }
+    if (element.dataset.pjax !== undefined) {
+      script.dataset.pjax = '';
+    }
+    if (code !== '') {
+      script.appendChild(document.createTextNode(code));
+    }
+    parent.appendChild(script);
+  });
+  NexT.boot.refresh();
+  // Define Motion Sequence & Bootstrap Motion.
+  if (CONFIG.motion.enable) {
+    NexT.motion.integrator
+      .init()
+      .add(NexT.motion.middleWares.subMenu)
+      .add(NexT.motion.middleWares.postList)
+      .bootstrap();
+  }
+  NexT.utils.updateSidebarPosition();
+});
+</script>
+
+
+
+
+  
+
+
+
+
+  
+<script src="/js/local-search.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+    <div id="pjax">
+  
+
+  
+
+  
+
+<link rel="stylesheet" href="//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.min.css">
+
+<script>
+NexT.utils.loadComments(document.querySelector('#gitalk-container'), () => {
+  NexT.utils.getScript('//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.min.js', () => {
+    var gitalk = new Gitalk({
+      clientID    : 'Ov23liFsw1lTgh0R8s8H',
+      clientSecret: '1f947cb0d107ba1ffbcad8c25688c075224fff36',
+      repo        : 'micropuma.github.io',
+      owner       : 'micropuma',
+      admin       : ['micropuma'],
+      id          : '92379d6fcd8c8de25b4c9cfb712f3800',
+        language: 'zh-CN',
+      distractionFreeMode: true
+    });
+    gitalk.render('gitalk-container');
+  }, window.Gitalk);
+});
+</script>
+
+    </div>
+</body>
+</html>
