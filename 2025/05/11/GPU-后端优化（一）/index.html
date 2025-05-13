@@ -29,7 +29,7 @@
 <meta property="og:image" content="http://example.com/images/image-20250511233238659.png">
 <meta property="og:image" content="http://example.com/images/image-20250512174213715.png">
 <meta property="article:published_time" content="2025-05-11T13:25:29.000Z">
-<meta property="article:modified_time" content="2025-05-12T14:42:47.716Z">
+<meta property="article:modified_time" content="2025-05-13T08:30:58.261Z">
 <meta property="article:author" content="Leon Dou">
 <meta property="article:tag" content="GPU">
 <meta property="article:tag" content="编译">
@@ -227,7 +227,7 @@
                   <i class="far fa-calendar-check"></i>
                 </span>
                 <span class="post-meta-item-text">更新于</span>
-                <time title="修改时间：2025-05-12 22:42:47" itemprop="dateModified" datetime="2025-05-12T22:42:47+08:00">2025-05-12</time>
+                <time title="修改时间：2025-05-13 16:30:58" itemprop="dateModified" datetime="2025-05-13T16:30:58+08:00">2025-05-13</time>
               </span>
             <span class="post-meta-item">
               <span class="post-meta-item-icon">
@@ -256,7 +256,7 @@
                 <i class="far fa-file-word"></i>
               </span>
                 <span class="post-meta-item-text">本文字数：</span>
-              <span>3.5k</span>
+              <span>3.6k</span>
             </span>
             <span class="post-meta-item" title="阅读时长">
               <span class="post-meta-item-icon">
@@ -296,6 +296,7 @@
 <li>存储优化（共享内存开辟，padding，coalesce内存）</li>
 <li>tensor core适配（WMMA api）</li>
 <li>global memory latency hiding</li>
+<li>GPU流水线技术</li>
 </ul>
 <h3 id="Loop-Tiling优化"><a href="#Loop-Tiling优化" class="headerlink" title="Loop Tiling优化"></a><font color = green>Loop Tiling优化</font></h3><p>这一章节主要参考<a target="_blank" rel="noopener" href="https://zhuanlan.zhihu.com/p/477023757">一篇文章了解 Loop Tiling 优化</a>，这篇博客讲解非常到位，强烈建议有兴趣的读者仔细阅读。本篇文章的解读顺序和原博客不太一致，选择先列出tiling算法步骤，然后以一个具体例子带着大家走一遍算法步骤，解读每一步原理。</p>
 <h4 id="Tiling算法步骤"><a href="#Tiling算法步骤" class="headerlink" title="Tiling算法步骤"></a>Tiling算法步骤</h4><blockquote>
@@ -330,7 +331,7 @@
 
 <p>同理，可以继续向上，做k_o和i_o的分块，不再详细阐述了。</p>
 <h3 id="存储优化"><a href="#存储优化" class="headerlink" title="存储优化"></a><font color = green>存储优化</font></h3><p>这部分文章重点参考<a target="_blank" rel="noopener" href="https://zhuanlan.zhihu.com/p/473133201">GPU global memory优化</a>。</p>
-<h2 id="CUDA编译流程"><a href="#CUDA编译流程" class="headerlink" title="CUDA编译流程"></a><font color = brown>CUDA编译流程</font></h2><p>前面几小节按照MLIR优化GEMM算子论文中的管线（pipeline），补充了面向GPU的相应优化技术点。这一小节则讲解在cuda中是如何做代码生成，讲解一个大概的流程框架。这个流程可以分为两部分来讲解，一是最常用的英伟达闭源工具nvcc编译器的编译流程，二是基于MLIR基础设施的编译流程，从mlir系统接入LLVM IR，然后借助于LLVM成熟编译器进行编译生成。</p>
+<h3 id="GPU流水线技术"><a href="#GPU流水线技术" class="headerlink" title="GPU流水线技术"></a><font color = green>GPU流水线技术</font></h3><h2 id="CUDA编译流程"><a href="#CUDA编译流程" class="headerlink" title="CUDA编译流程"></a><font color = brown>CUDA编译流程</font></h2><p>前面几小节按照MLIR优化GEMM算子论文中的管线（pipeline），补充了面向GPU的相应优化技术点。这一小节则讲解在cuda中是如何做代码生成，讲解一个大概的流程框架。这个流程可以分为两部分来讲解，一是最常用的英伟达闭源工具nvcc编译器的编译流程，二是基于MLIR基础设施的编译流程，从mlir系统接入LLVM IR，然后借助于LLVM成熟编译器进行编译生成。</p>
 <h3 id="NVCC编译流程"><a href="#NVCC编译流程" class="headerlink" title="NVCC编译流程"></a><font color = green>NVCC编译流程</font></h3><img src="/images/image-20250512174213715.png" alt="image-20250512174213715" style="zoom:50%;" />
 
 <h3 id="NVVM-IR"><a href="#NVVM-IR" class="headerlink" title="NVVM IR"></a><font color = green>NVVM IR</font></h3><h2 id="参考资料"><a href="#参考资料" class="headerlink" title="参考资料"></a><font color = brown>参考资料</font></h2><ol>
@@ -423,7 +424,7 @@
 
       <!--noindex-->
       <div class="post-toc-wrap sidebar-panel">
-          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#GPU%E5%90%8E%E7%AB%AF%E4%BC%98%E5%8C%96%E5%9F%BA%E7%A1%80%E7%9F%A5%E8%AF%86"><span class="nav-number">1.</span> <span class="nav-text">GPU后端优化基础知识</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#Loop-Tiling%E4%BC%98%E5%8C%96"><span class="nav-number">1.1.</span> <span class="nav-text">Loop Tiling优化</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#Tiling%E7%AE%97%E6%B3%95%E6%AD%A5%E9%AA%A4"><span class="nav-number">1.1.1.</span> <span class="nav-text">Tiling算法步骤</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%AD%98%E5%82%A8%E4%BC%98%E5%8C%96"><span class="nav-number">1.2.</span> <span class="nav-text">存储优化</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#CUDA%E7%BC%96%E8%AF%91%E6%B5%81%E7%A8%8B"><span class="nav-number">2.</span> <span class="nav-text">CUDA编译流程</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#NVCC%E7%BC%96%E8%AF%91%E6%B5%81%E7%A8%8B"><span class="nav-number">2.1.</span> <span class="nav-text">NVCC编译流程</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#NVVM-IR"><span class="nav-number">2.2.</span> <span class="nav-text">NVVM IR</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%8F%82%E8%80%83%E8%B5%84%E6%96%99"><span class="nav-number">3.</span> <span class="nav-text">参考资料</span></a></li></ol></div>
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#GPU%E5%90%8E%E7%AB%AF%E4%BC%98%E5%8C%96%E5%9F%BA%E7%A1%80%E7%9F%A5%E8%AF%86"><span class="nav-number">1.</span> <span class="nav-text">GPU后端优化基础知识</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#Loop-Tiling%E4%BC%98%E5%8C%96"><span class="nav-number">1.1.</span> <span class="nav-text">Loop Tiling优化</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#Tiling%E7%AE%97%E6%B3%95%E6%AD%A5%E9%AA%A4"><span class="nav-number">1.1.1.</span> <span class="nav-text">Tiling算法步骤</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%AD%98%E5%82%A8%E4%BC%98%E5%8C%96"><span class="nav-number">1.2.</span> <span class="nav-text">存储优化</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#GPU%E6%B5%81%E6%B0%B4%E7%BA%BF%E6%8A%80%E6%9C%AF"><span class="nav-number">1.3.</span> <span class="nav-text">GPU流水线技术</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#CUDA%E7%BC%96%E8%AF%91%E6%B5%81%E7%A8%8B"><span class="nav-number">2.</span> <span class="nav-text">CUDA编译流程</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#NVCC%E7%BC%96%E8%AF%91%E6%B5%81%E7%A8%8B"><span class="nav-number">2.1.</span> <span class="nav-text">NVCC编译流程</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#NVVM-IR"><span class="nav-number">2.2.</span> <span class="nav-text">NVVM IR</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%8F%82%E8%80%83%E8%B5%84%E6%96%99"><span class="nav-number">3.</span> <span class="nav-text">参考资料</span></a></li></ol></div>
       </div>
       <!--/noindex-->
 
@@ -487,13 +488,13 @@
       <i class="fa fa-chart-area"></i>
     </span>
       <span class="post-meta-item-text">站点总字数：</span>
-    <span title="站点总字数">167k</span>
+    <span title="站点总字数">190k</span>
     <span class="post-meta-divider">|</span>
     <span class="post-meta-item-icon">
       <i class="fa fa-coffee"></i>
     </span>
       <span class="post-meta-item-text">站点阅读时长 &asymp;</span>
-    <span title="站点阅读时长">2:32</span>
+    <span title="站点阅读时长">2:53</span>
 </div>
   <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://pisces.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Pisces</a> 强力驱动
   </div>
