@@ -312,22 +312,19 @@
       
         <p><img src="/images/image-20250420234716898.png" alt="image-20250420234716898"></p>
 <span id="more"></span>
-
 <blockquote>
 <p>在尝试将pytorch接入aie平台的过程中，发现自己对于AI编译器在机器学习系统中的定位所知甚少。由于先前经验大多只停留在将高级语言转换成硬件相关的ir代码，而忽略了后端以及运行时系统协作方面的知识，遇到瓶颈。因此本博客通过参考机器学习系统书籍，以及目前主流AI编译器的后端和运行时系统的协作，查漏补缺，补全自己的知识盲点。</p>
 </blockquote>
-<h2 id="AI编译器后端和运行时架构"><a href="#AI编译器后端和运行时架构" class="headerlink" title="AI编译器后端和运行时架构"></a><font color = brown>AI编译器后端和运行时架构</font></h2><p>通过参考<a target="_blank" rel="noopener" href="https://openmlsys.github.io/chapter_backend_and_runtime/index.html">mlsys open book</a>和<a target="_blank" rel="noopener" href="https://zhuanlan.zhihu.com/p/651036523">tensorflow xla解读</a>，对机器学习编译有了新的理解。机器学习编译技术需要与运行时系统相互写作，才能将一个机器学习模型完整的跑在GPU&#x2F;NPU上。下图是AI系统的一个软件栈示意图：</p>
-<img src="/images/image-20250418172339205.png" alt="image-20250418172339205" style="zoom: 80%;" />
-
+<h2 id="AI编译器后端和运行时架构"><a href="#AI编译器后端和运行时架构" class="headerlink" title="AI编译器后端和运行时架构"></a><font color = brown>AI编译器后端和运行时架构</font></h2><p>通过参考<a target="_blank" rel="noopener" href="https://openmlsys.github.io/chapter_backend_and_runtime/index.html">mlsys open book</a>和<a target="_blank" rel="noopener" href="https://zhuanlan.zhihu.com/p/651036523">tensorflow xla解读</a>，对机器学习编译有了新的理解。机器学习编译技术需要与运行时系统相互写作，才能将一个机器学习模型完整的跑在GPU/NPU上。下图是AI系统的一个软件栈示意图：</p>
+<p><img src="/images/image-20250418172339205.png" alt="image-20250418172339205" style="zoom: 80%;" /></p>
 <p>上述优化流程，是针对静态图的全图编译运行流程（tensorflow XLA这种动态圈图有一定区别）。按照软件栈层级关系，可以分为编译层和运行时系统层。</p>
 <ul>
 <li>编译层：编译层的输入是整个静态计算图或是部分子图，因此首先需要编译器前端用户代码进行解析翻译得到计算图IR，并对其进行设备信息无关的优化，此时的优化并不考虑程序执行的底层硬件信息。编译器后端的主要职责是对前端下发的IR做进一步的计算图优化，让其更加贴合硬件，并为IR中的计算节点选择在硬件上执行的算子，然后为每个算子的输入输出分配硬件内存，最终生成一个可以在硬件上执行的任务序列。</li>
 <li>运行时系统层：运行时系统设计一般均有一个虚拟机VM用以支持调度和快速部署（IREE架构的VM和Relay VM）。其输入是编译层生成的可在硬件上执行的任务序列，<strong>如果考虑跨硬件部署，则需要考虑使用函数类型擦除技术统一接口</strong>。然后，VM将任务序列转换成硬件设备api和host端代码，最终分别生成可执行。</li>
 </ul>
 <p>后续会详细解读每一层的流程，以及可参考文献。</p>
-<h3 id="编译器后端"><a href="#编译器后端" class="headerlink" title="编译器后端"></a><font color = green>编译器后端</font></h3><h4 id="后端优化定位"><a href="#后端优化定位" class="headerlink" title="后端优化定位"></a>后端优化定位</h4><p>重点参考<a target="_blank" rel="noopener" href="https://www.bilibili.com/video/BV1K84y1x7Be?spm_id_from=333.788.videopod.sections&vd_source=7cc24e214309f4db17f1dda017fc6683">zomi编译后端视频</a>。声明：如下内容以及图片slides基本来源于该视频。</p>
-<img src="/images/image-20250502160730282.png" alt="image-20250502160730282" style="zoom:50%;" />
-
+<h3 id="编译器后端"><a href="#编译器后端" class="headerlink" title="编译器后端"></a><font color = green>编译器后端</font></h3><h4 id="后端优化定位"><a href="#后端优化定位" class="headerlink" title="后端优化定位"></a>后端优化定位</h4><p>重点参考<a target="_blank" rel="noopener" href="https://www.bilibili.com/video/BV1K84y1x7Be?spm_id_from=333.788.videopod.sections&amp;vd_source=7cc24e214309f4db17f1dda017fc6683">zomi编译后端视频</a>。声明：如下内容以及图片slides基本来源于该视频。</p>
+<p><img src="/images/image-20250502160730282.png" alt="image-20250502160730282" style="zoom:50%;" /></p>
 <p>上图是编译后端在整个AI编译框架的位置。大致总结一下前端优化和后端优化的区别：前端优化输入是计算图，关注计算图整体拓扑结构，而不关心算子的具体实现。其优化手段主要有对于算子节点进行融合、消除、化简等操作，是计算图计算和存储开销小。后端优化则专注于算子节点的内部具体实现，针对具体实现使得性能达到最优，重点关心节点的输入，输出内存循环方式和计算的逻辑。</p>
 <h4 id="后端优化干了什么？"><a href="#后端优化干了什么？" class="headerlink" title="后端优化干了什么？"></a>后端优化干了什么？</h4><p><img src="/images/image-20250502173731704.png" alt="image-20250502173731704"></p>
 <p>后端优化主要做了三件事：</p>
@@ -380,17 +377,17 @@
 <p>上述虚拟机设计，还有一大好处，那就是可以很自然的完成从mlir系统到虚拟机指令ISA的编译转换。因此整个调度控制流程可以自然地通过编译器来控制，进一步提供可优化点。</p>
 </li>
 <li><p>HAL硬件抽象层</p>
-<p>针对边缘&#x2F;客户端设备的多样化硬件生态，最佳实践是基于现代图形&#x2F;计算API（如Vulkan、DirectX 12、Metal）构建硬件抽象层（HAL）。这些API提供低开销、跨平台支持、显式控制等优势，能统一管理不同厂商的GPU&#x2F;加速器（如NVIDIA&#x2F;AMD&#x2F;Apple）。虽然这些API直接使用复杂（如代码冗长），但通过编译器自动生成调用逻辑，可绕过开发难度，同时保留底层控制权。这种设计既能满足高性能需求（通过低层级优化），又能覆盖多平台&#x2F;硬件的兼容性（如Windows&#x2F;iOS&#x2F;Android），为碎片化设备提供统一且高效的计算支持。如下是iree的HAL，VM架构图。</p>
+<p>针对边缘/客户端设备的多样化硬件生态，最佳实践是基于现代图形/计算API（如Vulkan、DirectX 12、Metal）构建硬件抽象层（HAL）。这些API提供低开销、跨平台支持、显式控制等优势，能统一管理不同厂商的GPU/加速器（如NVIDIA/AMD/Apple）。虽然这些API直接使用复杂（如代码冗长），但通过编译器自动生成调用逻辑，可绕过开发难度，同时保留底层控制权。这种设计既能满足高性能需求（通过低层级优化），又能覆盖多平台/硬件的兼容性（如Windows/iOS/Android），为碎片化设备提供统一且高效的计算支持。如下是iree的HAL，VM架构图。</p>
 <p><img src="/images/image-20250421110831028.png" alt="image-20250421110831028"></p>
 </li>
 </ul>
 <p>上述是runtime system的三个抽象，而实际生产中，runtime系统也要充分考虑性能问题：</p>
 <blockquote>
-<p>在GPU资源管理与同步中，核心挑战在于平衡计算吞吐量与系统整体效率。由于GPU内存性能常落后于算力提升，单纯优化单内核代码（如矩阵乘法）难以发挥理论峰值，需避免运行时因频繁创建&#x2F;销毁资源（如缓冲区、同步对象）或跨组件数据拷贝&#x2F;强制等待导致的性能损耗。为此，可借鉴图形应用（如游戏引擎）的成熟实践：<strong>预分配资源池</strong>减少动态开销、<strong>预录异步命令链</strong>最大化GPU并行度、<strong>细粒度同步</strong>基于资源生命周期。这些策略可通过编译器自动化实现（如依赖分析与指令提升）。IREE运行时采用<strong>异步优先</strong>设计，支持跨组件无缝传递缓冲区与同步原语，利用操作系统底层机制（如Linux的dma_fence）避免硬性边界，既保障ML模型的高效执行，又能嵌入复杂应用（如图像处理管线）而不成为性能瓶颈，兼顾性能与系统协同。</p>
+<p>在GPU资源管理与同步中，核心挑战在于平衡计算吞吐量与系统整体效率。由于GPU内存性能常落后于算力提升，单纯优化单内核代码（如矩阵乘法）难以发挥理论峰值，需避免运行时因频繁创建/销毁资源（如缓冲区、同步对象）或跨组件数据拷贝/强制等待导致的性能损耗。为此，可借鉴图形应用（如游戏引擎）的成熟实践：<strong>预分配资源池</strong>减少动态开销、<strong>预录异步命令链</strong>最大化GPU并行度、<strong>细粒度同步</strong>基于资源生命周期。这些策略可通过编译器自动化实现（如依赖分析与指令提升）。IREE运行时采用<strong>异步优先</strong>设计，支持跨组件无缝传递缓冲区与同步原语，利用操作系统底层机制（如Linux的dma_fence）避免硬性边界，既保障ML模型的高效执行，又能嵌入复杂应用（如图像处理管线）而不成为性能瓶颈，兼顾性能与系统协同。</p>
 </blockquote>
 <p>上述关于运行时系统的描述，是比较普遍的，下面结合Open MLsys一书，详细解读不同运行时系统的分类。</p>
 <blockquote>
-<p>经过算子选择与内存分配之后，计算任务可以通过运行时完成计算的调度与在硬件上的执行。根据是否将算子编译为计算图，计算的调度可以分为单算子调度与计算图调度两种方式，例如在MindSpore中分别提供了PyNative模式和Graph模式。而根据硬件提供的能力差异，计算图的执行方式又可以分为逐算子下发执行的交互式执行以及将整个计算图或者部分子图一次性下发到硬件的下沉式执行两种模式。                                                                                                                                                                      —- 《Open Mlysy》</p>
+<p>经过算子选择与内存分配之后，计算任务可以通过运行时完成计算的调度与在硬件上的执行。根据是否将算子编译为计算图，计算的调度可以分为单算子调度与计算图调度两种方式，例如在MindSpore中分别提供了PyNative模式和Graph模式。而根据硬件提供的能力差异，计算图的执行方式又可以分为逐算子下发执行的交互式执行以及将整个计算图或者部分子图一次性下发到硬件的下沉式执行两种模式。                                                                                                                                                                      —— 《Open Mlysy》</p>
 </blockquote>
 <h4 id="单算子调度"><a href="#单算子调度" class="headerlink" title="单算子调度"></a>单算子调度</h4><p>一行行算子line by line的交由python运行时执行，好处是方便debug和看到即时效果，坏处是只能顺序执行，丧失很多并行性，同时也无法支持编译优化。</p>
 <h4 id="计算图调度"><a href="#计算图调度" class="headerlink" title="计算图调度"></a>计算图调度</h4><p>在一个典型的异构计算环境中，主要存在CPU、GPU以及NPU等多种计算设备，因此一张计算图可以由运行在不同设备上的算子组成为异构计算图。</p>
@@ -411,72 +408,79 @@
 </ul>
 <blockquote>
 <p>虽然在计算图上可以充分表达算子间的并发关系，在实际代码中会产生由于并发而引起的一些不预期的副作用场景</p>
-<img src="/images/image-20250418183157655.png" alt="image-20250418183157655" style="zoom: 50%;" />
-
+<p><img src="/images/image-20250418183157655.png" alt="image-20250418183157655" style="zoom: 50%;" /></p>
 <p>如上图所示，虚线是operator之间的隐含依赖关系，但是在计算图中难以表示。因此在实际执行计算图的过程中，会分为交互式下发和下沉式（执行方式区分）。</p>
 </blockquote>
 <h4 id="算子交互执行"><a href="#算子交互执行" class="headerlink" title="算子交互执行"></a>算子交互执行</h4><p>框架的运行时根据计算图中算子的依赖关系，按照某种执行序（例如广度优先序）逐个将算子下发到硬件上执行。我们处理的计算图一般为异构计算图（计算图中的硬件有多种）。解读异构计算图交互执行之前，先解读同构计算图，异构计算图需要先通过子图切分为同构计算图。</p>
 <p>同构计算图有两种执行方式，如下表所示：</p>
+<div class="table-container">
 <table>
 <thead>
 <tr>
-<th align="right">执行方式</th>
-<th align="right">串行执行</th>
-<th align="right">并行执行</th>
+<th style="text-align:right">执行方式</th>
+<th style="text-align:right">串行执行</th>
+<th style="text-align:right">并行执行</th>
 </tr>
 </thead>
-<tbody><tr>
-<td align="right">算子执行顺序</td>
-<td align="right">固定</td>
-<td align="right">不固定</td>
+<tbody>
+<tr>
+<td style="text-align:right">算子执行顺序</td>
+<td style="text-align:right">固定</td>
+<td style="text-align:right">不固定</td>
 </tr>
 <tr>
-<td align="right">算子执行线程</td>
-<td align="right">单线程</td>
-<td align="right">多线程</td>
+<td style="text-align:right">算子执行线程</td>
+<td style="text-align:right">单线程</td>
+<td style="text-align:right">多线程</td>
 </tr>
 <tr>
-<td align="right">所需执行资源</td>
-<td align="right">较低</td>
-<td align="right">较高</td>
+<td style="text-align:right">所需执行资源</td>
+<td style="text-align:right">较低</td>
+<td style="text-align:right">较高</td>
 </tr>
-</tbody></table>
+</tbody>
+</table>
+</div>
 <p>而对于异构计算图，<font color = red>一般来说计算图的优化都是基于非异构计算图来实现的，要求计算图中的算子为同一设备上的，方便算子间的融合替换等优化操作，因此需要将一张异构计算图切分为多个非异构计算图，这里切分就比较灵活了，可以定义各种切分规则，一般按照产生尽量少的子图的切分规则来切分，尽量将多的同一设备上的算子放在一张子图中。</font>如下图是一种可能的子图切分方式：</p>
-<img src="/images/image-20250418185356799.png" alt="image-20250418185356799" style="zoom:50%;" />
-
+<p><img src="/images/image-20250418185356799.png" alt="image-20250418185356799" style="zoom:50%;" /></p>
 <p>切分出子图后，下一步需要考虑的是子图执行。共可以分为两种策略：</p>
 <ul>
 <li><p><strong>子图拆分执行</strong>：将切分后的多个子图分开执行，即一个子图执行完再执行另一个子图，上一个子图的输出数据会传输给下一个子图的输入数据，并且下一个子图需要将输入数据拷贝为本图的device数据，如Graph_2_GPU需要将Graph_1_CPU的输出数据从CPU拷贝到GPU，反过来Graph_3_CPU需要将Graph2GPU的输出数据从GPU拷贝到CPU，子图之间互相切换执行有一定的开销。</p>
-<img src="/images/image-20250418185513957.png" alt="image-20250418185513957" style="zoom: 50%;" />
+<p><img src="/images/image-20250418185513957.png" alt="image-20250418185513957" style="zoom: 50%;" /></p>
 </li>
 <li><p><strong>子图合并执行</strong>：将切分后的多个子图进行合并，合并为一个整体的DAG执行，如 <a target="_blank" rel="noopener" href="https://openmlsys.github.io/chapter_backend_and_runtime/compute_schedule_and_execute.html#graph-exec-7">图7.5.12</a>所示，通过算子的设备属性来插入拷贝算子以实现不同设备上的算子数据传输，并且拷贝算子也是进入整图中的，从而形成一个大的整图执行，减少子图之间的切换执行开销。</p>
-<img src="/images/image-20250418185549176.png" alt="image-20250418185549176" style="zoom:50%;" /></li>
+<p><img src="/images/image-20250418185549176.png" alt="image-20250418185549176" style="zoom:50%;" /></p>
+</li>
 </ul>
 <p>下表中对于这两种执行方式进行了对比：</p>
+<div class="table-container">
 <table>
 <thead>
 <tr>
-<th align="right">执行方式</th>
-<th align="right">子图拆分</th>
-<th align="right">子图合并</th>
+<th style="text-align:right">执行方式</th>
+<th style="text-align:right">子图拆分</th>
+<th style="text-align:right">子图合并</th>
 </tr>
 </thead>
-<tbody><tr>
-<td align="right">异构数据传输</td>
-<td align="right">子图之间拷贝</td>
-<td align="right">算子之间拷贝</td>
+<tbody>
+<tr>
+<td style="text-align:right">异构数据传输</td>
+<td style="text-align:right">子图之间拷贝</td>
+<td style="text-align:right">算子之间拷贝</td>
 </tr>
 <tr>
-<td align="right">执行额外开销</td>
-<td align="right">子图切换执行开销</td>
-<td align="right">无</td>
+<td style="text-align:right">执行额外开销</td>
+<td style="text-align:right">子图切换执行开销</td>
+<td style="text-align:right">无</td>
 </tr>
 <tr>
-<td align="right">执行并发粒度</td>
-<td align="right">子图并发</td>
-<td align="right">算子原生并发</td>
+<td style="text-align:right">执行并发粒度</td>
+<td style="text-align:right">子图并发</td>
+<td style="text-align:right">算子原生并发</td>
 </tr>
-</tbody></table>
+</tbody>
+</table>
+</div>
 <p>总结一下，主要是并发粒度的区别。<strong>子图切换执行开销是比较大的，因此子图合并是比较普适的做法。</strong></p>
 <blockquote>
 <p>mindspore的异构执行是子图合并，而非异构执行是并行执行，因此为子图合并并行执行（任意计算架构都有两个象限）。</p>
@@ -488,11 +492,9 @@
 <p><img src="/images/image-20250419141303976.png" alt="image-20250419141303976"></p>
 <p>上图摘自cornell的机器学习硬件课程slides。在众多参考资料中，将dataflow映射到FPGA或是特定NPU（如AIE），被称为Mapping，而不是Compiler。如下引用Efficient processing for DNN一书中的一段话，讲明两者的类比关系：</p>
 <blockquote>
-<p>In conventional computer systems, the compiler translates the program into machine-readable binary codes for execution; in the processing of DNNs, the mapper translates the desired DNN layer computation (i.e., problem specification) along with its shape and size4 into a hardwarecompatible mapping for execution. While the compiler usually optimizes just for performance, the mapper will typically optimize for performance and&#x2F;or energy efficiency.</p>
-<img src="/images/image-20250419154151487.png" alt="image-20250419154151487" style="zoom:50%;" />
-
-<img src="/images/image-20250419154218830.png" alt="image-20250419154218830" style="zoom:50%;" />
-
+<p>In conventional computer systems, the compiler translates the program into machine-readable binary codes for execution; in the processing of DNNs, the mapper translates the desired DNN layer computation (i.e., problem specification) along with its shape and size4 into a hardwarecompatible mapping for execution. While the compiler usually optimizes just for performance, the mapper will typically optimize for performance and/or energy efficiency.</p>
+<p><img src="/images/image-20250419154151487.png" alt="image-20250419154151487" style="zoom:50%;" /></p>
+<p><img src="/images/image-20250419154218830.png" alt="image-20250419154218830" style="zoom:50%;" /></p>
 <p>总结一下，有如下异同点：</p>
 <ul>
 <li>输入方面，传统编译是程序，而DNN加速器映射是问题特性以及输入的shape。</li>
@@ -503,17 +505,16 @@
 <p><img src="/images/image-20250419141926408.png" alt="image-20250419141926408"></p>
 <p>上图是计算图编译器的一个典型架构。</p>
 <p><img src="/images/image-20250419143546984.png" alt="image-20250419143546984"></p>
-<h2 id="典型编译器解读"><a href="#典型编译器解读" class="headerlink" title="典型编译器解读"></a><font color = brown>典型编译器解读</font></h2><h3 id="TVM-后端架构-Runtime"><a href="#TVM-后端架构-Runtime" class="headerlink" title="TVM 后端架构&amp;Runtime"></a><font color = green>TVM 后端架构&amp;Runtime</font></h3><h4 id="运行时框架图"><a href="#运行时框架图" class="headerlink" title="运行时框架图"></a>运行时框架图</h4><p>TVM编译器的一大优势是支持多硬件平台&#x2F;设备部署，因此其运行时系统设计是重中之重。其运行时系统可以大体拆解为两个部分：</p>
+<h2 id="典型编译器解读"><a href="#典型编译器解读" class="headerlink" title="典型编译器解读"></a><font color = brown>典型编译器解读</font></h2><h3 id="TVM-后端架构-amp-Runtime"><a href="#TVM-后端架构-amp-Runtime" class="headerlink" title="TVM 后端架构&amp;Runtime"></a><font color = green>TVM 后端架构&amp;Runtime</font></h3><h4 id="运行时框架图"><a href="#运行时框架图" class="headerlink" title="运行时框架图"></a>运行时框架图</h4><p>TVM编译器的一大优势是支持多硬件平台/设备部署，因此其运行时系统设计是重中之重。其运行时系统可以大体拆解为两个部分：</p>
 <ul>
 <li>每个硬件继承自ModuleNode类，利用<a target="_blank" rel="noopener" href="https://zhuanlan.zhihu.com/p/363991566">PackedFunc技术</a>将特定device的设备API封装成统一格式的指令（类似bladeDISC等编译器的类型擦除设计）。</li>
 <li>一个Executor调度每一个指令并运行。该Executor分为GraphExecutor（针对静态图）和Relay VM（针对动态图）。</li>
 </ul>
 <p>如下图所示分别是TVM运行时框架和Relay VM示意图：</p>
 <p><img src="/images/image-20250416230058925.png" alt="image-20250416230058925"></p>
-<img src="/images/image-20250416231046705.png" alt="image-20250416231046705" style="zoom: 67%;" />
-
+<p><img src="/images/image-20250416231046705.png" alt="image-20250416231046705" style="zoom: 67%;" /></p>
 <h3 id="IREE-runtime设计"><a href="#IREE-runtime设计" class="headerlink" title="IREE runtime设计"></a><font color = green>IREE runtime设计</font></h3><p>这部分内容主要参考<a target="_blank" rel="noopener" href="https://drive.google.com/file/d/1ikgOdZxnMz1ExqwrAiuTY9exbe3yMWbB/view">IREE runtime 设计slides</a>。IREE项目整体的设计思路十分完整庞大，设计巧妙，需要单独开一章节讲解。</p>
-<h3 id="BladeDISC后端架构-Runtime"><a href="#BladeDISC后端架构-Runtime" class="headerlink" title="BladeDISC后端架构&amp;Runtime"></a><font color = green>BladeDISC后端架构&amp;Runtime</font></h3><h4 id="BladeDISC的key-feature"><a href="#BladeDISC的key-feature" class="headerlink" title="BladeDISC的key feature"></a>BladeDISC的key feature</h4><blockquote>
+<h3 id="BladeDISC后端架构-amp-Runtime"><a href="#BladeDISC后端架构-amp-Runtime" class="headerlink" title="BladeDISC后端架构&amp;Runtime"></a><font color = green>BladeDISC后端架构&amp;Runtime</font></h3><h4 id="BladeDISC的key-feature"><a href="#BladeDISC的key-feature" class="headerlink" title="BladeDISC的key feature"></a>BladeDISC的key feature</h4><blockquote>
 <p><img src="/images/image-20250427220408720.png" alt="image-20250427220408720"></p>
 </blockquote>
 <p>BladeDISC项目在编译后端和runtime上，有许多巧思（动态shape引发的编译和运行时协作代码生成）。具体地参考<a target="_blank" rel="noopener" href="https://dl.acm.org/doi/10.1145/3617327">BladeDISC papaer</a>和<a target="_blank" rel="noopener" href="https://github.com/alibaba/BladeDISC">BladeDISC github project</a>，以及<a target="_blank" rel="noopener" href="https://bladedisc.oss-cn-hangzhou.aliyuncs.com/docs/bladedisc-intro-for-intel.pdf">BladeDISC内部分享</a>。</p>
@@ -541,7 +542,7 @@
 <p><img src="/images/image-20250427214740408.png" alt="image-20250427214740408"></p>
 </li>
 </ul>
-<p>​	可以看到，BladeDISC基于CUTLASS构建数据集，训练一个决策树模型，运行时决策出选用哪个生成代码。</p>
+<p>​    可以看到，BladeDISC基于CUTLASS构建数据集，训练一个决策树模型，运行时决策出选用哪个生成代码。</p>
 <h4 id="Runtime设计：RAL"><a href="#Runtime设计：RAL" class="headerlink" title="Runtime设计：RAL"></a>Runtime设计：RAL</h4><p><img src="/images/image-20250427215219613.png" alt="image-20250427215219613"></p>
 <p>上图是RAL的完整设计，有如下特点：</p>
 <ul>
@@ -552,8 +553,6 @@
 <p>根据阿里PAI团队的slides做进一步理解：</p>
 <blockquote>
 <p><img src="/images/image-20250427220909637.png" alt="image-20250427220909637"></p>
-</blockquote>
-<blockquote>
 <p><img src="/images/image-20250427221352121.png" alt="image-20250427221352121"></p>
 </blockquote>
 <p>上述slides阐述了如何对于编译生成的.exe做runtime，后续会结合代码进一步挖掘。</p>
@@ -651,7 +650,7 @@
 
       <!--noindex-->
       <div class="post-toc-wrap sidebar-panel">
-          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#AI%E7%BC%96%E8%AF%91%E5%99%A8%E5%90%8E%E7%AB%AF%E5%92%8C%E8%BF%90%E8%A1%8C%E6%97%B6%E6%9E%B6%E6%9E%84"><span class="nav-number">1.</span> <span class="nav-text">AI编译器后端和运行时架构</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E7%BC%96%E8%AF%91%E5%99%A8%E5%90%8E%E7%AB%AF"><span class="nav-number">1.1.</span> <span class="nav-text">编译器后端</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#%E5%90%8E%E7%AB%AF%E4%BC%98%E5%8C%96%E5%AE%9A%E4%BD%8D"><span class="nav-number">1.1.1.</span> <span class="nav-text">后端优化定位</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E5%90%8E%E7%AB%AF%E4%BC%98%E5%8C%96%E5%B9%B2%E4%BA%86%E4%BB%80%E4%B9%88%EF%BC%9F"><span class="nav-number">1.1.2.</span> <span class="nav-text">后端优化干了什么？</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E8%BF%90%E8%A1%8C%E6%97%B6%E7%B3%BB%E7%BB%9F"><span class="nav-number">1.2.</span> <span class="nav-text">运行时系统</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#%E8%BF%90%E8%A1%8C%E6%97%B6%E6%8A%BD%E8%B1%A1"><span class="nav-number">1.2.1.</span> <span class="nav-text">运行时抽象</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E5%8D%95%E7%AE%97%E5%AD%90%E8%B0%83%E5%BA%A6"><span class="nav-number">1.2.2.</span> <span class="nav-text">单算子调度</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E8%AE%A1%E7%AE%97%E5%9B%BE%E8%B0%83%E5%BA%A6"><span class="nav-number">1.2.3.</span> <span class="nav-text">计算图调度</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E7%AE%97%E5%AD%90%E4%BA%A4%E4%BA%92%E6%89%A7%E8%A1%8C"><span class="nav-number">1.2.4.</span> <span class="nav-text">算子交互执行</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E4%B8%8B%E6%B2%89%E5%BC%8F%E6%89%A7%E8%A1%8C"><span class="nav-number">1.2.5.</span> <span class="nav-text">下沉式执行</span></a></li></ol></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E8%AE%A1%E7%AE%97%E5%9B%BE%E7%BC%96%E8%AF%91%E5%99%A8"><span class="nav-number">2.</span> <span class="nav-text">计算图编译器</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%85%B8%E5%9E%8B%E7%BC%96%E8%AF%91%E5%99%A8%E8%A7%A3%E8%AF%BB"><span class="nav-number">3.</span> <span class="nav-text">典型编译器解读</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#TVM-%E5%90%8E%E7%AB%AF%E6%9E%B6%E6%9E%84-Runtime"><span class="nav-number">3.1.</span> <span class="nav-text">TVM 后端架构&amp;Runtime</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#%E8%BF%90%E8%A1%8C%E6%97%B6%E6%A1%86%E6%9E%B6%E5%9B%BE"><span class="nav-number">3.1.1.</span> <span class="nav-text">运行时框架图</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#IREE-runtime%E8%AE%BE%E8%AE%A1"><span class="nav-number">3.2.</span> <span class="nav-text">IREE runtime设计</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#BladeDISC%E5%90%8E%E7%AB%AF%E6%9E%B6%E6%9E%84-Runtime"><span class="nav-number">3.3.</span> <span class="nav-text">BladeDISC后端架构&amp;Runtime</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#BladeDISC%E7%9A%84key-feature"><span class="nav-number">3.3.1.</span> <span class="nav-text">BladeDISC的key feature</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E5%90%8E%E7%AB%AF%E4%BB%A3%E7%A0%81%E7%94%9F%E6%88%90"><span class="nav-number">3.3.2.</span> <span class="nav-text">后端代码生成</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#Runtime%E8%AE%BE%E8%AE%A1%EF%BC%9ARAL"><span class="nav-number">3.3.3.</span> <span class="nav-text">Runtime设计：RAL</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E6%95%B4%E4%BD%93%E6%B5%81%E7%A8%8B"><span class="nav-number">3.3.4.</span> <span class="nav-text">整体流程</span></a></li></ol></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#References"><span class="nav-number">4.</span> <span class="nav-text">References</span></a></li></ol></div>
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#AI%E7%BC%96%E8%AF%91%E5%99%A8%E5%90%8E%E7%AB%AF%E5%92%8C%E8%BF%90%E8%A1%8C%E6%97%B6%E6%9E%B6%E6%9E%84"><span class="nav-number">1.</span> <span class="nav-text">AI编译器后端和运行时架构</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E7%BC%96%E8%AF%91%E5%99%A8%E5%90%8E%E7%AB%AF"><span class="nav-number">1.1.</span> <span class="nav-text">编译器后端</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#%E5%90%8E%E7%AB%AF%E4%BC%98%E5%8C%96%E5%AE%9A%E4%BD%8D"><span class="nav-number">1.1.1.</span> <span class="nav-text">后端优化定位</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E5%90%8E%E7%AB%AF%E4%BC%98%E5%8C%96%E5%B9%B2%E4%BA%86%E4%BB%80%E4%B9%88%EF%BC%9F"><span class="nav-number">1.1.2.</span> <span class="nav-text">后端优化干了什么？</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E8%BF%90%E8%A1%8C%E6%97%B6%E7%B3%BB%E7%BB%9F"><span class="nav-number">1.2.</span> <span class="nav-text">运行时系统</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#%E8%BF%90%E8%A1%8C%E6%97%B6%E6%8A%BD%E8%B1%A1"><span class="nav-number">1.2.1.</span> <span class="nav-text">运行时抽象</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E5%8D%95%E7%AE%97%E5%AD%90%E8%B0%83%E5%BA%A6"><span class="nav-number">1.2.2.</span> <span class="nav-text">单算子调度</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E8%AE%A1%E7%AE%97%E5%9B%BE%E8%B0%83%E5%BA%A6"><span class="nav-number">1.2.3.</span> <span class="nav-text">计算图调度</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E7%AE%97%E5%AD%90%E4%BA%A4%E4%BA%92%E6%89%A7%E8%A1%8C"><span class="nav-number">1.2.4.</span> <span class="nav-text">算子交互执行</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E4%B8%8B%E6%B2%89%E5%BC%8F%E6%89%A7%E8%A1%8C"><span class="nav-number">1.2.5.</span> <span class="nav-text">下沉式执行</span></a></li></ol></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E8%AE%A1%E7%AE%97%E5%9B%BE%E7%BC%96%E8%AF%91%E5%99%A8"><span class="nav-number">2.</span> <span class="nav-text">计算图编译器</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%85%B8%E5%9E%8B%E7%BC%96%E8%AF%91%E5%99%A8%E8%A7%A3%E8%AF%BB"><span class="nav-number">3.</span> <span class="nav-text">典型编译器解读</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#TVM-%E5%90%8E%E7%AB%AF%E6%9E%B6%E6%9E%84-amp-Runtime"><span class="nav-number">3.1.</span> <span class="nav-text">TVM 后端架构&amp;Runtime</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#%E8%BF%90%E8%A1%8C%E6%97%B6%E6%A1%86%E6%9E%B6%E5%9B%BE"><span class="nav-number">3.1.1.</span> <span class="nav-text">运行时框架图</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#IREE-runtime%E8%AE%BE%E8%AE%A1"><span class="nav-number">3.2.</span> <span class="nav-text">IREE runtime设计</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#BladeDISC%E5%90%8E%E7%AB%AF%E6%9E%B6%E6%9E%84-amp-Runtime"><span class="nav-number">3.3.</span> <span class="nav-text">BladeDISC后端架构&amp;Runtime</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#BladeDISC%E7%9A%84key-feature"><span class="nav-number">3.3.1.</span> <span class="nav-text">BladeDISC的key feature</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E5%90%8E%E7%AB%AF%E4%BB%A3%E7%A0%81%E7%94%9F%E6%88%90"><span class="nav-number">3.3.2.</span> <span class="nav-text">后端代码生成</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#Runtime%E8%AE%BE%E8%AE%A1%EF%BC%9ARAL"><span class="nav-number">3.3.3.</span> <span class="nav-text">Runtime设计：RAL</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E6%95%B4%E4%BD%93%E6%B5%81%E7%A8%8B"><span class="nav-number">3.3.4.</span> <span class="nav-text">整体流程</span></a></li></ol></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#References"><span class="nav-number">4.</span> <span class="nav-text">References</span></a></li></ol></div>
       </div>
       <!--/noindex-->
 
@@ -715,13 +714,13 @@
       <i class="fa fa-chart-area"></i>
     </span>
       <span class="post-meta-item-text">站点总字数：</span>
-    <span title="站点总字数">190k</span>
+    <span title="站点总字数">189k</span>
     <span class="post-meta-divider">|</span>
     <span class="post-meta-item-icon">
       <i class="fa fa-coffee"></i>
     </span>
       <span class="post-meta-item-text">站点阅读时长 &asymp;</span>
-    <span title="站点阅读时长">2:53</span>
+    <span title="站点阅读时长">2:52</span>
 </div>
   <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://pisces.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Pisces</a> 强力驱动
   </div>
