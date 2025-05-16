@@ -29,7 +29,7 @@
 <meta property="og:image" content="http://example.com/images/image-20250511233238659.png">
 <meta property="og:image" content="http://example.com/images/image-20250512174213715.png">
 <meta property="article:published_time" content="2025-05-11T13:25:29.000Z">
-<meta property="article:modified_time" content="2025-05-13T08:30:58.261Z">
+<meta property="article:modified_time" content="2025-05-16T12:56:37.382Z">
 <meta property="article:author" content="Leon Dou">
 <meta property="article:tag" content="GPU">
 <meta property="article:tag" content="编译">
@@ -227,7 +227,7 @@
                   <i class="far fa-calendar-check"></i>
                 </span>
                 <span class="post-meta-item-text">更新于</span>
-                <time title="修改时间：2025-05-13 16:30:58" itemprop="dateModified" datetime="2025-05-13T16:30:58+08:00">2025-05-13</time>
+                <time title="修改时间：2025-05-16 20:56:37" itemprop="dateModified" datetime="2025-05-16T20:56:37+08:00">2025-05-16</time>
               </span>
             <span class="post-meta-item">
               <span class="post-meta-item-icon">
@@ -256,14 +256,14 @@
                 <i class="far fa-file-word"></i>
               </span>
                 <span class="post-meta-item-text">本文字数：</span>
-              <span>3.6k</span>
+              <span>5.7k</span>
             </span>
             <span class="post-meta-item" title="阅读时长">
               <span class="post-meta-item-icon">
                 <i class="far fa-clock"></i>
               </span>
                 <span class="post-meta-item-text">阅读时长 &asymp;</span>
-              <span>3 分钟</span>
+              <span>5 分钟</span>
             </span>
 
         </div>
@@ -330,7 +330,27 @@
 <figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">for</span> j_oo <span class="keyword">in</span> <span class="built_in">range</span>(<span class="number">0</span>, N, T2_j):</span><br><span class="line">  <span class="keyword">for</span> i_o <span class="keyword">in</span> <span class="built_in">range</span>(<span class="number">0</span>, N, T_i):</span><br><span class="line">    <span class="keyword">for</span> k_o <span class="keyword">in</span> <span class="built_in">range</span>(<span class="number">0</span>, N, T_k):</span><br><span class="line">      <span class="keyword">for</span> j_oi <span class="keyword">in</span> <span class="built_in">range</span>(j_oo, j_oo + T2_j, T_j):</span><br><span class="line">        <span class="keyword">for</span> i_i <span class="keyword">in</span> <span class="built_in">range</span>(<span class="number">0</span>, N, T_i):</span><br><span class="line">          <span class="keyword">for</span> k_i <span class="keyword">in</span> <span class="built_in">range</span>(k_o, k_o + T_k):</span><br><span class="line">            <span class="keyword">for</span> j_i <span class="keyword">in</span> <span class="built_in">range</span>(j_oi, j_oi + T_j):</span><br><span class="line">              C[i_i][j_i] += A[i_i][k_i] * B[k_i][j_i]</span><br><span class="line"><span class="comment"># 这样的话，内三层循环 i_i, k_i, j_i （对应的 Tile size 为 T_i, T_j, T_k）放到 L1 Cache 里。</span></span><br><span class="line"><span class="comment"># 外层循环 j_oi （对应Tile size 为 T2_j） 就可以放到更大的 L2 Cache 里。于是便在 L2 里形成了对 C[i_i][j_i] 的复用</span></span><br></pre></td></tr></table></figure>
 
 <p>同理，可以继续向上，做k_o和i_o的分块，不再详细阐述了。</p>
-<h3 id="存储优化"><a href="#存储优化" class="headerlink" title="存储优化"></a><font color = green>存储优化</font></h3><p>这部分文章重点参考<a target="_blank" rel="noopener" href="https://zhuanlan.zhihu.com/p/473133201">GPU global memory优化</a>。</p>
+<h3 id="存储优化"><a href="#存储优化" class="headerlink" title="存储优化"></a><font color = green>存储优化</font></h3><p>这部分文章重点参考<a target="_blank" rel="noopener" href="https://zhuanlan.zhihu.com/p/473133201">GPU global memory优化</a>，<a target="_blank" rel="noopener" href="https://zhuanlan.zhihu.com/p/659142274">Bank Conflict优化博客</a>。</p>
+<h4 id="Bank-Conflict"><a href="#Bank-Conflict" class="headerlink" title="Bank Conflict"></a>Bank Conflict</h4><p>参考<a target="_blank" rel="noopener" href="https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html?highlight=bank#shared-memory-5-x">CUDA shared memory资料</a>。</p>
+<blockquote>
+<p>Shared memory has 32 banks that are organized such that successive 32-bit words map to successive banks. Each bank has a bandwidth of 32 bits per clock cycle.</p>
+<p>A shared memory request for a warp does not generate a bank conflict between two threads that access any address within the same 32-bit word (even though the two addresses fall in the same bank). In that case, for read accesses, the word is broadcast to the requesting threads and for write accesses, each address is written by only one of the threads (which thread performs the write is undefined).</p>
+</blockquote>
+<blockquote>
+<p>To achieve high memory bandwidth for concurrent accesses, shared memory is divided into equally sized memory modules (banks) that can be accessed simultaneously. Therefore, any memory load or store of n addresses that spans b distinct memory banks can be serviced simultaneously, yielding an effective bandwidth that is b times as high as the bandwidth of a single bank.<br>																		— 《Using Shared Memory in CUDA C&#x2F;C++》</p>
+</blockquote>
+<blockquote>
+<p>However, if multiple threads’ requested addresses map to the same memory bank, the accesses are serialized. The hardware splits a conflicting memory request into as many separate conflict-free requests as necessary, decreasing the effective bandwidth by a factor equal to the number of colliding memory requests. An exception is the case where all threads in a warp address the same shared memory address, resulting in a broadcast. Devices of compute capability 2.0 and higher have the additional ability to multicast shared memory accesses, meaning that multiple accesses to the same location by any number of threads within a warp are served simultaneously.<br>																		— 《Using Shared Memory in CUDA C&#x2F;C++》</p>
+</blockquote>
+<blockquote>
+<p>However, if multiple threads’ requested addresses map to the same memory bank, the accesses are serialized. The hardware splits a conflicting memory request into as many separate conflict-free requests as necessary, decreasing the effective bandwidth by a factor equal to the number of colliding memory requests. An exception is the case where all threads in a warp address the same shared memory address, resulting in a broadcast. Devices of compute capability 2.0 and higher have the additional ability to multicast shared memory accesses, meaning that multiple accesses to the same location by any number of threads within a warp are served simultaneously.<br>																		— 《Using Shared Memory in CUDA C&#x2F;C++》</p>
+</blockquote>
+<blockquote>
+<ul>
+<li>多个线程读同一个数据时，仅有一个线程读，然后broadcast到其他线程</li>
+<li>多个线程写同一个数据时，仅会有一个线程写成功（不过这里没有提及是否会将写操作执行多次（即a. 多个线程写入，最后一个线程随机写完; or b. 随机挑选一个线程执行写入），具体流程存疑）</li>
+</ul>
+</blockquote>
 <h3 id="GPU流水线技术"><a href="#GPU流水线技术" class="headerlink" title="GPU流水线技术"></a><font color = green>GPU流水线技术</font></h3><h2 id="CUDA编译流程"><a href="#CUDA编译流程" class="headerlink" title="CUDA编译流程"></a><font color = brown>CUDA编译流程</font></h2><p>前面几小节按照MLIR优化GEMM算子论文中的管线（pipeline），补充了面向GPU的相应优化技术点。这一小节则讲解在cuda中是如何做代码生成，讲解一个大概的流程框架。这个流程可以分为两部分来讲解，一是最常用的英伟达闭源工具nvcc编译器的编译流程，二是基于MLIR基础设施的编译流程，从mlir系统接入LLVM IR，然后借助于LLVM成熟编译器进行编译生成。</p>
 <h3 id="NVCC编译流程"><a href="#NVCC编译流程" class="headerlink" title="NVCC编译流程"></a><font color = green>NVCC编译流程</font></h3><img src="/images/image-20250512174213715.png" alt="image-20250512174213715" style="zoom:50%;" />
 
@@ -338,6 +358,7 @@
 <li><a target="_blank" rel="noopener" href="https://zhuanlan.zhihu.com/p/477023757">博客：Loop Tiling优化</a></li>
 <li><a target="_blank" rel="noopener" href="https://siboehm.com/articles/22/CUDA-MMM">博客：CUDA手写算子教程</a></li>
 <li><a target="_blank" rel="noopener" href="http://arxiv.org/abs/2108.13191">论文：MLIR 优化GEMM算子</a></li>
+<li><a target="_blank" rel="noopener" href="https://www.bilibili.com/video/BV1HgzuYvEXT/?spm_id_from=333.1387.upload.video_card.click&vd_source=7cc24e214309f4db17f1dda017fc6683">CUDA课程</a></li>
 </ol>
 
     </div>
@@ -424,7 +445,7 @@
 
       <!--noindex-->
       <div class="post-toc-wrap sidebar-panel">
-          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#GPU%E5%90%8E%E7%AB%AF%E4%BC%98%E5%8C%96%E5%9F%BA%E7%A1%80%E7%9F%A5%E8%AF%86"><span class="nav-number">1.</span> <span class="nav-text">GPU后端优化基础知识</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#Loop-Tiling%E4%BC%98%E5%8C%96"><span class="nav-number">1.1.</span> <span class="nav-text">Loop Tiling优化</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#Tiling%E7%AE%97%E6%B3%95%E6%AD%A5%E9%AA%A4"><span class="nav-number">1.1.1.</span> <span class="nav-text">Tiling算法步骤</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%AD%98%E5%82%A8%E4%BC%98%E5%8C%96"><span class="nav-number">1.2.</span> <span class="nav-text">存储优化</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#GPU%E6%B5%81%E6%B0%B4%E7%BA%BF%E6%8A%80%E6%9C%AF"><span class="nav-number">1.3.</span> <span class="nav-text">GPU流水线技术</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#CUDA%E7%BC%96%E8%AF%91%E6%B5%81%E7%A8%8B"><span class="nav-number">2.</span> <span class="nav-text">CUDA编译流程</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#NVCC%E7%BC%96%E8%AF%91%E6%B5%81%E7%A8%8B"><span class="nav-number">2.1.</span> <span class="nav-text">NVCC编译流程</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#NVVM-IR"><span class="nav-number">2.2.</span> <span class="nav-text">NVVM IR</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%8F%82%E8%80%83%E8%B5%84%E6%96%99"><span class="nav-number">3.</span> <span class="nav-text">参考资料</span></a></li></ol></div>
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#GPU%E5%90%8E%E7%AB%AF%E4%BC%98%E5%8C%96%E5%9F%BA%E7%A1%80%E7%9F%A5%E8%AF%86"><span class="nav-number">1.</span> <span class="nav-text">GPU后端优化基础知识</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#Loop-Tiling%E4%BC%98%E5%8C%96"><span class="nav-number">1.1.</span> <span class="nav-text">Loop Tiling优化</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#Tiling%E7%AE%97%E6%B3%95%E6%AD%A5%E9%AA%A4"><span class="nav-number">1.1.1.</span> <span class="nav-text">Tiling算法步骤</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%AD%98%E5%82%A8%E4%BC%98%E5%8C%96"><span class="nav-number">1.2.</span> <span class="nav-text">存储优化</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#Bank-Conflict"><span class="nav-number">1.2.1.</span> <span class="nav-text">Bank Conflict</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#GPU%E6%B5%81%E6%B0%B4%E7%BA%BF%E6%8A%80%E6%9C%AF"><span class="nav-number">1.3.</span> <span class="nav-text">GPU流水线技术</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#CUDA%E7%BC%96%E8%AF%91%E6%B5%81%E7%A8%8B"><span class="nav-number">2.</span> <span class="nav-text">CUDA编译流程</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#NVCC%E7%BC%96%E8%AF%91%E6%B5%81%E7%A8%8B"><span class="nav-number">2.1.</span> <span class="nav-text">NVCC编译流程</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#NVVM-IR"><span class="nav-number">2.2.</span> <span class="nav-text">NVVM IR</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%8F%82%E8%80%83%E8%B5%84%E6%96%99"><span class="nav-number">3.</span> <span class="nav-text">参考资料</span></a></li></ol></div>
       </div>
       <!--/noindex-->
 
@@ -488,13 +509,13 @@
       <i class="fa fa-chart-area"></i>
     </span>
       <span class="post-meta-item-text">站点总字数：</span>
-    <span title="站点总字数">209k</span>
+    <span title="站点总字数">223k</span>
     <span class="post-meta-divider">|</span>
     <span class="post-meta-item-icon">
       <i class="fa fa-coffee"></i>
     </span>
       <span class="post-meta-item-text">站点阅读时长 &asymp;</span>
-    <span title="站点阅读时长">3:10</span>
+    <span title="站点阅读时长">3:22</span>
 </div>
   <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://pisces.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Pisces</a> 强力驱动
   </div>
