@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 7.3.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"example.com","root":"/","scheme":"Pisces","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":true,"show_result":true,"style":"mac"},"back2top":{"enable":true,"sidebar":false,"scrollpercent":true},"bookmark":{"enable":true,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":"gitalk","storage":true,"lazyload":false,"nav":null,"activeClass":"gitalk"},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":5,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta property="og:type" content="article">
+<meta property="og:title" content="Triton 初探">
+<meta property="og:url" content="http://example.com/2025/06/05/Triton-%E5%88%9D%E6%8E%A2/index.html">
+<meta property="og:site_name" content="Leon&#39;s Blog">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://example.com/images/image-20250605183401865.png">
+<meta property="og:image" content="http://example.com/images/image-20250605194322002.png">
+<meta property="article:published_time" content="2025-06-05T04:41:24.000Z">
+<meta property="article:modified_time" content="2025-06-05T16:03:46.186Z">
+<meta property="article:author" content="Leon Dou">
+<meta property="article:tag" content="GPU">
+<meta property="article:tag" content="编译">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://example.com/images/image-20250605183401865.png">
+
+<link rel="canonical" href="http://example.com/2025/06/05/Triton-%E5%88%9D%E6%8E%A2/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>Triton 初探 | Leon's Blog</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">Leon's Blog</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">分享一点有趣的技术</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocapitalize="off"
+           placeholder="搜索..." spellcheck="false"
+           type="search" class="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result">
+  <div id="no-result">
+    <i class="fa fa-spinner fa-pulse fa-5x fa-fw"></i>
+  </div>
+</div>
+
+    </div>
+  </div>
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+  <div class="reading-progress-bar"></div>
+  <a role="button" class="book-mark-link book-mark-link-fixed"></a>
+
+  <a href="https://github.com/micropuma" class="github-corner" title="Follow me on GitHub" aria-label="Follow me on GitHub" rel="noopener" target="_blank"><svg width="80" height="80" viewBox="0 0 250 250" aria-hidden="true"><path d="M0,0 L115,115 L130,115 L142,142 L250,250 L250,0 Z"></path><path d="M128.3,109.0 C113.8,99.7 119.0,89.6 119.0,89.6 C122.0,82.7 120.5,78.6 120.5,78.6 C119.2,72.0 123.4,76.3 123.4,76.3 C127.3,80.9 125.5,87.3 125.5,87.3 C122.9,97.6 130.6,101.9 134.4,103.2" fill="currentColor" style="transform-origin: 130px 106px;" class="octo-arm"></path><path d="M115.0,115.0 C114.9,115.1 118.7,116.5 119.8,115.4 L133.7,101.6 C136.9,99.2 139.9,98.4 142.2,98.6 C133.8,88.0 127.5,74.4 143.8,58.0 C148.5,53.4 154.0,51.2 159.7,51.0 C160.3,49.4 163.2,43.6 171.4,40.1 C171.4,40.1 176.1,42.5 178.8,56.2 C183.1,58.6 187.2,61.8 190.9,65.4 C194.5,69.0 197.7,73.2 200.1,77.6 C213.8,80.2 216.3,84.9 216.3,84.9 C212.7,93.1 206.9,96.0 205.4,96.6 C205.1,102.4 203.0,107.8 198.3,112.5 C181.9,128.9 168.3,122.5 157.7,114.1 C157.9,116.9 156.7,120.9 152.7,124.9 L141.0,136.5 C139.8,137.7 141.6,141.9 141.8,141.8 Z" fill="currentColor" class="octo-body"></path></svg></a>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://example.com/2025/06/05/Triton-%E5%88%9D%E6%8E%A2/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="Leon Dou">
+      <meta itemprop="description" content="关注领域：体系结构，编译技术">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Leon's Blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          Triton 初探
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2025-06-05 12:41:24" itemprop="dateCreated datePublished" datetime="2025-06-05T12:41:24+08:00">2025-06-05</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2025-06-06 00:03:46" itemprop="dateModified" datetime="2025-06-06T00:03:46+08:00">2025-06-06</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/GPU/" itemprop="url" rel="index"><span itemprop="name">GPU</span></a>
+                </span>
+                  ，
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/GPU/%E7%BC%96%E8%AF%91/" itemprop="url" rel="index"><span itemprop="name">编译</span></a>
+                </span>
+                  ，
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/GPU/%E7%BC%96%E8%AF%91/triton%E6%8A%80%E6%9C%AF/" itemprop="url" rel="index"><span itemprop="name">triton技术</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span><br>
+            <span class="post-meta-item" title="本文字数">
+              <span class="post-meta-item-icon">
+                <i class="far fa-file-word"></i>
+              </span>
+                <span class="post-meta-item-text">本文字数：</span>
+              <span>3.8k</span>
+            </span>
+            <span class="post-meta-item" title="阅读时长">
+              <span class="post-meta-item-icon">
+                <i class="far fa-clock"></i>
+              </span>
+                <span class="post-meta-item-text">阅读时长 &asymp;</span>
+              <span>3 分钟</span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p><img src="/images/image-20250605183401865.png" alt="image-20250605183401865"></p>
+<span id="more"></span>
+
+<h2 id="为什么要学习Triton？"><a href="#为什么要学习Triton？" class="headerlink" title="为什么要学习Triton？"></a><font color = brown>为什么要学习Triton？</font></h2><h2 id="Triton源码构建"><a href="#Triton源码构建" class="headerlink" title="Triton源码构建"></a><font color = brown>Triton源码构建</font></h2><p>总共分为三种:</p>
+<ol>
+<li><p>pip install</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">pip install triton</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>install source</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">git clone https://github.com/triton-lang/triton.git</span><br><span class="line">cd triton</span><br><span class="line"></span><br><span class="line">python -m venv .venv --prompt triton</span><br><span class="line">source .venv/bin/activate</span><br><span class="line"></span><br><span class="line">pip install ninja cmake wheel pybind11 # build-time dependencies</span><br><span class="line">pip install -e python</span><br></pre></td></tr></table></figure>
+
+<p>这个构建方式十分简单方便。</p>
+</li>
+<li><p>build from source</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br></pre></td><td class="code"><pre><span class="line">   ```</span><br><span class="line"></span><br><span class="line">   </span><br><span class="line"><span class="meta prompt_"></span></span><br><span class="line"><span class="meta prompt_"></span></span><br><span class="line"><span class="meta prompt_"></span></span><br><span class="line"><span class="meta prompt_">#</span><span class="language-bash"><span class="comment"># &lt;font color = brown&gt;Triton编译流程&lt;/font&gt;</span></span></span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="meta prompt_"></span></span><br><span class="line"><span class="meta prompt_"></span></span><br><span class="line"><span class="meta prompt_"></span></span><br><span class="line"><span class="meta prompt_">#</span><span class="language-bash"><span class="comment"># &lt;font color = brown&gt;Triton使用教程&lt;/font&gt;</span></span></span><br><span class="line"></span><br><span class="line">这一部分是学习如何使用triton，读者可以参考官方的[Triton Tutorial](https://triton-lang.org/main/getting-started/tutorials/)以及[Triton-puzzles](https://colab.research.google.com/github/srush/Triton-Puzzles/blob/main/Triton-Puzzles.ipynb#scrollTo=9f06cbdd-1c9b-4b65-ae72-69c1dc599400)来学习triton的基础用法。这一章节的例子来源是triton-puzzles中的11个测试case以及官方tutorial，选取其中比较典型的case来讲解Triton编程要点。</span><br><span class="line"><span class="meta prompt_"></span></span><br><span class="line"><span class="meta prompt_">#</span><span class="language-bash"><span class="comment">## &lt;font color = green&gt;要点1：Tile 编程抽象&lt;/font&gt;</span></span></span><br><span class="line"></span><br><span class="line">```python</span><br><span class="line">@triton.jit</span><br><span class="line">def demo(x_ptr):</span><br><span class="line">    range = tl.arange(0, 8)</span><br><span class="line">    # print works in the interpreter</span><br><span class="line">    print(range)</span><br><span class="line">    x = tl.load(x_ptr + range, range &lt; 5, 0)</span><br><span class="line">    print(x)</span><br><span class="line"></span><br><span class="line">triton_viz.trace(demo)[(1, 1, 1)](torch.ones(4, 3))</span><br><span class="line">triton_viz.launch()</span><br></pre></td></tr></table></figure></li>
+</ol>
+<h3 id="要点2：多维指针计算"><a href="#要点2：多维指针计算" class="headerlink" title="要点2：多维指针计算"></a><font color = green>要点2：多维指针计算</font></h3><p>下面这个任务主要完成外积+relu算子的triton实现。参照pytorch的实现：</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">return</span> torch.relu(x[<span class="literal">None</span>, :] * y[:, <span class="literal">None</span>])</span><br></pre></td></tr></table></figure>
+
+<p>该任务用图形表示如下：</p>
+<p><img src="/images/image-20250605194322002.png" alt="image-20250605194322002"></p>
+<p>如下是具体的算子实现：</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">def</span> <span class="title function_">mul_relu_block_spec</span>(<span class="params">x: Float32[Tensor, <span class="string">&quot;100&quot;</span>], y: Float32[Tensor, <span class="string">&quot;90&quot;</span>]</span>) -&gt; Float32[Tensor, <span class="string">&quot;90 100&quot;</span>]:</span><br><span class="line">    <span class="keyword">return</span> torch.relu(x[<span class="literal">None</span>, :] * y[:, <span class="literal">None</span>])</span><br><span class="line"></span><br><span class="line"><span class="meta">@triton.jit</span></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">mul_relu_block_kernel</span>(<span class="params">x_ptr, y_ptr, z_ptr, N0, N1, B0: tl.constexpr, B1: tl.constexpr</span>):</span><br><span class="line">    pid_0 = tl.program_id(axis=<span class="number">0</span>)</span><br><span class="line">    pid_1 = tl.program_id(axis=<span class="number">1</span>)</span><br><span class="line"></span><br><span class="line">    x_range = tl.arange(<span class="number">0</span>, B0)[<span class="literal">None</span>, :] + pid_0 * B0</span><br><span class="line">    y_range = tl.arange(<span class="number">0</span>, B1)[:, <span class="literal">None</span>] + pid_1 * B1</span><br><span class="line">    </span><br><span class="line">    x_mask = x_range &lt; N0</span><br><span class="line">    y_mask = y_range &lt; N1</span><br><span class="line">    z_mask = x_mask &amp; y_mask</span><br><span class="line">    z_range = y_range * N0 + x_range</span><br><span class="line"></span><br><span class="line">    x = tl.load(x_ptr + x_range, x_mask)</span><br><span class="line">    y = tl.load(y_ptr + y_range, y_mask)</span><br><span class="line">    tl.store(z_ptr + z_range, tl.maximum(x * y, <span class="number">0</span>), z_mask)</span><br><span class="line">    <span class="keyword">return</span></span><br><span class="line"></span><br><span class="line">test(mul_relu_block_kernel, mul_relu_block_spec, nelem=&#123;<span class="string">&quot;N0&quot;</span>: <span class="number">100</span>, <span class="string">&quot;N1&quot;</span>: <span class="number">90</span>&#125;)</span><br></pre></td></tr></table></figure>
+
+<p>这个示例中，比较重要的细节是<strong>存储空间的位置定位</strong>，即指针计算。如下是一个比较易懂的解释：</p>
+<blockquote>
+<p>对于一个2D Tensor <code>X</code>，<code>X[i, j]</code>的内存位置为<code>&amp;X[i, j] = X + i*stride_xi + j*stride_xj</code>。因此，对于<code>A[m : m+BLOCK_SIZE_M, k:k+BLOCK_SIZE_K]</code>和<code>B[k : k+BLOCK_SIZE_K, n : n+BLOCK_SIZE_N]</code>的块指针可以用下面的伪代码定义：</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">&amp;A[m : m+BLOCK_SIZE_M, k:k+BLOCK_SIZE_K] =  a_ptr + (m : m+BLOCK_SIZE_M)[:, <span class="literal">None</span>]*A.stride(<span class="number">0</span>) + (k : k+BLOCK_SIZE_K)[<span class="literal">None</span>, :]*A.stride(<span class="number">1</span>);</span><br><span class="line">&amp;B[k : k+BLOCK_SIZE_K, n:n+BLOCK_SIZE_N] =  b_ptr + (k : k+BLOCK_SIZE_K)[:, <span class="literal">None</span>]*B.stride(<span class="number">0</span>) + (n : n+BLOCK_SIZE_N)[<span class="literal">None</span>, :]*B.stride(<span class="number">1</span>);</span><br></pre></td></tr></table></figure></blockquote>
+<p>在代码中，具体计算如下：</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">x_range = tl.arange(<span class="number">0</span>, B0)[<span class="literal">None</span>, :] + pid_0 * B0</span><br><span class="line">y_range = tl.arange(<span class="number">0</span>, B1)[:, <span class="literal">None</span>] + pid_1 * B1</span><br></pre></td></tr></table></figure>
+
+<p>这两行定位该pid需要处理的tile的x和y上的范围，其中x是一个行向量，而y是一个列向量。</p>
+<p>获取x和y的处理范围后，需要计算z的处理范围。</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">z_range = y_range * N0 + x_range</span><br></pre></td></tr></table></figure>
+
+<p>这里有两个细节：</p>
+<ul>
+<li>加法自带传播。</li>
+<li>triton的底层实现，内存是按照指针的方式获取。因此y_range需要乘以x向量的长度。</li>
+</ul>
+<h3 id="要点3：Triton的padding机制"><a href="#要点3：Triton的padding机制" class="headerlink" title="要点3：Triton的padding机制"></a><font color = green>要点3：Triton的padding机制</font></h3><p>Triton的一个重要限制是每个块必须包含2的幂次方个元素，因此如果我们想处理任何可能的输入形状，我们需要在内部对每行进行“pad”以及对内存访问操作进行保护（也就是防止越界）。</p>
+<blockquote>
+<p>这张Slide介绍了 JIT Compiled Kernel (即时编译内核)的工作原理，它展示了从 Python DSL 开始，经过 IR、PTX 到 CUBIN&#x2F;fatbinary 和 launcher.so 的多层代码生成过程。系统会通过 TRITON_CACHE_DIR 和缓存管理器(<a href="https://link.zhihu.com/?target=https://github.com/triton-lang/triton/blob/4348109b0a8e1aac748aa9b1bbbcd858e9488940/python/triton/runtime/cache.py%23L50-L71">https://github.com/triton-lang/triton/blob/4348109b0a8e1aac748aa9b1bbbcd858e9488940/python/triton/runtime/cache.py#L50-L71</a>)将编译结果保存到磁盘，并以 fatbinary (cubin) 格式内联加载。目标硬件都有各自的驱动程序，这些驱动提供了被 Python 模块封装的原生代码，并负责将 cubin 加载到 CUDA 驱动中(<a href="https://link.zhihu.com/?target=https://github.com/triton-lang/triton/blob/main/third_party/nvidia/backend/driver.c%23L389-L406">https://github.com/triton-lang/triton/blob/main/third_party&#x2F;nvidia&#x2F;backend&#x2F;driver.c#L389-L406</a>)。此外，还导出了 cuda_utils.so(<a href="https://link.zhihu.com/?target=https://github.com/triton-lang/triton/blob/main/third_party/nvidia/backend/driver.py%23L72-L86">https://github.com/triton-lang/triton/blob/main/third_party&#x2F;nvidia&#x2F;backend&#x2F;driver.py#L72-L86</a>) 和 triton_launcher.so(<a href="https://link.zhihu.com/?target=https://github.com/triton-lang/triton/blob/main/third_party/nvidia/backend/driver.py%23L413-L426">https://github.com/triton-lang/triton/blob/main/third_party&#x2F;nvidia&#x2F;backend&#x2F;driver.py#L413-L426</a>) 两个共享库，并提供了 compile_module_from_src(<a href="https://link.zhihu.com/?target=https://github.com/triton-lang/triton/blob/main/third_party/nvidia/backend/driver.py%23L48-L64">https://github.com/triton-lang/triton/blob/main/third_party&#x2F;nvidia&#x2F;backend&#x2F;driver.py#L48-L64</a>) 和 triton.runtime.build(<a href="https://link.zhihu.com/?target=https://github.com/triton-lang/triton/blob/main/python/triton/runtime/build.py%23L21-L80">https://github.com/triton-lang/triton/blob/main/python/triton/runtime/build.py#L21-L80</a>) 两个重要的代码关键点。</p>
+</blockquote>
+<p>git config –global https.<a target="_blank" rel="noopener" href="https://github.com.proxy/">https://github.com.proxy</a> “<a target="_blank" rel="noopener" href="http://192.168.56.1:7890/">http://192.168.56.1:7890</a>“</p>
+<h2 id="参考资料"><a href="#参考资料" class="headerlink" title="参考资料"></a><font color = brown>参考资料</font></h2><ol>
+<li><a target="_blank" rel="noopener" href="https://colab.research.google.com/github/srush/Triton-Puzzles/blob/main/Triton-Puzzles.ipynb#scrollTo=9f06cbdd-1c9b-4b65-ae72-69c1dc599400">Triton-Puzzles</a></li>
+<li><a target="_blank" rel="noopener" href="https://zhuanlan.zhihu.com/p/679232270">Triton入门教程</a></li>
+</ol>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/GPU/" rel="tag"># GPU</a>
+              <a href="/tags/%E7%BC%96%E8%AF%91/" rel="tag"># 编译</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2025/05/30/%E6%AF%95%E4%B8%9A%E8%AE%BE%E8%AE%A1/" rel="prev" title="毕业设计">
+      <i class="fa fa-chevron-left"></i> 毕业设计
+    </a></div>
+      <div class="post-nav-item"></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+    <div class="comments" id="gitalk-container"></div>
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%BA%E4%BB%80%E4%B9%88%E8%A6%81%E5%AD%A6%E4%B9%A0Triton%EF%BC%9F"><span class="nav-number">1.</span> <span class="nav-text">为什么要学习Triton？</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Triton%E6%BA%90%E7%A0%81%E6%9E%84%E5%BB%BA"><span class="nav-number">2.</span> <span class="nav-text">Triton源码构建</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E8%A6%81%E7%82%B92%EF%BC%9A%E5%A4%9A%E7%BB%B4%E6%8C%87%E9%92%88%E8%AE%A1%E7%AE%97"><span class="nav-number">2.1.</span> <span class="nav-text">要点2：多维指针计算</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E8%A6%81%E7%82%B93%EF%BC%9ATriton%E7%9A%84padding%E6%9C%BA%E5%88%B6"><span class="nav-number">2.2.</span> <span class="nav-text">要点3：Triton的padding机制</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%8F%82%E8%80%83%E8%B5%84%E6%96%99"><span class="nav-number">3.</span> <span class="nav-text">参考资料</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">Leon Dou</p>
+  <div class="site-description" itemprop="description">关注领域：体系结构，编译技术</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">25</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">21</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">16</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2025</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Leon Dou</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-area"></i>
+    </span>
+      <span class="post-meta-item-text">站点总字数：</span>
+    <span title="站点总字数">239k</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+      <span class="post-meta-item-text">站点阅读时长 &asymp;</span>
+    <span title="站点阅读时长">3:37</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://pisces.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Pisces</a> 强力驱动
+  </div>
+
+        
+<div class="busuanzi-count">
+  <script data-pjax async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/pjax/pjax.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+<script src="/js/bookmark.js"></script>
+
+  <script>
+var pjax = new Pjax({
+  selectors: [
+    'head title',
+    '#page-configurations',
+    '.content-wrap',
+    '.post-toc-wrap',
+    '.languages',
+    '#pjax'
+  ],
+  switches: {
+    '.post-toc-wrap': Pjax.switches.innerHTML
+  },
+  analytics: false,
+  cacheBust: false,
+  scrollTo : !CONFIG.bookmark.enable
+});
+
+window.addEventListener('pjax:success', () => {
+  document.querySelectorAll('script[data-pjax], script#page-configurations, #pjax script').forEach(element => {
+    var code = element.text || element.textContent || element.innerHTML || '';
+    var parent = element.parentNode;
+    parent.removeChild(element);
+    var script = document.createElement('script');
+    if (element.id) {
+      script.id = element.id;
+    }
+    if (element.className) {
+      script.className = element.className;
+    }
+    if (element.type) {
+      script.type = element.type;
+    }
+    if (element.src) {
+      script.src = element.src;
+      // Force synchronous loading of peripheral JS.
+      script.async = false;
+    }
+    if (element.dataset.pjax !== undefined) {
+      script.dataset.pjax = '';
+    }
+    if (code !== '') {
+      script.appendChild(document.createTextNode(code));
+    }
+    parent.appendChild(script);
+  });
+  NexT.boot.refresh();
+  // Define Motion Sequence & Bootstrap Motion.
+  if (CONFIG.motion.enable) {
+    NexT.motion.integrator
+      .init()
+      .add(NexT.motion.middleWares.subMenu)
+      .add(NexT.motion.middleWares.postList)
+      .bootstrap();
+  }
+  NexT.utils.updateSidebarPosition();
+});
+</script>
+
+
+
+
+  
+
+
+
+
+  
+<script src="/js/local-search.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+    <div id="pjax">
+  
+
+  
+
+  
+
+<link rel="stylesheet" href="//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.min.css">
+
+<script>
+NexT.utils.loadComments(document.querySelector('#gitalk-container'), () => {
+  NexT.utils.getScript('//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.min.js', () => {
+    var gitalk = new Gitalk({
+      clientID    : 'Ov23liFsw1lTgh0R8s8H',
+      clientSecret: '1f947cb0d107ba1ffbcad8c25688c075224fff36',
+      repo        : 'micropuma.github.io',
+      owner       : 'micropuma',
+      admin       : ['micropuma'],
+      id          : '3b7432af98889a416963e0fb709da845',
+        language: 'zh-CN',
+      distractionFreeMode: true
+    });
+    gitalk.render('gitalk-container');
+  }, window.Gitalk);
+});
+</script>
+
+    </div>
+</body>
+</html>
