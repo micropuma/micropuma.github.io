@@ -1,0 +1,656 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 7.3.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"example.com","root":"/","scheme":"Pisces","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":true,"show_result":true,"style":"mac"},"back2top":{"enable":true,"sidebar":false,"scrollpercent":true},"bookmark":{"enable":true,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":"gitalk","storage":true,"lazyload":false,"nav":null,"activeClass":"gitalk"},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":5,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta property="og:type" content="article">
+<meta property="og:title" content="MLIR-AIE 单核算子集成">
+<meta property="og:url" content="http://example.com/2025/06/16/MLIR-AIE-%E5%8D%95%E6%A0%B8%E7%AE%97%E5%AD%90%E9%9B%86%E6%88%90/index.html">
+<meta property="og:site_name" content="Leon&#39;s Blog">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://example.com/images/image-20250616093524804.png">
+<meta property="og:image" content="http://example.com/images/image-20250616110204366.png">
+<meta property="og:image" content="http://example.com/images/image-20250616142731464.png">
+<meta property="og:image" content="http://example.com/images/image-20250616165137721.png">
+<meta property="og:image" content="http://example.com/images/image-20250616170411349.png">
+<meta property="og:image" content="http://example.com/images/image-20250616170221045.png">
+<meta property="article:published_time" content="2025-06-16T01:32:02.000Z">
+<meta property="article:modified_time" content="2025-06-16T09:04:11.883Z">
+<meta property="article:author" content="Leon Dou">
+<meta property="article:tag" content="mlir">
+<meta property="article:tag" content="basics">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://example.com/images/image-20250616093524804.png">
+
+<link rel="canonical" href="http://example.com/2025/06/16/MLIR-AIE-%E5%8D%95%E6%A0%B8%E7%AE%97%E5%AD%90%E9%9B%86%E6%88%90/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>MLIR-AIE 单核算子集成 | Leon's Blog</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">Leon's Blog</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">分享一点有趣的技术</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocapitalize="off"
+           placeholder="搜索..." spellcheck="false"
+           type="search" class="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result">
+  <div id="no-result">
+    <i class="fa fa-spinner fa-pulse fa-5x fa-fw"></i>
+  </div>
+</div>
+
+    </div>
+  </div>
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+  <div class="reading-progress-bar"></div>
+  <a role="button" class="book-mark-link book-mark-link-fixed"></a>
+
+  <a href="https://github.com/micropuma" class="github-corner" title="Follow me on GitHub" aria-label="Follow me on GitHub" rel="noopener" target="_blank"><svg width="80" height="80" viewBox="0 0 250 250" aria-hidden="true"><path d="M0,0 L115,115 L130,115 L142,142 L250,250 L250,0 Z"></path><path d="M128.3,109.0 C113.8,99.7 119.0,89.6 119.0,89.6 C122.0,82.7 120.5,78.6 120.5,78.6 C119.2,72.0 123.4,76.3 123.4,76.3 C127.3,80.9 125.5,87.3 125.5,87.3 C122.9,97.6 130.6,101.9 134.4,103.2" fill="currentColor" style="transform-origin: 130px 106px;" class="octo-arm"></path><path d="M115.0,115.0 C114.9,115.1 118.7,116.5 119.8,115.4 L133.7,101.6 C136.9,99.2 139.9,98.4 142.2,98.6 C133.8,88.0 127.5,74.4 143.8,58.0 C148.5,53.4 154.0,51.2 159.7,51.0 C160.3,49.4 163.2,43.6 171.4,40.1 C171.4,40.1 176.1,42.5 178.8,56.2 C183.1,58.6 187.2,61.8 190.9,65.4 C194.5,69.0 197.7,73.2 200.1,77.6 C213.8,80.2 216.3,84.9 216.3,84.9 C212.7,93.1 206.9,96.0 205.4,96.6 C205.1,102.4 203.0,107.8 198.3,112.5 C181.9,128.9 168.3,122.5 157.7,114.1 C157.9,116.9 156.7,120.9 152.7,124.9 L141.0,136.5 C139.8,137.7 141.6,141.9 141.8,141.8 Z" fill="currentColor" class="octo-body"></path></svg></a>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://example.com/2025/06/16/MLIR-AIE-%E5%8D%95%E6%A0%B8%E7%AE%97%E5%AD%90%E9%9B%86%E6%88%90/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="Leon Dou">
+      <meta itemprop="description" content="关注领域：体系结构，编译技术">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Leon's Blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          MLIR-AIE 单核算子集成
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+              
+
+              <time title="创建时间：2025-06-16 09:32:02 / 修改时间：17:04:11" itemprop="dateCreated datePublished" datetime="2025-06-16T09:32:02+08:00">2025-06-16</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/%E7%BC%96%E8%AF%91%E6%8A%80%E6%9C%AF/" itemprop="url" rel="index"><span itemprop="name">编译技术</span></a>
+                </span>
+                  ，
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/%E7%BC%96%E8%AF%91%E6%8A%80%E6%9C%AF/mlir/" itemprop="url" rel="index"><span itemprop="name">mlir</span></a>
+                </span>
+                  ，
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/%E7%BC%96%E8%AF%91%E6%8A%80%E6%9C%AF/mlir/basics/" itemprop="url" rel="index"><span itemprop="name">basics</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span><br>
+            <span class="post-meta-item" title="本文字数">
+              <span class="post-meta-item-icon">
+                <i class="far fa-file-word"></i>
+              </span>
+                <span class="post-meta-item-text">本文字数：</span>
+              <span>8.6k</span>
+            </span>
+            <span class="post-meta-item" title="阅读时长">
+              <span class="post-meta-item-icon">
+                <i class="far fa-clock"></i>
+              </span>
+                <span class="post-meta-item-text">阅读时长 &asymp;</span>
+              <span>8 分钟</span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p><img src="/images/image-20250616093524804.png" alt="image-20250616093524804"></p>
+<span id="more"></span>
+
+<blockquote>
+<p>本篇博客主要是讲解MLIR-AIE项目的手工算子开发流程以及流程集成。</p>
+</blockquote>
+<h2 id="算子集成流程"><a href="#算子集成流程" class="headerlink" title="算子集成流程"></a><font color = brown>算子集成流程</font></h2><h3 id="单核算子perf流程"><a href="#单核算子perf流程" class="headerlink" title="单核算子perf流程"></a><font color = green>单核算子perf流程</font></h3><p>MLIR-AIE项目在单核算子开发中，提供了makefile脚本，该脚本可以用于生成可执行.o文件，以及借助于xca_udm_dbg闭源工具进行性能测试。详细Makefile文件如下所示：</p>
+<figure class="highlight makefile"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">include</span> ../../makefile-common</span><br><span class="line"></span><br><span class="line"><span class="meta"><span class="keyword">.PHONY</span>: build gui sim</span></span><br><span class="line"></span><br><span class="line"><span class="section">mlir: kernel.o</span></span><br><span class="line"></span><br><span class="line"><span class="section">%.o: %.cc</span></span><br><span class="line">	xchesscc $&#123;CHESSCC_FLAGS&#125; -c <span class="variable">$&lt;</span></span><br><span class="line"></span><br><span class="line"><span class="section">build:</span></span><br><span class="line">	xchessmk $&#123;CHESS_FLAGS&#125; test.prx</span><br><span class="line"></span><br><span class="line"><span class="section">gui:</span></span><br><span class="line">	xchessde $&#123;CHESS_FLAGS&#125; test.prx &amp;</span><br><span class="line"></span><br><span class="line"><span class="section">sim:</span></span><br><span class="line">	xca_udm_dbg $&#123;CHESS_FLAGS&#125; -t sim.tcl</span><br><span class="line"></span><br><span class="line"><span class="section">clean:</span></span><br><span class="line">	rm -rf work kernel.o test.prf</span><br></pre></td></tr></table></figure>
+
+<p>上述Makefile的使用顺序，是先运行<code>make build</code>，然后运行<code>make sim</code>。</p>
+<ul>
+<li><p><code>make build</code>生成work文件夹，同时生成<code>test.prx</code>。如下是一个<code>test.prx</code>的demo：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">&lt;project name=&quot;test&quot; processor=&quot;me&quot;&gt;</span><br><span class="line">    &lt;file type=&quot;c&quot; name=&quot;kernel.cc&quot; path=&quot;&quot;/&gt;</span><br><span class="line">    &lt;file type=&quot;c&quot; name=&quot;test.cc&quot; path=&quot;&quot;/&gt;</span><br><span class="line">    &lt;option id=&quot;project.name&quot; value=&quot;test&quot;/&gt;</span><br><span class="line">    &lt;option id=&quot;project.type&quot; value=&quot;exe&quot;/&gt;</span><br><span class="line">&lt;/project&gt;</span><br></pre></td></tr></table></figure>
+
+<p>test.prx是项目配置文件，定义了如何构建一个名为<code>test</code>的可执行程序。它指定了生成的可执行文件是<code>test.exe</code>，构建所需的源文件是项目根目录下的<code>kernel.cc</code>和<code>test.cc</code>。</p>
+</li>
+<li><p><code>make sim</code>是模拟仿真流程</p>
+</li>
+</ul>
+<h2 id="算子开发指南"><a href="#算子开发指南" class="headerlink" title="算子开发指南"></a><font color = brown>算子开发指南</font></h2><h3 id="完整的算子开发流程"><a href="#完整的算子开发流程" class="headerlink" title="完整的算子开发流程"></a><font color = green>完整的算子开发流程</font></h3><p>这一部分主要参考<a target="_blank" rel="noopener" href="https://xilinx.github.io/mlir-aie/AIEVectorization.html">MLIR-AIE向量化指南</a>。</p>
+<p><img src="/images/image-20250616110204366.png" alt="image-20250616110204366"></p>
+<p>上图是AMD的conference中展示的一个单核算子优化（<strong>向量化</strong>）+代码生成的workflow。这一章节尝试拼接各种工具，打通上述workflow。首先是我们的输入代码：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">void</span> <span class="title function_">conv2d</span><span class="params">(<span class="type">int</span> img_in[<span class="number">17</span>][<span class="number">272</span>], <span class="type">int</span> kernel_coeff[<span class="number">3</span>][<span class="number">3</span>], <span class="type">int</span> img_out[<span class="number">16</span>][<span class="number">256</span>])</span> &#123;</span><br><span class="line">    <span class="keyword">for</span>(<span class="type">int</span> r = <span class="number">0</span>; r &lt; <span class="number">16</span>; r++)</span><br><span class="line">        <span class="keyword">for</span>(<span class="type">int</span> c = <span class="number">0</span>; c &lt; <span class="number">256</span>; c++) &#123;</span><br><span class="line">            <span class="type">int</span> acc = <span class="number">0</span>;</span><br><span class="line">            <span class="keyword">for</span>(<span class="type">int</span> i = <span class="number">0</span>; i &lt; <span class="number">3</span>; i++)</span><br><span class="line">                <span class="keyword">for</span>(<span class="type">int</span> j = <span class="number">0</span>; j &lt; <span class="number">3</span>; j++) &#123;</span><br><span class="line">                    acc += img_in[r+i][c+j] * kernel_coeff[i][j];</span><br><span class="line">                &#125;</span><br><span class="line">            img_out[r][c] = acc;</span><br><span class="line">        &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>这个kernel的运算逻辑十分简单，就是做简单的3x3的卷积运算，卷积运算见下图所示：</p>
+<p><img src="/images/image-20250616142731464.png" alt="image-20250616142731464"></p>
+<p>明确输入后，我们需要准备好必要的项目依赖。整个单核算子生成的flow主要依赖于<code>MLIR-AIE</code>和<code>Polygeist</code>两个项目。这里我使用的pipeline脚本如下：</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">cgeist conv2D.c --function=conv2d -S --raise-scf-to-affine</span><br><span class="line"></span><br><span class="line">aie-opt conv2D.mlir \</span><br><span class="line">        --affine-loop-unroll=&quot;unroll-full unroll-full-threshold=3&quot; \</span><br><span class="line">        --canonicalize -affine-super-vectorize=&quot;virtual-vector-size=8 \</span><br><span class="line">        vectorize-reductions&quot; --aie-vectorize \</span><br><span class="line">        -o result1.mlir</span><br><span class="line"></span><br><span class="line">aie-translate --aievec-to-cpp result1.mlir \</span><br><span class="line">    2&gt;&amp;1 | tee kernel.cc</span><br></pre></td></tr></table></figure>
+
+<p>注意到，这里总共使用了三个工具：</p>
+<ul>
+<li><code>cgeist</code>工具支持将c代码接入mlir系统中，支持的dailect有<code>scf</code>和<code>affine</code>，同时也支持使用多面体优化技术优化循环。在这个流程中目前暂不考虑多面体优化。</li>
+<li><code>aie-opt</code>工具中包含多种优化pass，这里主要关注循环展开和循环向量化优化pass。</li>
+<li><code>aie-translate</code>工具支持代码生成，这里选用<code>--aievec-to-cpp</code>选项来翻译成对应的c++代码。</li>
+</ul>
+<p>整个流程的过程性文件以及最终结果如下：</p>
+<ul>
+<li><p>affine mlir文件</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line">func.func @<span class="built_in">conv2d</span>(%arg0: memref&lt;?x272xi32&gt;, %arg1: memref&lt;?x3xi32&gt;, %arg2: memref&lt;?x256xi32&gt;) attributes &#123;llvm.linkage = <span class="meta">#llvm.linkage<span class="string">&lt;external&gt;</span>&#125; &#123;</span></span><br><span class="line">  %c0_i32 = arith.constant <span class="number">0</span> : i32</span><br><span class="line">  affine.<span class="keyword">for</span> %arg3 = <span class="number">0</span> to <span class="number">16</span> &#123;</span><br><span class="line">    affine.<span class="keyword">for</span> %arg4 = <span class="number">0</span> to <span class="number">256</span> &#123;</span><br><span class="line">      %<span class="number">0</span> = affine.<span class="keyword">for</span> %arg5 = <span class="number">0</span> to <span class="number">3</span> <span class="built_in">iter_args</span>(%arg6 = %c0_i32) -&gt; (i32) &#123;</span><br><span class="line">        %<span class="number">1</span> = affine.<span class="keyword">for</span> %arg7 = <span class="number">0</span> to <span class="number">3</span> <span class="built_in">iter_args</span>(%arg8 = %arg6) -&gt; (i32) &#123;</span><br><span class="line">          %<span class="number">2</span> = affine.load %arg0[%arg3 + %arg5, %arg4 + %arg7] : memref&lt;?x272xi32&gt;</span><br><span class="line">          %<span class="number">3</span> = affine.load %arg1[%arg5, %arg7] : memref&lt;?x3xi32&gt;</span><br><span class="line">          %<span class="number">4</span> = arith.muli %<span class="number">2</span>, %<span class="number">3</span> : i32</span><br><span class="line">          %<span class="number">5</span> = arith.addi %arg8, %<span class="number">4</span> : i32</span><br><span class="line">          affine.yield %<span class="number">5</span> : i32</span><br><span class="line">        &#125;</span><br><span class="line">        affine.yield %<span class="number">1</span> : i32</span><br><span class="line">      &#125;</span><br><span class="line">      affine.store %<span class="number">0</span>, %arg2[%arg3, %arg4] : memref&lt;?x256xi32&gt;</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">  <span class="keyword">return</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>aievec硬件相关的mlir文件</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">module</span> &#123;</span><br><span class="line">  func.func @<span class="built_in">conv2d</span>(%arg0: memref&lt;?x272xi32&gt;, %arg1: memref&lt;?x3xi32&gt;, %arg2: memref&lt;?x256xi32&gt;) attributes &#123;llvm.linkage = <span class="meta">#llvm.linkage<span class="string">&lt;external&gt;</span>&#125; &#123;</span></span><br><span class="line">    %c2 = arith.constant <span class="number">2</span> : index</span><br><span class="line">    %c0 = arith.constant <span class="number">0</span> : index</span><br><span class="line">    %c0_i32 = arith.constant <span class="number">0</span> : i32</span><br><span class="line">    %<span class="number">0</span> = aievec.upd %arg1[%c0, %c0] &#123;index = <span class="number">0</span> : i8, offset = <span class="number">0</span> : i32&#125; : memref&lt;?x3xi32&gt;, vector&lt;<span class="number">8</span>xi32&gt;</span><br><span class="line">    %<span class="number">1</span> = aievec.upd %arg1[%c2, %c2] &#123;index = <span class="number">0</span> : i8, offset = <span class="number">0</span> : i32&#125; : memref&lt;?x3xi32&gt;, vector&lt;<span class="number">8</span>xi32&gt;</span><br><span class="line">    %c0_0 = arith.constant <span class="number">0</span> : index</span><br><span class="line">    %c16 = arith.constant <span class="number">16</span> : index</span><br><span class="line">    %c1 = arith.constant <span class="number">1</span> : index</span><br><span class="line">    scf.<span class="keyword">for</span> %arg3 = %c0_0 to %c16 step %c1 &#123;</span><br><span class="line">      %c1_1 = arith.constant <span class="number">1</span> : index</span><br><span class="line">      %<span class="number">2</span> = arith.addi %arg3, %c1_1 : index</span><br><span class="line">      %c2_2 = arith.constant <span class="number">2</span> : index</span><br><span class="line">      %<span class="number">3</span> = arith.addi %arg3, %c2_2 : index</span><br><span class="line">      %c0_3 = arith.constant <span class="number">0</span> : index</span><br><span class="line">      %c256 = arith.constant <span class="number">256</span> : index</span><br><span class="line">      %c8 = arith.constant <span class="number">8</span> : index</span><br><span class="line">      scf.<span class="keyword">for</span> %arg4 = %c0_3 to %c256 step %c8 &#123;</span><br><span class="line">        %<span class="number">4</span> = aievec.upd %arg0[%arg3, %arg4] &#123;index = <span class="number">0</span> : i8, offset = <span class="number">0</span> : i32&#125; : memref&lt;?x272xi32&gt;, vector&lt;<span class="number">16</span>xi32&gt;</span><br><span class="line">        %<span class="number">5</span> = aievec_aie<span class="number">1.</span>mul %<span class="number">4</span>, %<span class="number">0</span> &#123;xoffsets = <span class="string">&quot;0x76543210&quot;</span>, xstart = <span class="string">&quot;0&quot;</span>, zoffsets = <span class="string">&quot;0x00000000&quot;</span>, zstart = <span class="string">&quot;0&quot;</span>&#125; : vector&lt;<span class="number">16</span>xi32&gt;, vector&lt;<span class="number">8</span>xi32&gt;, vector&lt;<span class="number">8</span>xi80&gt;</span><br><span class="line">        %c1_4 = arith.constant <span class="number">1</span> : index</span><br><span class="line">        %<span class="number">6</span> = arith.addi %arg4, %c1_4 : index</span><br><span class="line">        %<span class="number">7</span> = aievec.upd %arg0[%arg3, %<span class="number">6</span>], %<span class="number">4</span> &#123;index = <span class="number">1</span> : i8, offset = <span class="number">224</span> : i32&#125; : memref&lt;?x272xi32&gt;, vector&lt;<span class="number">16</span>xi32&gt;</span><br><span class="line">        %<span class="number">8</span> = aievec_aie<span class="number">1.</span>mac %<span class="number">7</span>, %<span class="number">0</span>, %<span class="number">5</span> &#123;xoffsets = <span class="string">&quot;0x76543210&quot;</span>, xstart = <span class="string">&quot;1&quot;</span>, zoffsets = <span class="string">&quot;0x00000000&quot;</span>, zstart = <span class="string">&quot;1&quot;</span>&#125; : vector&lt;<span class="number">16</span>xi32&gt;, vector&lt;<span class="number">8</span>xi32&gt;, vector&lt;<span class="number">8</span>xi80&gt;</span><br><span class="line">        %<span class="number">9</span> = aievec_aie<span class="number">1.</span>mac %<span class="number">7</span>, %<span class="number">0</span>, %<span class="number">8</span> &#123;xoffsets = <span class="string">&quot;0x76543210&quot;</span>, xstart = <span class="string">&quot;2&quot;</span>, zoffsets = <span class="string">&quot;0x00000000&quot;</span>, zstart = <span class="string">&quot;2&quot;</span>&#125; : vector&lt;<span class="number">16</span>xi32&gt;, vector&lt;<span class="number">8</span>xi32&gt;, vector&lt;<span class="number">8</span>xi80&gt;</span><br><span class="line">        %<span class="number">10</span> = aievec.upd %arg0[%<span class="number">2</span>, %arg4] &#123;index = <span class="number">0</span> : i8, offset = <span class="number">0</span> : i32&#125; : memref&lt;?x272xi32&gt;, vector&lt;<span class="number">16</span>xi32&gt;</span><br><span class="line">        %<span class="number">11</span> = aievec_aie<span class="number">1.</span>mac %<span class="number">10</span>, %<span class="number">0</span>, %<span class="number">9</span> &#123;xoffsets = <span class="string">&quot;0x76543210&quot;</span>, xstart = <span class="string">&quot;0&quot;</span>, zoffsets = <span class="string">&quot;0x00000000&quot;</span>, zstart = <span class="string">&quot;3&quot;</span>&#125; : vector&lt;<span class="number">16</span>xi32&gt;, vector&lt;<span class="number">8</span>xi32&gt;, vector&lt;<span class="number">8</span>xi80&gt;</span><br><span class="line">        %<span class="number">12</span> = aievec.upd %arg0[%<span class="number">2</span>, %<span class="number">6</span>], %<span class="number">10</span> &#123;index = <span class="number">1</span> : i8, offset = <span class="number">224</span> : i32&#125; : memref&lt;?x272xi32&gt;, vector&lt;<span class="number">16</span>xi32&gt;</span><br><span class="line">        %<span class="number">13</span> = aievec_aie<span class="number">1.</span>mac %<span class="number">12</span>, %<span class="number">0</span>, %<span class="number">11</span> &#123;xoffsets = <span class="string">&quot;0x76543210&quot;</span>, xstart = <span class="string">&quot;1&quot;</span>, zoffsets = <span class="string">&quot;0x00000000&quot;</span>, zstart = <span class="string">&quot;4&quot;</span>&#125; : vector&lt;<span class="number">16</span>xi32&gt;, vector&lt;<span class="number">8</span>xi32&gt;, vector&lt;<span class="number">8</span>xi80&gt;</span><br><span class="line">        %<span class="number">14</span> = aievec_aie<span class="number">1.</span>mac %<span class="number">12</span>, %<span class="number">0</span>, %<span class="number">13</span> &#123;xoffsets = <span class="string">&quot;0x76543210&quot;</span>, xstart = <span class="string">&quot;2&quot;</span>, zoffsets = <span class="string">&quot;0x00000000&quot;</span>, zstart = <span class="string">&quot;5&quot;</span>&#125; : vector&lt;<span class="number">16</span>xi32&gt;, vector&lt;<span class="number">8</span>xi32&gt;, vector&lt;<span class="number">8</span>xi80&gt;</span><br><span class="line">        %<span class="number">15</span> = aievec.upd %arg0[%<span class="number">3</span>, %arg4] &#123;index = <span class="number">0</span> : i8, offset = <span class="number">0</span> : i32&#125; : memref&lt;?x272xi32&gt;, vector&lt;<span class="number">16</span>xi32&gt;</span><br><span class="line">        %<span class="number">16</span> = aievec_aie<span class="number">1.</span>mac %<span class="number">15</span>, %<span class="number">0</span>, %<span class="number">14</span> &#123;xoffsets = <span class="string">&quot;0x76543210&quot;</span>, xstart = <span class="string">&quot;0&quot;</span>, zoffsets = <span class="string">&quot;0x00000000&quot;</span>, zstart = <span class="string">&quot;6&quot;</span>&#125; : vector&lt;<span class="number">16</span>xi32&gt;, vector&lt;<span class="number">8</span>xi32&gt;, vector&lt;<span class="number">8</span>xi80&gt;</span><br><span class="line">        %<span class="number">17</span> = aievec.upd %arg0[%<span class="number">3</span>, %<span class="number">6</span>], %<span class="number">15</span> &#123;index = <span class="number">1</span> : i8, offset = <span class="number">224</span> : i32&#125; : memref&lt;?x272xi32&gt;, vector&lt;<span class="number">16</span>xi32&gt;</span><br><span class="line">        %<span class="number">18</span> = aievec_aie<span class="number">1.</span>mac %<span class="number">17</span>, %<span class="number">0</span>, %<span class="number">16</span> &#123;xoffsets = <span class="string">&quot;0x76543210&quot;</span>, xstart = <span class="string">&quot;1&quot;</span>, zoffsets = <span class="string">&quot;0x00000000&quot;</span>, zstart = <span class="string">&quot;7&quot;</span>&#125; : vector&lt;<span class="number">16</span>xi32&gt;, vector&lt;<span class="number">8</span>xi32&gt;, vector&lt;<span class="number">8</span>xi80&gt;</span><br><span class="line">        %<span class="number">19</span> = aievec_aie<span class="number">1.</span>mac %<span class="number">17</span>, %<span class="number">1</span>, %<span class="number">18</span> &#123;xoffsets = <span class="string">&quot;0x76543210&quot;</span>, xstart = <span class="string">&quot;2&quot;</span>, zoffsets = <span class="string">&quot;0x00000000&quot;</span>, zstart = <span class="string">&quot;0&quot;</span>&#125; : vector&lt;<span class="number">16</span>xi32&gt;, vector&lt;<span class="number">8</span>xi32&gt;, vector&lt;<span class="number">8</span>xi80&gt;</span><br><span class="line">        %<span class="number">20</span> = aievec.srs %<span class="number">19</span>, %c0_i32 : vector&lt;<span class="number">8</span>xi80&gt;, i32, vector&lt;<span class="number">8</span>xi32&gt;</span><br><span class="line">        vector.transfer_write %<span class="number">20</span>, %arg2[%arg3, %arg4] : vector&lt;<span class="number">8</span>xi32&gt;, memref&lt;?x256xi32&gt;</span><br><span class="line">      &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span></span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>最终翻译出来的cpp文件</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="keyword">define</span> __AIENGINE__ 1</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> NOCPP</span></span><br><span class="line"></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;stdint.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;stdio.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;stdlib.h&gt;</span></span></span><br><span class="line"></span><br><span class="line"><span class="keyword">extern</span> <span class="string">&quot;C&quot;</span> &#123;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="type">void</span> <span class="title">conv2d</span><span class="params">(<span class="type">int32_t</span> * restrict v4, <span class="type">size_t</span> m1, <span class="type">int32_t</span> * restrict v5, <span class="type">size_t</span> m2, <span class="type">int32_t</span> * restrict v6, <span class="type">size_t</span> m3)</span> </span>&#123;</span><br><span class="line">  <span class="type">size_t</span> v7 = <span class="number">2</span>;</span><br><span class="line">  <span class="type">size_t</span> v8 = <span class="number">0</span>;</span><br><span class="line">  <span class="type">int32_t</span> v9 = <span class="number">0</span>;</span><br><span class="line">  v8int32 v10 = *(v8int32 *)(v5 + <span class="number">3</span>*v8+v8);</span><br><span class="line">  v8int32 v11 = *(v8int32 *)(v5 + <span class="number">3</span>*v7+v7);</span><br><span class="line">  <span class="type">size_t</span> v12 = <span class="number">0</span>;</span><br><span class="line">  <span class="type">size_t</span> v13 = <span class="number">16</span>;</span><br><span class="line">  <span class="type">size_t</span> v14 = <span class="number">1</span>;</span><br><span class="line">  <span class="keyword">for</span> (<span class="type">size_t</span> v15 = v12; v15 &lt; v13; v15 += v14)</span><br><span class="line">  <span class="function">chess_prepare_for_pipelining</span></span><br><span class="line"><span class="function">  <span class="title">chess_loop_range</span><span class="params">(<span class="number">16</span>, <span class="number">16</span>)</span></span></span><br><span class="line"><span class="function">  </span>&#123;</span><br><span class="line">    <span class="type">size_t</span> v16 = <span class="number">1</span>;</span><br><span class="line">    <span class="type">size_t</span> v17 = v15 + v16;</span><br><span class="line">    <span class="type">size_t</span> v18 = <span class="number">2</span>;</span><br><span class="line">    <span class="type">size_t</span> v19 = v15 + v18;</span><br><span class="line">    <span class="type">size_t</span> v20 = <span class="number">0</span>;</span><br><span class="line">    <span class="type">size_t</span> v21 = <span class="number">256</span>;</span><br><span class="line">    <span class="type">size_t</span> v22 = <span class="number">8</span>;</span><br><span class="line">    <span class="keyword">for</span> (<span class="type">size_t</span> v23 = v20; v23 &lt; v21; v23 += v22)</span><br><span class="line">    <span class="function">chess_prepare_for_pipelining</span></span><br><span class="line"><span class="function">    <span class="title">chess_loop_range</span><span class="params">(<span class="number">32</span>, <span class="number">32</span>)</span></span></span><br><span class="line"><span class="function">    </span>&#123;</span><br><span class="line">      v16int32 v24;</span><br><span class="line">      <span class="type">int32_t</span> * restrict r_v24_v4 = v4;</span><br><span class="line">      v24 = <span class="built_in">upd_w</span>(v24, <span class="number">0</span>, *(v8int32 *)(r_v24_v4 + <span class="number">272</span>*v15+v23));</span><br><span class="line">      v8acc80 v25 = <span class="built_in">lmul8</span>(v24, <span class="number">0</span>, <span class="number">0x76543210</span>, v10, <span class="number">0</span>, <span class="number">0x00000000</span>);</span><br><span class="line">      <span class="type">size_t</span> v26 = <span class="number">1</span>;</span><br><span class="line">      <span class="type">size_t</span> v27 = v23 + v26;</span><br><span class="line">      v24 = <span class="built_in">upd_w</span>(v24, <span class="number">1</span>, *(v8int32 *)(r_v24_v4 + <span class="number">272</span>*v15+v27 + <span class="number">7</span>));</span><br><span class="line">      v25 = <span class="built_in">lmac8</span>(v25, v24, <span class="number">1</span>, <span class="number">0x76543210</span>, v10, <span class="number">1</span>, <span class="number">0x00000000</span>);</span><br><span class="line">      v25 = <span class="built_in">lmac8</span>(v25, v24, <span class="number">2</span>, <span class="number">0x76543210</span>, v10, <span class="number">2</span>, <span class="number">0x00000000</span>);</span><br><span class="line">      v16int32 v28;</span><br><span class="line">      <span class="type">int32_t</span> * restrict r_v28_v4 = v4;</span><br><span class="line">      v28 = <span class="built_in">upd_w</span>(v28, <span class="number">0</span>, *(v8int32 *)(r_v28_v4 + <span class="number">272</span>*v17+v23));</span><br><span class="line">      v25 = <span class="built_in">lmac8</span>(v25, v28, <span class="number">0</span>, <span class="number">0x76543210</span>, v10, <span class="number">3</span>, <span class="number">0x00000000</span>);</span><br><span class="line">      v28 = <span class="built_in">upd_w</span>(v28, <span class="number">1</span>, *(v8int32 *)(r_v28_v4 + <span class="number">272</span>*v17+v27 + <span class="number">7</span>));</span><br><span class="line">      v25 = <span class="built_in">lmac8</span>(v25, v28, <span class="number">1</span>, <span class="number">0x76543210</span>, v10, <span class="number">4</span>, <span class="number">0x00000000</span>);</span><br><span class="line">      v25 = <span class="built_in">lmac8</span>(v25, v28, <span class="number">2</span>, <span class="number">0x76543210</span>, v10, <span class="number">5</span>, <span class="number">0x00000000</span>);</span><br><span class="line">      v16int32 v29;</span><br><span class="line">      <span class="type">int32_t</span> * restrict r_v29_v4 = v4;</span><br><span class="line">      v29 = <span class="built_in">upd_w</span>(v29, <span class="number">0</span>, *(v8int32 *)(r_v29_v4 + <span class="number">272</span>*v19+v23));</span><br><span class="line">      v25 = <span class="built_in">lmac8</span>(v25, v29, <span class="number">0</span>, <span class="number">0x76543210</span>, v10, <span class="number">6</span>, <span class="number">0x00000000</span>);</span><br><span class="line">      v29 = <span class="built_in">upd_w</span>(v29, <span class="number">1</span>, *(v8int32 *)(r_v29_v4 + <span class="number">272</span>*v19+v27 + <span class="number">7</span>));</span><br><span class="line">      v25 = <span class="built_in">lmac8</span>(v25, v29, <span class="number">1</span>, <span class="number">0x76543210</span>, v10, <span class="number">7</span>, <span class="number">0x00000000</span>);</span><br><span class="line">      v25 = <span class="built_in">lmac8</span>(v25, v29, <span class="number">2</span>, <span class="number">0x76543210</span>, v11, <span class="number">0</span>, <span class="number">0x00000000</span>);</span><br><span class="line">      v8int32 v30 = <span class="built_in">srs</span>(v25, v9);</span><br><span class="line">      *(v8int32 *)(v6 + <span class="number">256</span>*v15+v23) = v30;</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">  <span class="keyword">return</span>;</span><br><span class="line">&#125;</span><br><span class="line">&#125; <span class="comment">// extern &quot;C&quot;</span></span><br></pre></td></tr></table></figure></li>
+</ul>
+<p>由此便是一个完整的算子代码生成流程。</p>
+<h3 id="AI引擎intrinsic指南"><a href="#AI引擎intrinsic指南" class="headerlink" title="AI引擎intrinsic指南"></a><font color = green>AI引擎intrinsic指南</font></h3><p>这一部分主要参考<a target="_blank" rel="noopener" href="https://download.amd.com/docnav/aiengine/xilinx2025_1/aiengine_intrinsics/intrinsics/index.html">AI引擎intrinsics指南</a>和<a target="_blank" rel="noopener" href="https://download.amd.com/docnav/aiengine/xilinx2023_2/aiengine_api/aie_api/doc/group__group__mmul.html">AI Engine API用户手册</a>。原理性质的资料参考<a target="_blank" rel="noopener" href="https://docs.amd.com/r/en-US/ug1079-ai-engine-kernel-coding/Single-Kernel-Programming-using-Intrinsics">AI Engine Kernel and Graph Programming Guide</a>和<a target="_blank" rel="noopener" href="https://docs.amd.com/r/en-US/ug1079-ai-engine-kernel-coding/Vector-Register-Lane-Permutations">Vector Register Lane</a>。由于<code>MLIR-AIE</code>处于实验性工具，上述的算子代码生成流程尚存在众多问题。具体表现为：</p>
+<ul>
+<li><p>sim的时候memory没有对齐</p>
+<p><img src="/images/image-20250616165137721.png" alt="image-20250616165137721"></p>
+</li>
+</ul>
+<p>作为工具开发者，要想修复现有编译链条的bug，需要能够读懂最终生成的代码，并定位到错误来源。AI引擎开发有两个层级：<strong>AIE API</strong>和<strong>AI intrinsic</strong>。这一章节主要解读<strong>AI intrinsic</strong>提供的指令集。指令集的解读主要分为如下几个层面：数据类型，操作集合。</p>
+<h4 id="数据类型"><a href="#数据类型" class="headerlink" title="数据类型"></a>数据类型</h4><h4 id="操作集合"><a href="#操作集合" class="headerlink" title="操作集合"></a>操作集合</h4><p><code>lmul8()</code></p>
+<p><img src="/images/image-20250616170411349.png" alt="image-20250616170411349"></p>
+<p><code>upd_w()</code></p>
+<p><img src="/images/image-20250616170221045.png" alt="image-20250616170221045"></p>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/mlir/" rel="tag"># mlir</a>
+              <a href="/tags/basics/" rel="tag"># basics</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2025/06/07/FlagGems%E5%BC%80%E6%BA%90%E9%A1%B9%E7%9B%AE/" rel="prev" title="FlagGems开源项目">
+      <i class="fa fa-chevron-left"></i> FlagGems开源项目
+    </a></div>
+      <div class="post-nav-item"></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+    <div class="comments" id="gitalk-container"></div>
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%AE%97%E5%AD%90%E9%9B%86%E6%88%90%E6%B5%81%E7%A8%8B"><span class="nav-number">1.</span> <span class="nav-text">算子集成流程</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%8D%95%E6%A0%B8%E7%AE%97%E5%AD%90perf%E6%B5%81%E7%A8%8B"><span class="nav-number">1.1.</span> <span class="nav-text">单核算子perf流程</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%AE%97%E5%AD%90%E5%BC%80%E5%8F%91%E6%8C%87%E5%8D%97"><span class="nav-number">2.</span> <span class="nav-text">算子开发指南</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%AE%8C%E6%95%B4%E7%9A%84%E7%AE%97%E5%AD%90%E5%BC%80%E5%8F%91%E6%B5%81%E7%A8%8B"><span class="nav-number">2.1.</span> <span class="nav-text">完整的算子开发流程</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#AI%E5%BC%95%E6%93%8Eintrinsic%E6%8C%87%E5%8D%97"><span class="nav-number">2.2.</span> <span class="nav-text">AI引擎intrinsic指南</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#%E6%95%B0%E6%8D%AE%E7%B1%BB%E5%9E%8B"><span class="nav-number">2.2.1.</span> <span class="nav-text">数据类型</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E6%93%8D%E4%BD%9C%E9%9B%86%E5%90%88"><span class="nav-number">2.2.2.</span> <span class="nav-text">操作集合</span></a></li></ol></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">Leon Dou</p>
+  <div class="site-description" itemprop="description">关注领域：体系结构，编译技术</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">28</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">23</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">17</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2025</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Leon Dou</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-area"></i>
+    </span>
+      <span class="post-meta-item-text">站点总字数：</span>
+    <span title="站点总字数">254k</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+      <span class="post-meta-item-text">站点阅读时长 &asymp;</span>
+    <span title="站点阅读时长">3:51</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://pisces.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Pisces</a> 强力驱动
+  </div>
+
+        
+<div class="busuanzi-count">
+  <script data-pjax async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/pjax/pjax.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+<script src="/js/bookmark.js"></script>
+
+  <script>
+var pjax = new Pjax({
+  selectors: [
+    'head title',
+    '#page-configurations',
+    '.content-wrap',
+    '.post-toc-wrap',
+    '.languages',
+    '#pjax'
+  ],
+  switches: {
+    '.post-toc-wrap': Pjax.switches.innerHTML
+  },
+  analytics: false,
+  cacheBust: false,
+  scrollTo : !CONFIG.bookmark.enable
+});
+
+window.addEventListener('pjax:success', () => {
+  document.querySelectorAll('script[data-pjax], script#page-configurations, #pjax script').forEach(element => {
+    var code = element.text || element.textContent || element.innerHTML || '';
+    var parent = element.parentNode;
+    parent.removeChild(element);
+    var script = document.createElement('script');
+    if (element.id) {
+      script.id = element.id;
+    }
+    if (element.className) {
+      script.className = element.className;
+    }
+    if (element.type) {
+      script.type = element.type;
+    }
+    if (element.src) {
+      script.src = element.src;
+      // Force synchronous loading of peripheral JS.
+      script.async = false;
+    }
+    if (element.dataset.pjax !== undefined) {
+      script.dataset.pjax = '';
+    }
+    if (code !== '') {
+      script.appendChild(document.createTextNode(code));
+    }
+    parent.appendChild(script);
+  });
+  NexT.boot.refresh();
+  // Define Motion Sequence & Bootstrap Motion.
+  if (CONFIG.motion.enable) {
+    NexT.motion.integrator
+      .init()
+      .add(NexT.motion.middleWares.subMenu)
+      .add(NexT.motion.middleWares.postList)
+      .bootstrap();
+  }
+  NexT.utils.updateSidebarPosition();
+});
+</script>
+
+
+
+
+  
+
+
+
+
+  
+<script src="/js/local-search.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+    <div id="pjax">
+  
+
+  
+
+  
+
+<link rel="stylesheet" href="//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.min.css">
+
+<script>
+NexT.utils.loadComments(document.querySelector('#gitalk-container'), () => {
+  NexT.utils.getScript('//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.min.js', () => {
+    var gitalk = new Gitalk({
+      clientID    : 'Ov23liFsw1lTgh0R8s8H',
+      clientSecret: '1f947cb0d107ba1ffbcad8c25688c075224fff36',
+      repo        : 'micropuma.github.io',
+      owner       : 'micropuma',
+      admin       : ['micropuma'],
+      id          : '3b59c73dd7c72ac74e2a19d3db6f99ae',
+        language: 'zh-CN',
+      distractionFreeMode: true
+    });
+    gitalk.render('gitalk-container');
+  }, window.Gitalk);
+});
+</script>
+
+    </div>
+</body>
+</html>
