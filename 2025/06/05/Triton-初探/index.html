@@ -27,12 +27,13 @@
 <meta property="og:locale" content="zh_CN">
 <meta property="og:image" content="http://example.com/images/image-20250605183401865.png">
 <meta property="og:image" content="http://example.com/images/image-20250613102309608.png">
+<meta property="og:image" content="http://example.com/images/image-20250618100618003.png">
 <meta property="og:image" content="http://example.com/images/image-20250617122912212.png">
 <meta property="og:image" content="http://example.com/images/image-20250605194322002.png">
 <meta property="og:image" content="http://example.com/images/image-20250608192027607.png">
 <meta property="og:image" content="http://example.com/images/image-20250608193202857.png">
 <meta property="article:published_time" content="2025-06-05T04:41:24.000Z">
-<meta property="article:modified_time" content="2025-06-17T12:33:36.214Z">
+<meta property="article:modified_time" content="2025-06-19T08:19:00.479Z">
 <meta property="article:author" content="Leon Dou">
 <meta property="article:tag" content="GPU">
 <meta property="article:tag" content="编译">
@@ -230,7 +231,7 @@
                   <i class="far fa-calendar-check"></i>
                 </span>
                 <span class="post-meta-item-text">更新于</span>
-                <time title="修改时间：2025-06-17 20:33:36" itemprop="dateModified" datetime="2025-06-17T20:33:36+08:00">2025-06-17</time>
+                <time title="修改时间：2025-06-19 16:19:00" itemprop="dateModified" datetime="2025-06-19T16:19:00+08:00">2025-06-19</time>
               </span>
             <span class="post-meta-item">
               <span class="post-meta-item-icon">
@@ -311,6 +312,10 @@
 <li>&#x2F;third_party&#x2F;nvidia&#x2F;backend&#x2F;compiler.py（针对特定硬件厂商的编译链条，比如英伟达的cuda流程，一般为TritonGPU IR转换，以及ptx等代码生成）</li>
 <li>triton&#x2F;python&#x2F;src&#x2F;passes.cc（各种pass组织起来，Triton的代码结构相当不错）</li>
 </ul>
+<p>Triton代码仓库的所有文件结构如下：</p>
+<blockquote>
+<p><img src="/images/image-20250618100618003.png" alt="image-20250618100618003"></p>
+</blockquote>
 <p>我们首先通过在特定文件中打断点的方式，将整个代码生成流程快速串起来，可以参见下面的流程图（JIT流程图）：</p>
 <p><img src="/images/image-20250617122912212.png" alt="image-20250617122912212"></p>
 <h2 id="Triton使用教程"><a href="#Triton使用教程" class="headerlink" title="Triton使用教程"></a><font color = brown>Triton使用教程</font></h2><p>这一部分是学习如何使用triton，读者可以参考官方的<a target="_blank" rel="noopener" href="https://triton-lang.org/main/getting-started/tutorials/">Triton Tutorial</a>以及<a target="_blank" rel="noopener" href="https://colab.research.google.com/github/srush/Triton-Puzzles/blob/main/Triton-Puzzles.ipynb#scrollTo=9f06cbdd-1c9b-4b65-ae72-69c1dc599400">Triton-puzzles</a>来学习triton的基础用法。这一章节的例子来源是triton-puzzles中的11个测试case以及官方tutorial，选取其中比较典型的case来讲解Triton编程要点。</p>
@@ -504,13 +509,13 @@
       <i class="fa fa-chart-area"></i>
     </span>
       <span class="post-meta-item-text">站点总字数：</span>
-    <span title="站点总字数">256k</span>
+    <span title="站点总字数">264k</span>
     <span class="post-meta-divider">|</span>
     <span class="post-meta-item-icon">
       <i class="fa fa-coffee"></i>
     </span>
       <span class="post-meta-item-text">站点阅读时长 &asymp;</span>
-    <span title="站点阅读时长">3:53</span>
+    <span title="站点阅读时长">4:01</span>
 </div>
   <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://pisces.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Pisces</a> 强力驱动
   </div>
