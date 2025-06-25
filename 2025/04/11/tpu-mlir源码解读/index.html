@@ -286,7 +286,6 @@
       
         <p><img src="/images/image-20250411150531193.png" alt="image-20250411150531193"></p>
 <span id="more"></span>
-
 <blockquote>
 <p>本博客主要学习TPU-MLIR的代码结构，mlir编程技术等。</p>
 </blockquote>
@@ -298,20 +297,16 @@
 </ul>
 <p>具体脚本如下：</p>
 <figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">mkdir model_yolov5s &amp;&amp; cd model_yolov5s</span><br><span class="line">cp $&#123;REGRESSION_PATH&#125;/model/yolov5s.onnx .</span><br><span class="line">cp -rf $&#123;REGRESSION_PATH&#125;/dataset/COCO2017 .</span><br><span class="line">cp -rf $&#123;REGRESSION_PATH&#125;/image .</span><br><span class="line">mkdir workspace &amp;&amp; cd workspace</span><br></pre></td></tr></table></figure>
-
 <p>然后调用TPU-MLIR的python driver程序，完成整个流程。由于目前先不关注量化部分，所以先只用<code>model_transform.py</code>和<code>model_deploy.py</code>两个python文件。具体脚本如下：</p>
 <figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line">model_transform.py \</span><br><span class="line">    --model_name yolov5s \</span><br><span class="line">    --model_def ./yolov5s.onnx \</span><br><span class="line">    --input_shapes [[1,3,640,640]] \</span><br><span class="line">    --mean 0.0,0.0,0.0 \</span><br><span class="line">    --scale 0.0039216,0.0039216,0.0039216 \</span><br><span class="line">    --keep_aspect_ratio \</span><br><span class="line">    --pixel_format rgb \</span><br><span class="line">    --output_names 350,498,646 \</span><br><span class="line">    --test_input ./image/dog.jpg \</span><br><span class="line">    --test_result yolov5s_top_outputs.npz \</span><br><span class="line">    --mlir yolov5s.mlir</span><br><span class="line"></span><br><span class="line">model_deploy.py \</span><br><span class="line">  --mlir yolov5s.mlir \</span><br><span class="line">  --quantize F16 \</span><br><span class="line">  --processor bm1684x \</span><br><span class="line">  --test_input yolov5s_in_f32.npz \</span><br><span class="line">  --test_reference yolov5s_top_outputs.npz \</span><br><span class="line">  --model yolov5s_1684x_f16.bmodel</span><br></pre></td></tr></table></figure>
-
 <p>最终生成的npu可执行是bmodle模型，是Sophon AI平台专用的高效推理模型文件，包含特定npu的硬件指令集。上述流程得到的中间表示，权重文件，最终的bmodel文件如下：</p>
-<img src="/images/image-20250417183143802.png" alt="image-20250417183143802" style="zoom:50%;" />
-
+<p><img src="/images/image-20250417183143802.png" alt="image-20250417183143802" style="zoom:50%;" /></p>
 <blockquote>
 <ul>
 <li><p>onnx到mlir系统：纯python，无第三方依赖的一套前端parser:rocket:</p>
 </li>
 <li><p>图优化：</p>
 <figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">tpuc-opt yolov5s_origin.mlir --shape-infer --canonicalize --extra-optimize -o yolov5s.mlir</span><br></pre></td></tr></table></figure>
-
 <ul>
 <li>shape infer pass</li>
 <li>canonicalize pass：对于top dialect的每个op都有对应的标准化，详细代码见：<code>lib/Dialect/Top/Canonicalize</code>。</li>
@@ -333,7 +328,6 @@
 </li>
 <li><p>include文件结构如下：</p>
 <figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br></pre></td><td class="code"><pre><span class="line">├── CMakeLists.txt</span><br><span class="line">├── tpu_mlir</span><br><span class="line">│   ├── Backend</span><br><span class="line">│   ├── Builder</span><br><span class="line">│   │   ├── BM168x</span><br><span class="line">│   ├── CMakeLists.txt</span><br><span class="line">│   ├── Conversion</span><br><span class="line">│   │   ├── TopToLinalg</span><br><span class="line">│   │   ├── TopToTosa</span><br><span class="line">│   │   └── TopToTpu</span><br><span class="line">│   ├── Dialect</span><br><span class="line">│   │   ├── CMakeLists.txt</span><br><span class="line">│   │   ├── Top</span><br><span class="line">│   │   │   ├── CMakeLists.txt</span><br><span class="line">│   │   │   ├── IR</span><br><span class="line">│   │   │   │   ├── CMakeLists.txt</span><br><span class="line">│   │   │   │   ├── TopOps.h</span><br><span class="line">│   │   │   │   └── TopOps.td</span><br><span class="line">│   │   │   └── Transforms</span><br><span class="line">│   │   │       ├── CMakeLists.txt</span><br><span class="line">│   │   │       ├── Passes.h</span><br><span class="line">│   │   │       └── Passes.td</span><br><span class="line">│   │   └── Tpu</span><br><span class="line">│   │       ├── CMakeLists.txt</span><br><span class="line">│   │       ├── IR</span><br><span class="line">│   │       │   ├── CMakeLists.txt</span><br><span class="line">│   │       │   ├── TpuOps.h</span><br><span class="line">│   │       │   └── TpuOps.td</span><br><span class="line">│   │       └── Transforms</span><br><span class="line">│   │           ├── CoreParallel</span><br><span class="line">│   │           │   └── CoreParallel.hpp</span><br><span class="line">│   │           ├── DevParallel</span><br><span class="line">│   │           │   ├── Distribute.h</span><br><span class="line">│   │           │   └── DistributeUtils.h</span><br><span class="line">│   │           ├── LayerGroup</span><br><span class="line">│   │           ├── Passes.h</span><br><span class="line">│   │           ├── Passes.td</span><br><span class="line">│   │           └── TruncOp</span><br><span class="line">│   │               └── TruncOp.h</span><br><span class="line">│   ├── InitAll.h</span><br><span class="line">│   ├── Interfaces</span><br><span class="line">│   ├── Support</span><br><span class="line">│   └── Traits</span><br><span class="line">│       ├── Traits.h</span><br><span class="line">│       └── Traits.td</span><br><span class="line">└── tpu_mlir-c</span><br><span class="line">    ├── Dialects.h</span><br><span class="line">    └── RegisterEverything.h</span><br></pre></td></tr></table></figure>
-
 <p>这个文件结构十分值得解读。</p>
 <ul>
 <li>Conversion是dailect之间的转换函数</li>
@@ -356,7 +350,6 @@
 <p><img src="/images/image-20250418175103004.png" alt="image-20250418175103004"></p>
 <h2 id="计算图IR设计"><a href="#计算图IR设计" class="headerlink" title="计算图IR设计"></a><font color = brown>计算图IR设计</font></h2><h2 id="Top-dialect设计"><a href="#Top-dialect设计" class="headerlink" title="Top dialect设计"></a><font color = green>Top dialect设计</font></h2><p>这一部分是很好的机器学习静态图表示的资料，因为<code>Top dialect</code>完整的涵盖了机器学习的大部分算子操作，做了相当完善的抽象。这里的解读以<code>Top_conv</code>算子来解读。</p>
 <h4 id="Interface设计"><a href="#Interface设计" class="headerlink" title="Interface设计"></a>Interface设计</h4><h4 id="Canoicalization设计"><a href="#Canoicalization设计" class="headerlink" title="Canoicalization设计"></a>Canoicalization设计</h4><h2 id="Pass优化设计"><a href="#Pass优化设计" class="headerlink" title="Pass优化设计"></a><font color = brown>Pass优化设计</font></h2><h2 id="后端设计"><a href="#后端设计" class="headerlink" title="后端设计"></a><font color  = brown>后端设计</font></h2><figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line">|---include/tpu_mlir</span><br><span class="line">	|---Dialect</span><br><span class="line">		|---TPU/IR/TpuOps.td：各算子定义，codegen函数定义在traits中</span><br><span class="line">	|---Interfaces</span><br><span class="line">		|---*GenInterface.td：各种codegen模式的声明与实现</span><br><span class="line">|---lib</span><br><span class="line">	|---Backend</span><br><span class="line">		|---Arch.cpp：架构抽象基类，包含后端函数（供codegen调用）与硬件参数</span><br><span class="line">		|---BM168x：168x系列的架构类实现</span><br><span class="line">		|---CV18xx：cv18xx系列的架构类实现</span><br><span class="line">	|---Builder：bmodel定义</span><br><span class="line">	|---Dialect</span><br><span class="line">		|---Tpu</span><br><span class="line">			|---Interfaces：各op codegen函数的重载实现</span><br><span class="line">			|---Transforms</span><br><span class="line">				|---BM168x/Codegen.cpp：bm168系列codegen pass实现</span><br><span class="line">	|---Interfaces：</span><br><span class="line">		|---*GenInterface.cpp：各种codegen模式的补充实现（大部分逻辑实现在了td文件中）</span><br></pre></td></tr></table></figure>
-
 <p>上图是TPU-MLIR的后端代码结构，主要有如下几个重点：</p>
 <ul>
 <li>TPU dialect用来抽象tpu硬件指令集（这里和AIE dialect等抽象层级还不一样，这里的抽象是对于所有TPU的一个粗粒度抽象，后续还要通过backend映射到对应tpu。<strong>因此这个TPU dialect的设计十分有参考意义</strong>）。</li>
@@ -374,7 +367,7 @@
 <li><a target="_blank" rel="noopener" href="https://zhuanlan.zhihu.com/p/615180103">TPU-MLIR博客</a></li>
 <li><a target="_blank" rel="noopener" href="https://mlir.llvm.org/docs/Interfaces/">MLIR interface官方doc</a></li>
 <li><a target="_blank" rel="noopener" href="https://tpumlir.org/en/">TPU-MLIR 官方文档</a></li>
-<li><a target="_blank" rel="noopener" href="https://tpumlir.org/en/2023/04/04/how-to-add-a-new-operator-for-tpu-mlir.html">Add an op for TPU-MLIR – blog</a></li>
+<li><a target="_blank" rel="noopener" href="https://tpumlir.org/en/2023/04/04/how-to-add-a-new-operator-for-tpu-mlir.html">Add an op for TPU-MLIR — blog</a></li>
 <li><a target="_blank" rel="noopener" href="https://zhuanlan.zhihu.com/p/718042043">TPU-MLIR blog 1</a></li>
 </ol>
 
@@ -477,7 +470,7 @@
       <div class="site-state-item site-state-posts">
           <a href="/archives/">
         
-          <span class="site-state-item-count">28</span>
+          <span class="site-state-item-count">29</span>
           <span class="site-state-item-name">日志</span>
         </a>
       </div>
@@ -527,7 +520,7 @@
       <i class="fa fa-chart-area"></i>
     </span>
       <span class="post-meta-item-text">站点总字数：</span>
-    <span title="站点总字数">270k</span>
+    <span title="站点总字数">271k</span>
     <span class="post-meta-divider">|</span>
     <span class="post-meta-item-icon">
       <i class="fa fa-coffee"></i>
