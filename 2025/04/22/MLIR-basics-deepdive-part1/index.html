@@ -293,6 +293,7 @@
       
         <p><img src="/images/image-20250422105012239.png" alt="image-20250422105012239"></p>
 <span id="more"></span>
+
 <blockquote>
 <p>本篇文章主要基于mlir的<a target="_blank" rel="noopener" href="https://www.youtube.com/watch?v=7ofnlCFzlqg">公开talk</a>，深入理解一下mlir中的operation，attributes以及properties机制的底层实现。本文先着重解读operation的底层实现机制。</p>
 </blockquote>
@@ -301,10 +302,15 @@
 <p>具体的使用细节，可以参考<a target="_blank" rel="noopener" href="https://harmonyhu.com/2021/08/17/mlir/#mliroperation">HarmonyHu MLIR技术细节整理</a>。</p>
 <p><code>mlir::Operation</code>是通用定义，包含通用的接口和属性；<code>MulOp</code>、<code>TransposeOp</code>、<code>ConstantOp</code>等等是特定定义，包含特定的属性。前者可以通过<code>llvm::dyn_cast</code>（动态）或<code>llvm::cast</code>（静态）转换成后者；后者通过<code>getOperation()</code>转换成前者。</p>
 <figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="type">void</span> <span class="title">processConstantOp</span><span class="params">(mlir::Operation *operation)</span> </span>&#123;</span><br><span class="line">  ConstantOp op = llvm::<span class="built_in">dyn_cast</span>&lt;ConstantOp&gt;(operation);</span><br><span class="line"></span><br><span class="line">  <span class="comment">// This operation is not an instance of `ConstantOp`.</span></span><br><span class="line">  <span class="keyword">if</span> (!op)</span><br><span class="line">    <span class="keyword">return</span>;</span><br><span class="line"></span><br><span class="line">  <span class="comment">// Get the internal operation instance wrapped by the smart pointer.</span></span><br><span class="line">  mlir::Operation *internalOperation = op.<span class="built_in">getOperation</span>();</span><br><span class="line">  <span class="built_in">assert</span>(internalOperation == operation &amp;&amp;</span><br><span class="line">         <span class="string">&quot;these operation instances are the same&quot;</span>);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
 <p>特定Op可以直接访问属性；<code>mlir::Operation</code>无法直接访问特定Op的属性，但可以类似如下间接访问，如下：</p>
 <figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// getAttrOfType</span></span><br><span class="line">IntegerAttr opsetAttr = op-&gt;<span class="built_in">getAttrOfType</span>&lt;::mlir::Attribute&gt;(<span class="string">&quot;onnx_opset&quot;</span>).<span class="built_in">dyn_cast_or_null</span>&lt;IntegerAttr&gt;();</span><br><span class="line"><span class="keyword">if</span> (opsetAttr)</span><br><span class="line">  opset = opsetAttr.<span class="built_in">getValue</span>().<span class="built_in">getSExtValue</span>();</span><br><span class="line"><span class="comment">// getAttr</span></span><br><span class="line">mlir::Type targetType = op-&gt;<span class="built_in">getAttr</span>(<span class="string">&quot;to&quot;</span>).<span class="built_in">cast</span>&lt;::mlir::TypeAttr&gt;().<span class="built_in">getValue</span>();</span><br></pre></td></tr></table></figure>
+
 <p>operation的具体使用方面，提供了如下接口：</p>
 <figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br></pre></td><td class="code"><pre><span class="line"><span class="function">OperationName <span class="title">getName</span><span class="params">()</span> </span>&#123; <span class="keyword">return</span> name; &#125;</span><br><span class="line"><span class="comment">/// Remove this operation from its parent block and delete it.</span></span><br><span class="line"><span class="function"><span class="type">void</span> <span class="title">erase</span><span class="params">()</span></span>;</span><br><span class="line"><span class="comment">/// Remove the operation from its parent block, but don&#x27;t delete it.</span></span><br><span class="line"><span class="function"><span class="type">void</span> <span class="title">remove</span><span class="params">()</span></span>;</span><br><span class="line"><span class="comment">/// Returns the operation block that contains this operation.</span></span><br><span class="line"><span class="function">Block *<span class="title">getBlock</span><span class="params">()</span> </span>&#123; <span class="keyword">return</span> block; &#125;</span><br><span class="line"><span class="comment">/// Return the context this operation is associated with.</span></span><br><span class="line"><span class="function">MLIRContext *<span class="title">getContext</span><span class="params">()</span></span>;</span><br><span class="line"><span class="comment">/// Returns the closest surrounding operation that contains this operation</span></span><br><span class="line"><span class="comment">/// or nullptr if this is a top-level operation.</span></span><br><span class="line"><span class="function">Operation *<span class="title">getParentOp</span><span class="params">()</span> </span>&#123; <span class="keyword">return</span> block ? block-&gt;<span class="built_in">getParentOp</span>() : <span class="literal">nullptr</span>; &#125;</span><br><span class="line"><span class="comment">/// Return the closest surrounding parent operation that is of type &#x27;OpTy&#x27;.</span></span><br><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> OpTy&gt; <span class="function">OpTy <span class="title">getParentOfType</span><span class="params">()</span></span>;</span><br><span class="line"><span class="function"><span class="type">void</span> <span class="title">dump</span><span class="params">()</span></span>;</span><br><span class="line"><span class="function"><span class="type">unsigned</span> <span class="title">getNumOperands</span><span class="params">()</span></span>;</span><br><span class="line"><span class="function">Value <span class="title">getOperand</span><span class="params">(<span class="type">unsigned</span> idx)</span> </span>&#123; <span class="keyword">return</span> <span class="built_in">getOpOperand</span>(idx).<span class="built_in">get</span>(); &#125;</span><br><span class="line"><span class="function"><span class="type">void</span> <span class="title">setOperand</span><span class="params">(<span class="type">unsigned</span> idx, Value value)</span></span>;</span><br><span class="line"><span class="function"><span class="type">unsigned</span> <span class="title">getNumResults</span><span class="params">()</span></span>;</span><br><span class="line"><span class="comment">/// Get the &#x27;idx&#x27;th result of this operation.</span></span><br><span class="line"><span class="function">OpResult <span class="title">getResult</span><span class="params">(<span class="type">unsigned</span> idx)</span> </span>&#123; <span class="keyword">return</span> <span class="built_in">OpResult</span>(<span class="keyword">this</span>, idx); &#125;</span><br><span class="line"><span class="function"><span class="type">void</span> <span class="title">replaceAllUsesWith</span><span class="params">(Operation *op)</span></span>;</span><br><span class="line"><span class="function"><span class="type">void</span> <span class="title">moveBefore</span><span class="params">(Operation *existingOp)</span></span>;</span><br><span class="line"><span class="function"><span class="type">void</span> <span class="title">moveBefore</span><span class="params">(Block *block, llvm::iplist&lt;Operation&gt;::iterator iterator)</span></span>;</span><br><span class="line"><span class="function"><span class="type">void</span> <span class="title">moveAfter</span><span class="params">(Operation *existingOp)</span></span>;</span><br><span class="line"><span class="function"><span class="type">void</span> <span class="title">moveAfter</span><span class="params">(Block *block, llvm::iplist&lt;Operation&gt;::iterator iterator)</span></span>;</span><br></pre></td></tr></table></figure>
+
+
+
 <h2 id="MLIR-Operation-Internal"><a href="#MLIR-Operation-Internal" class="headerlink" title="MLIR Operation Internal"></a><font color = brown>MLIR Operation Internal</font></h2><p>前一章节主要介绍<code>mlir operation</code>以及其使用细节，而这一章则深入挖掘operation的底层实现存储。本章主要参考<a target="_blank" rel="noopener" href="https://www.youtube.com/watch?v=7ofnlCFzlqg">mlir properties talk</a>。</p>
 <p>首先我们先来看一下mlir的官方doc中，对于operation的底层细节的一些描述：</p>
 <blockquote>
@@ -345,11 +351,14 @@
 <p>在<code>llvm/include/support/TrailingObjects.h</code>头文件中，有对于这个类的详细定义。注释中给出一个如何定义trailing object类的例子。</p>
 <p><code>类的定义</code></p>
 <figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 定义VarLenghObj，该对象有固定的int和可变的double数组</span></span><br><span class="line"><span class="keyword">class</span> <span class="title class_">VarLengthObj</span> : <span class="keyword">private</span> TrailingObjects&lt;VarLengthObj, <span class="type">int</span>, <span class="type">double</span>&gt; &#123;</span><br><span class="line">  <span class="keyword">friend</span> TrailingObjects; <span class="comment">// 允许模板访问私有方法</span></span><br><span class="line">  <span class="type">unsigned</span> NumInts, NumDoubles;</span><br><span class="line">  </span><br><span class="line">  <span class="function"><span class="type">size_t</span> <span class="title">numTrailingObjects</span><span class="params">(OverloadToken&lt;<span class="type">int</span>&gt;)</span> <span class="type">const</span> </span>&#123; <span class="keyword">return</span> NumInts; &#125;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
 <p>注意这里有一个关键点，double是尾元素，因此其长度是可变的，所以没有numTrailingObjects方法实现。</p>
 <p><code>内存分配</code></p>
 <figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">size_t</span> Size = VarLengthObj::<span class="built_in">totalSizeToAlloc</span>&lt;<span class="type">int</span>, <span class="type">double</span>&gt;(NumInts, NumDoubles);</span><br><span class="line"><span class="type">void</span> *Mem = <span class="keyword">operator</span> <span class="built_in">new</span>(Size);</span><br><span class="line"><span class="keyword">auto</span> *Obj = <span class="built_in">new</span> (Mem) <span class="built_in">VarLengthObj</span>();</span><br></pre></td></tr></table></figure>
+
 <p><code>访问数据</code></p>
 <figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">int</span> *Ints = Obj-&gt;<span class="built_in">getTrailingObjects</span>&lt;<span class="type">int</span>&gt;();    <span class="comment">// 访问 int 数组</span></span><br><span class="line"><span class="type">double</span> *Doubles = Obj-&gt;<span class="built_in">getTrailingObjects</span>&lt;<span class="type">double</span>&gt;(); <span class="comment">// 访问 double 数组</span></span><br></pre></td></tr></table></figure>
+
 <h3 id="Operation类的实现"><a href="#Operation类的实现" class="headerlink" title="Operation类的实现"></a><font color = green>Operation类的实现</font></h3><p><img src="/images/image-20250422133350287.png" alt="image-20250422133350287"></p>
 <p>这张图解释了operation的实际存储，具体如下：</p>
 <ul>
@@ -363,15 +372,17 @@
 <p>该OperandStorage中存储OpOperand指针，以及总共有多少operands。添加operands，这种模式也十分容易动态扩展。</p>
 <p>解读完OpOperand，region等信息后，operation还剩一个关键信息：result。</p>
 <p><img src="/images/image-20250422134727315.png" alt="image-20250422134727315"></p>
-<p>result的特殊性是其存储在operation存储体的前面，没有放在trailing objects中。其设计思路参考SmallVector设计，分为OutOfLineOpResult和InlineOpResult，对于少量result情况（&lt;=6）可以有效压缩空间。其主要思路是用3bits表示有限的index索引，而超过3bits范围，则使用int表示索引范围，使得前六个result占用16bytes，其余为24个bytes。</p>
-<p><img src="/images/image-20250422134946924.png" alt="image-20250422134946924" style="zoom:67%;" /></p>
+<p>result的特殊性是其存储在operation存储体的前面，没有放在trailing objects中。其设计思路参考SmallVector设计，分为OutOfLineOpResult和InlineOpResult，对于少量result情况（&lt;&#x3D;6）可以有效压缩空间。其主要思路是用3bits表示有限的index索引，而超过3bits范围，则使用int表示索引范围，使得前六个result占用16bytes，其余为24个bytes。</p>
+<img src="/images/image-20250422134946924.png" alt="image-20250422134946924" style="zoom:67%;" />
+
 <p>从operation中获取指定的result，其实现如下，逻辑是比较清晰简单的：</p>
-<p><img src="/images/image-20250422135114847.png" alt="image-20250422135114847" style="zoom:67%;" /></p>
+<img src="/images/image-20250422135114847.png" alt="image-20250422135114847" style="zoom:67%;" />
+
 <p>同时也支持从result获取operation这样的操作。逻辑和上图基本一致。</p>
 <p>如下图是一张很好的operation结构总结图：</p>
 <p><img src="/images/image-20250422141744357.png" alt="image-20250422141744357"></p>
 <p>来源于<a target="_blank" rel="noopener" href="https://llvm.org/devmtg/2024-04/slides/Keynote/Amini-Niu-HowSlowIsMLIR.pdf">How Slow is MLIR talk</a>。</p>
-<h2 id="Debug实战"><a href="#Debug实战" class="headerlink" title="Debug实战"></a><font color = brown>Debug实战</font></h2><p>mlir的debug tips参考<a href="[MLIR debug tips | Leon&#39;s Blog](https://micropuma.github.io/2025/04/20/MLIR-debug-tips/">debug博客</a>)。首先打断点打在如图所示：</p>
+<h2 id="Debug实战"><a href="#Debug实战" class="headerlink" title="Debug实战"></a><font color = brown>Debug实战</font></h2><p>mlir的debug tips参考[debug博客](<a target="_blank" rel="noopener" href="https://micropuma.github.io/2025/04/20/MLIR-debug-tips/">MLIR debug tips | Leon’s Blog</a>)。首先打断点打在如图所示：</p>
 <p><img src="/images/image-20250422140535380.png" alt="image-20250422140535380"></p>
 <p>我们重点关注func::FuncOp的实现。</p>
 <p><img src="/images/image-20250422140614518.png" alt="image-20250422140614518"></p>
@@ -478,20 +489,20 @@
       <div class="site-state-item site-state-posts">
           <a href="/archives/">
         
-          <span class="site-state-item-count">29</span>
+          <span class="site-state-item-count">32</span>
           <span class="site-state-item-name">日志</span>
         </a>
       </div>
       <div class="site-state-item site-state-categories">
             <a href="/categories/">
           
-        <span class="site-state-item-count">23</span>
+        <span class="site-state-item-count">24</span>
         <span class="site-state-item-name">分类</span></a>
       </div>
       <div class="site-state-item site-state-tags">
             <a href="/tags/">
           
-        <span class="site-state-item-count">17</span>
+        <span class="site-state-item-count">18</span>
         <span class="site-state-item-name">标签</span></a>
       </div>
   </nav>
@@ -528,13 +539,13 @@
       <i class="fa fa-chart-area"></i>
     </span>
       <span class="post-meta-item-text">站点总字数：</span>
-    <span title="站点总字数">271k</span>
+    <span title="站点总字数">302k</span>
     <span class="post-meta-divider">|</span>
     <span class="post-meta-item-icon">
       <i class="fa fa-coffee"></i>
     </span>
       <span class="post-meta-item-text">站点阅读时长 &asymp;</span>
-    <span title="站点阅读时长">4:06</span>
+    <span title="站点阅读时长">4:34</span>
 </div>
   <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://pisces.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Pisces</a> 强力驱动
   </div>

@@ -273,8 +273,9 @@
       
         <p><img src="/images/image-20250605183401865.png" alt="image-20250605183401865"></p>
 <span id="more"></span>
+
 <blockquote>
-<p>上一章解读了Triton项目的一些基础知识和基本用法，使得读者对于Triton编译器有基本的了解。这一章节主要介绍Triton相关的开源算子库开发项目：<a href="git@github.com:FlagOpen/FlagGems.git">FlagGems</a>和<a href="git@github.com:linkedin/Liger-Kernel.git">Liger Kernel</a>。同时为了深入理解Triton算子开发流程以及如何嵌入pytorch/Hugging face开发流程，本博客也会提供一个最简Triton library实现：<a target="_blank" rel="noopener" href="https://github.com/micropuma/Pytorch-Sample/tree/main/Torch-Triton/dly_gem">dly-gem</a>。</p>
+<p>上一章解读了Triton项目的一些基础知识和基本用法，使得读者对于Triton编译器有基本的了解。这一章节主要介绍Triton相关的开源算子库开发项目：<a href="git@github.com:FlagOpen/FlagGems.git">FlagGems</a>和<a href="git@github.com:linkedin/Liger-Kernel.git">Liger Kernel</a>。同时为了深入理解Triton算子开发流程以及如何嵌入pytorch&#x2F;Hugging face开发流程，本博客也会提供一个最简Triton library实现：<a target="_blank" rel="noopener" href="https://github.com/micropuma/Pytorch-Sample/tree/main/Torch-Triton/dly_gem">dly-gem</a>。</p>
 </blockquote>
 <h2 id="FlagGems项目"><a href="#FlagGems项目" class="headerlink" title="FlagGems项目"></a><font color = brown>FlagGems项目</font></h2><h3 id="参考资料"><a href="#参考资料" class="headerlink" title="参考资料"></a><font color = green>参考资料</font></h3><ol>
 <li><a target="_blank" rel="noopener" href="https://ticket-assets.baai.ac.cn/uploads/Triton%E4%B8%AD%E5%9B%BD%E7%A4%BE%E5%8C%BA%E7%B3%BB%E5%88%97%E6%B4%BB%E5%8A%A8%EF%BC%9A%E5%9F%BA%E4%BA%8ETriton%E7%9A%84%E5%A4%A7%E6%A8%A1%E5%9E%8B%E9%80%9A%E7%94%A8%E7%AE%97%E5%AD%90%E5%BA%93FlagGems%E6%8A%80%E6%9C%AF%E5%88%86%E4%BA%AB.pdf">FlagGems分享会</a></li>
@@ -289,12 +290,12 @@
 <p>可能会出现连接不上Huggingface的问题，具体参考<a target="_blank" rel="noopener" href="https://hf-mirror.com/">HuggingFace官网使用教程</a>。一般通过设定<code>HF_ENDPOINT=https://hf-mirror.com</code>镜像足以解决问题。</p>
 </blockquote>
 <figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">from</span> liger_kernel.transformers <span class="keyword">import</span> AutoLigerKernelForCausalLM</span><br><span class="line"><span class="keyword">from</span> transformers <span class="keyword">import</span> AutoTokenizer</span><br><span class="line"><span class="keyword">import</span> torch</span><br><span class="line"></span><br><span class="line">device = torch.device(<span class="string">&quot;cuda&quot;</span> <span class="keyword">if</span> torch.cuda.is_available() <span class="keyword">else</span> <span class="string">&quot;cpu&quot;</span>)  <span class="comment"># 🎯 统一定义设备</span></span><br><span class="line">model_name = <span class="string">&quot;TinyLlama/TinyLlama-1.1B-Chat-v1.0&quot;</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># ✅ 加载并迁移模型</span></span><br><span class="line">model = AutoLigerKernelForCausalLM.from_pretrained(</span><br><span class="line">    model_name,</span><br><span class="line">    torch_dtype=torch.float16,</span><br><span class="line">    device_map=&#123;<span class="string">&quot;&quot;</span>: device&#125;  <span class="comment"># ⚠️ 关键：强制模型主设备</span></span><br><span class="line">).<span class="built_in">eval</span>()</span><br><span class="line"></span><br><span class="line"><span class="comment"># ✅ 加载Tokenizer</span></span><br><span class="line">tokenizer = AutoTokenizer.from_pretrained(model_name)</span><br><span class="line"></span><br><span class="line"><span class="comment"># ✅ 迁移输入数据（覆盖所有张量）</span></span><br><span class="line">input_text = <span class="string">&quot;用通俗的中文解释一下量子纠缠&quot;</span></span><br><span class="line">inputs = tokenizer(input_text, return_tensors=<span class="string">&quot;pt&quot;</span>)</span><br><span class="line">inputs = &#123;k: v.to(device) <span class="keyword">for</span> k, v <span class="keyword">in</span> inputs.items()&#125;  <span class="comment"># 🚀 字典内全量迁移</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># ✅ 生成时传递设备参数</span></span><br><span class="line"><span class="keyword">with</span> torch.no_grad():</span><br><span class="line">    outputs = model.generate(</span><br><span class="line">        **inputs,</span><br><span class="line">        max_new_tokens=<span class="number">100</span>,</span><br><span class="line">        do_sample=<span class="literal">True</span>,</span><br><span class="line">        temperature=<span class="number">0.7</span>,</span><br><span class="line">        top_k=<span class="number">50</span>,</span><br><span class="line">        top_p=<span class="number">0.9</span>,</span><br><span class="line">        eos_token_id=tokenizer.eos_token_id,      </span><br><span class="line">    )</span><br><span class="line"></span><br><span class="line"><span class="built_in">print</span>(<span class="string">&quot;\n🚀 模型生成输出：\n&quot;</span>)</span><br><span class="line"><span class="built_in">print</span>(tokenizer.decode(outputs[<span class="number">0</span>], skip_special_tokens=<span class="literal">True</span>))</span><br></pre></td></tr></table></figure>
+
 <p>方法二：使用liger的api自定义模型。</p>
-<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">from</span> liger_kernel.transformers <span class="keyword">import</span> LigerFusedLinearCrossEntropyLoss</span><br><span class="line"><span class="keyword">import</span> torch.nn <span class="keyword">as</span> nn</span><br><span class="line"><span class="keyword">import</span> torch</span><br><span class="line"></span><br><span class="line">model = nn.Linear(<span class="number">128</span>, <span class="number">256</span>).cuda()</span><br><span class="line"></span><br><span class="line"><span class="comment"># fuses linear + cross entropy layers together and performs chunk-by-chunk computation to reduce memory</span></span><br><span class="line">loss_fn = LigerFusedLinearCrossEntropyLoss()</span><br><span class="line"></span><br><span class="line"><span class="built_in">input</span> = torch.randn(<span class="number">4</span>, <span class="number">128</span>, requires_grad=<span class="literal">True</span>, device=<span class="string">&quot;cuda&quot;</span>)</span><br><span class="line">target = torch.randint(<span class="number">256</span>, (<span class="number">4</span>, ), device=<span class="string">&quot;cuda&quot;</span>)</span><br><span class="line"></span><br><span class="line">loss = loss_fn(model.weight, <span class="built_in">input</span>, target)</span><br><span class="line">loss.backward()</span><br></pre></td></tr></table></figure>
-</li>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">from</span> liger_kernel.transformers <span class="keyword">import</span> LigerFusedLinearCrossEntropyLoss</span><br><span class="line"><span class="keyword">import</span> torch.nn <span class="keyword">as</span> nn</span><br><span class="line"><span class="keyword">import</span> torch</span><br><span class="line"></span><br><span class="line">model = nn.Linear(<span class="number">128</span>, <span class="number">256</span>).cuda()</span><br><span class="line"></span><br><span class="line"><span class="comment"># fuses linear + cross entropy layers together and performs chunk-by-chunk computation to reduce memory</span></span><br><span class="line">loss_fn = LigerFusedLinearCrossEntropyLoss()</span><br><span class="line"></span><br><span class="line"><span class="built_in">input</span> = torch.randn(<span class="number">4</span>, <span class="number">128</span>, requires_grad=<span class="literal">True</span>, device=<span class="string">&quot;cuda&quot;</span>)</span><br><span class="line">target = torch.randint(<span class="number">256</span>, (<span class="number">4</span>, ), device=<span class="string">&quot;cuda&quot;</span>)</span><br><span class="line"></span><br><span class="line">loss = loss_fn(model.weight, <span class="built_in">input</span>, target)</span><br><span class="line">loss.backward()</span><br></pre></td></tr></table></figure></li>
 </ol>
 <h3 id="参考资料-1"><a href="#参考资料-1" class="headerlink" title="参考资料"></a><font color = green>参考资料</font></h3><ol>
-<li><a target="_blank" rel="noopener" href="https://www.bilibili.com/video/BV1wYNizNE7Q?spm_id_from=333.788.videopod.sections&amp;vd_source=7cc24e214309f4db17f1dda017fc6683">Liger Kernel b站介绍</a></li>
+<li><a target="_blank" rel="noopener" href="https://www.bilibili.com/video/BV1wYNizNE7Q?spm_id_from=333.788.videopod.sections&vd_source=7cc24e214309f4db17f1dda017fc6683">Liger Kernel b站介绍</a></li>
 </ol>
 <h2 id="Naive-Triton-Kernel-Lib-Framework"><a href="#Naive-Triton-Kernel-Lib-Framework" class="headerlink" title="Naive Triton Kernel Lib Framework"></a><font color = brown>Naive Triton Kernel Lib Framework</font></h2>
     </div>
@@ -395,20 +396,20 @@
       <div class="site-state-item site-state-posts">
           <a href="/archives/">
         
-          <span class="site-state-item-count">29</span>
+          <span class="site-state-item-count">32</span>
           <span class="site-state-item-name">日志</span>
         </a>
       </div>
       <div class="site-state-item site-state-categories">
             <a href="/categories/">
           
-        <span class="site-state-item-count">23</span>
+        <span class="site-state-item-count">24</span>
         <span class="site-state-item-name">分类</span></a>
       </div>
       <div class="site-state-item site-state-tags">
             <a href="/tags/">
           
-        <span class="site-state-item-count">17</span>
+        <span class="site-state-item-count">18</span>
         <span class="site-state-item-name">标签</span></a>
       </div>
   </nav>
@@ -445,13 +446,13 @@
       <i class="fa fa-chart-area"></i>
     </span>
       <span class="post-meta-item-text">站点总字数：</span>
-    <span title="站点总字数">271k</span>
+    <span title="站点总字数">302k</span>
     <span class="post-meta-divider">|</span>
     <span class="post-meta-item-icon">
       <i class="fa fa-coffee"></i>
     </span>
       <span class="post-meta-item-text">站点阅读时长 &asymp;</span>
-    <span title="站点阅读时长">4:06</span>
+    <span title="站点阅读时长">4:34</span>
 </div>
   <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://pisces.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Pisces</a> 强力驱动
   </div>

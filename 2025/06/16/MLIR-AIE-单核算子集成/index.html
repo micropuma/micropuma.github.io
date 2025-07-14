@@ -39,8 +39,11 @@
 <meta property="og:image" content="http://example.com/images/image-20250617184623663.png">
 <meta property="og:image" content="http://example.com/images/image-20250618185139930.png">
 <meta property="og:image" content="http://example.com/images/image-20250618190920385.png">
+<meta property="og:image" content="http://example.com/images/image-20250629105407219.png">
+<meta property="og:image" content="http://example.com/images/image-20250629105950468.png">
+<meta property="og:image" content="http://example.com/images/image-20250629110224939.png">
 <meta property="article:published_time" content="2025-06-16T01:32:02.000Z">
-<meta property="article:modified_time" content="2025-06-22T08:42:33.221Z">
+<meta property="article:modified_time" content="2025-07-10T02:43:23.595Z">
 <meta property="article:author" content="Leon Dou">
 <meta property="article:tag" content="mlir">
 <meta property="article:tag" content="basics">
@@ -238,7 +241,7 @@
                   <i class="far fa-calendar-check"></i>
                 </span>
                 <span class="post-meta-item-text">更新于</span>
-                <time title="修改时间：2025-06-22 16:42:33" itemprop="dateModified" datetime="2025-06-22T16:42:33+08:00">2025-06-22</time>
+                <time title="修改时间：2025-07-10 10:43:23" itemprop="dateModified" datetime="2025-07-10T10:43:23+08:00">2025-07-10</time>
               </span>
             <span class="post-meta-item">
               <span class="post-meta-item-icon">
@@ -271,14 +274,14 @@
                 <i class="far fa-file-word"></i>
               </span>
                 <span class="post-meta-item-text">本文字数：</span>
-              <span>17k</span>
+              <span>26k</span>
             </span>
             <span class="post-meta-item" title="阅读时长">
               <span class="post-meta-item-icon">
                 <i class="far fa-clock"></i>
               </span>
                 <span class="post-meta-item-text">阅读时长 &asymp;</span>
-              <span>16 分钟</span>
+              <span>23 分钟</span>
             </span>
 
         </div>
@@ -292,6 +295,7 @@
       
         <p><img src="/images/image-20250616093524804.png" alt="image-20250616093524804"></p>
 <span id="more"></span>
+
 <blockquote>
 <p>本篇博客主要是讲解MLIR-AIE项目的手工算子开发流程以及流程集成。主要包含如下几个内容：</p>
 <ul>
@@ -303,10 +307,12 @@
 </blockquote>
 <h2 id="算子集成流程"><a href="#算子集成流程" class="headerlink" title="算子集成流程"></a><font color = brown>算子集成流程</font></h2><h3 id="单核算子perf流程"><a href="#单核算子perf流程" class="headerlink" title="单核算子perf流程"></a><font color = green>单核算子perf流程</font></h3><p>MLIR-AIE项目在单核算子开发中，提供了makefile脚本，该脚本可以用于生成可执行.o文件，以及借助于xca_udm_dbg闭源工具进行性能测试。详细Makefile文件如下所示：</p>
 <figure class="highlight makefile"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">include</span> ../../makefile-common</span><br><span class="line"></span><br><span class="line"><span class="meta"><span class="keyword">.PHONY</span>: build gui sim</span></span><br><span class="line"></span><br><span class="line"><span class="section">mlir: kernel.o</span></span><br><span class="line"></span><br><span class="line"><span class="section">%.o: %.cc</span></span><br><span class="line">	xchesscc $&#123;CHESSCC_FLAGS&#125; -c <span class="variable">$&lt;</span></span><br><span class="line"></span><br><span class="line"><span class="section">build:</span></span><br><span class="line">	xchessmk $&#123;CHESS_FLAGS&#125; test.prx</span><br><span class="line"></span><br><span class="line"><span class="section">gui:</span></span><br><span class="line">	xchessde $&#123;CHESS_FLAGS&#125; test.prx &amp;</span><br><span class="line"></span><br><span class="line"><span class="section">sim:</span></span><br><span class="line">	xca_udm_dbg $&#123;CHESS_FLAGS&#125; -t sim.tcl</span><br><span class="line"></span><br><span class="line"><span class="section">clean:</span></span><br><span class="line">	rm -rf work kernel.o test.prf</span><br></pre></td></tr></table></figure>
+
 <p>上述Makefile的使用顺序，是先运行<code>make build</code>，然后运行<code>make sim</code>。</p>
 <ul>
 <li><p><code>make build</code>生成work文件夹，同时生成<code>test.prx</code>。如下是一个<code>test.prx</code>的demo：</p>
 <figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">&lt;project name=&quot;test&quot; processor=&quot;me&quot;&gt;</span><br><span class="line">    &lt;file type=&quot;c&quot; name=&quot;kernel.cc&quot; path=&quot;&quot;/&gt;</span><br><span class="line">    &lt;file type=&quot;c&quot; name=&quot;test.cc&quot; path=&quot;&quot;/&gt;</span><br><span class="line">    &lt;option id=&quot;project.name&quot; value=&quot;test&quot;/&gt;</span><br><span class="line">    &lt;option id=&quot;project.type&quot; value=&quot;exe&quot;/&gt;</span><br><span class="line">&lt;/project&gt;</span><br></pre></td></tr></table></figure>
+
 <p>test.prx是项目配置文件，定义了如何构建一个名为<code>test</code>的可执行程序。它指定了生成的可执行文件是<code>test.exe</code>，构建所需的源文件是项目根目录下的<code>kernel.cc</code>和<code>test.cc</code>。</p>
 </li>
 <li><p><code>make sim</code>是模拟仿真流程</p>
@@ -316,10 +322,12 @@
 <p><img src="/images/image-20250616110204366.png" alt="image-20250616110204366"></p>
 <p>上图是AMD的conference中展示的一个单核算子优化（<strong>向量化</strong>）+代码生成的workflow。这一章节尝试拼接各种工具，打通上述workflow。首先是我们的输入代码：</p>
 <figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">void</span> <span class="title function_">conv2d</span><span class="params">(<span class="type">int</span> img_in[<span class="number">18</span>][<span class="number">272</span>], <span class="type">int</span> kernel_coeff[<span class="number">3</span>][<span class="number">3</span>], <span class="type">int</span> img_out[<span class="number">16</span>][<span class="number">256</span>])</span> &#123;</span><br><span class="line">    <span class="keyword">for</span>(<span class="type">int</span> r = <span class="number">0</span>; r &lt; <span class="number">16</span>; r++)</span><br><span class="line">        <span class="keyword">for</span>(<span class="type">int</span> c = <span class="number">0</span>; c &lt; <span class="number">256</span>; c++) &#123;</span><br><span class="line">            <span class="type">int</span> acc = <span class="number">0</span>;</span><br><span class="line">            <span class="keyword">for</span>(<span class="type">int</span> i = <span class="number">0</span>; i &lt; <span class="number">3</span>; i++)</span><br><span class="line">                <span class="keyword">for</span>(<span class="type">int</span> j = <span class="number">0</span>; j &lt; <span class="number">3</span>; j++) &#123;</span><br><span class="line">                    acc += img_in[r+i][c+j] * kernel_coeff[i][j];</span><br><span class="line">                &#125;</span><br><span class="line">            img_out[r][c] = acc;</span><br><span class="line">        &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
 <p>这个kernel的运算逻辑十分简单，就是做简单的3x3的卷积运算，卷积运算见下图所示：</p>
 <p><img src="/images/image-20250616142731464.png" alt="image-20250616142731464"></p>
 <p>明确输入后，我们需要准备好必要的项目依赖。整个单核算子生成的flow主要依赖于<code>MLIR-AIE</code>和<code>Polygeist</code>两个项目。这里我使用的pipeline脚本如下：</p>
 <figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">cgeist conv2D.c --function=conv2d -S --raise-scf-to-affine \</span><br><span class="line">        2&gt;&amp;1 | tee conv2D.mlir</span><br><span class="line"></span><br><span class="line">aie-opt conv2D.mlir \</span><br><span class="line">        --affine-loop-unroll=&quot;unroll-full unroll-full-threshold=3&quot; \</span><br><span class="line">        --canonicalize -affine-super-vectorize=&quot;virtual-vector-size=8 \</span><br><span class="line">        vectorize-reductions&quot; --aie-vectorize \</span><br><span class="line">        -mlir-print-ir-after-all \</span><br><span class="line">        -o result1.mlir \</span><br><span class="line">        2&gt;&amp;1 | tee aie-opt.log</span><br><span class="line"></span><br><span class="line">aie-translate --aievec-to-cpp result1.mlir \</span><br><span class="line">    2&gt;&amp;1 | tee kernel.cc</span><br></pre></td></tr></table></figure>
+
 <p>注意到，这里总共使用了三个工具：</p>
 <ul>
 <li><code>cgeist</code>工具支持将c代码接入mlir系统中，支持的dailect有<code>scf</code>和<code>affine</code>，同时也支持使用多面体优化技术优化循环。在这个流程中目前暂不考虑多面体优化。</li>
@@ -335,246 +343,238 @@
 <figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br><span class="line">116</span><br><span class="line">117</span><br><span class="line">118</span><br><span class="line">119</span><br><span class="line">120</span><br><span class="line">121</span><br><span class="line">122</span><br><span class="line">123</span><br><span class="line">124</span><br><span class="line">125</span><br><span class="line">126</span><br><span class="line">127</span><br><span class="line">128</span><br><span class="line">129</span><br><span class="line">130</span><br><span class="line">131</span><br><span class="line">132</span><br><span class="line">133</span><br><span class="line">134</span><br><span class="line">135</span><br><span class="line">136</span><br><span class="line">137</span><br><span class="line">138</span><br><span class="line">139</span><br><span class="line">140</span><br><span class="line">141</span><br><span class="line">142</span><br><span class="line">143</span><br><span class="line">144</span><br><span class="line">145</span><br><span class="line">146</span><br><span class="line">147</span><br><span class="line">148</span><br><span class="line">149</span><br><span class="line">150</span><br><span class="line">151</span><br><span class="line">152</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">module</span> &#123;</span><br><span class="line">  <span class="comment">// 函数定义：conv2d 接收输入特征图、3x3卷积核、输出特征图</span></span><br><span class="line">  func.func @<span class="built_in">conv2d</span>(</span><br><span class="line">      %arg0: memref&lt;?x272xi32&gt;,   <span class="comment">// 输入特征图 (272列=256输出+16填充)</span></span><br><span class="line">      %arg1: memref&lt;?x3xi32&gt;,     <span class="comment">// 3x3卷积核 (存储为3行)</span></span><br><span class="line">      %arg2: memref&lt;?x256xi32&gt;) &#123; <span class="comment">// 输出特征图 (256列)</span></span><br><span class="line">    </span><br><span class="line">    <span class="comment">// ===== 常量定义 =====</span></span><br><span class="line">    %c2 = arith.constant <span class="number">2</span> : index   <span class="comment">// 索引常量2 (用于卷积核行偏移)</span></span><br><span class="line">    %c0 = arith.constant <span class="number">0</span> : index   <span class="comment">// 索引常量0</span></span><br><span class="line">    %c0_i32 = arith.constant <span class="number">0</span> : i32 <span class="comment">// 32位整型常量0 (用于移位操作)</span></span><br><span class="line">    </span><br><span class="line">    <span class="comment">// ===== 卷积核加载 =====</span></span><br><span class="line">    <span class="comment">// 加载卷积核第0行（8个元素）到向量寄存器%0</span></span><br><span class="line">    %<span class="number">0</span> = aievec.upd %arg1[%c0, %c0] &#123;index = <span class="number">0</span> : i8, offset = <span class="number">0</span> : i32&#125; </span><br><span class="line">        : memref&lt;?x3xi32&gt;, vector&lt;<span class="number">8</span>xi32&gt;</span><br><span class="line">    </span><br><span class="line">    <span class="comment">// 加载卷积核第2行（8个元素）到向量寄存器%1</span></span><br><span class="line">    %<span class="number">1</span> = aievec.upd %arg1[%c2, %c2] &#123;index = <span class="number">0</span> : i8, offset = <span class="number">0</span> : i32&#125; </span><br><span class="line">        : memref&lt;?x3xi32&gt;, vector&lt;<span class="number">8</span>xi32&gt;</span><br><span class="line">    </span><br><span class="line">    <span class="comment">// ===== 输出高度循环准备 =====</span></span><br><span class="line">    %c0_0 = arith.constant <span class="number">0</span> : index  <span class="comment">// 循环起始索引0</span></span><br><span class="line">    %c16 = arith.constant <span class="number">16</span> : index  <span class="comment">// 输出高度16 (循环次数)</span></span><br><span class="line">    %c1 = arith.constant <span class="number">1</span> : index    <span class="comment">// 步长1</span></span><br><span class="line">    </span><br><span class="line">    <span class="comment">// ==== 外层循环：遍历输出高度 ====</span></span><br><span class="line">    scf.<span class="keyword">for</span> %arg3 = %c0_0 to %c16 step %c1 &#123;  <span class="comment">// %arg3: 当前输出行索引</span></span><br><span class="line">      </span><br><span class="line">      <span class="comment">// 计算输入特征图的行偏移</span></span><br><span class="line">      %c1_1 = arith.constant <span class="number">1</span> : index</span><br><span class="line">      %<span class="number">2</span> = arith.addi %arg3, %c1_1 : index   <span class="comment">// %arg3+1 (下一行索引)</span></span><br><span class="line">      %c2_2 = arith.constant <span class="number">2</span> : index</span><br><span class="line">      %<span class="number">3</span> = arith.addi %arg3, %c2_2 : index   <span class="comment">// %arg3+2 (下两行索引)</span></span><br><span class="line">      </span><br><span class="line">      <span class="comment">// ===== 输出宽度循环准备 =====</span></span><br><span class="line">      %c0_3 = arith.constant <span class="number">0</span> : index    <span class="comment">// 宽度循环起始索引0</span></span><br><span class="line">      %c256 = arith.constant <span class="number">256</span> : index  <span class="comment">// 输出宽度256</span></span><br><span class="line">      %c8 = arith.constant <span class="number">8</span> : index      <span class="comment">// 向量化步长 (每步处理8列输出)</span></span><br><span class="line">      </span><br><span class="line">      <span class="comment">// ==== 内层循环：遍历输出宽度 ====</span></span><br><span class="line">      scf.<span class="keyword">for</span> %arg4 = %c0_3 to %c256 step %c8 &#123;  <span class="comment">// %arg4: 当前列起始索引 (步长8)</span></span><br><span class="line">        </span><br><span class="line">        <span class="comment">// === 第0行卷积计算 ===</span></span><br><span class="line">        <span class="comment">// 加载输入特征图 [%arg3行, %arg4列] 的16个元素</span></span><br><span class="line">        %<span class="number">4</span> = aievec.upd %arg0[%arg3, %arg4] &#123;index = <span class="number">0</span> : i8, offset = <span class="number">0</span> : i32&#125; </span><br><span class="line">            : memref&lt;?x272xi32&gt;, vector&lt;<span class="number">16</span>xi32&gt;</span><br><span class="line">        </span><br><span class="line">        <span class="comment">// 初始化乘加计算：输入%4 × 卷积核%0 → 存储到累加器0</span></span><br><span class="line">        %<span class="number">5</span> = aievec_aie<span class="number">1.</span>mul %<span class="number">4</span>, %<span class="number">0</span> &#123;</span><br><span class="line">            xoffsets = <span class="string">&quot;0x76543210&quot;</span>, <span class="comment">// 选择输入向量的0-7号元素</span></span><br><span class="line">            xstart = <span class="string">&quot;0&quot;</span>,            <span class="comment">// 卷积核起始位置0</span></span><br><span class="line">            zoffsets = <span class="string">&quot;0x00000000&quot;</span>, <span class="comment">// 累加器偏移0</span></span><br><span class="line">            zstart = <span class="string">&quot;0&quot;</span>              <span class="comment">// 使用累加器0</span></span><br><span class="line">        &#125; : vector&lt;<span class="number">16</span>xi32&gt;, vector&lt;<span class="number">8</span>xi32&gt;, vector&lt;<span class="number">8</span>xi80&gt;</span><br><span class="line">        </span><br><span class="line">        <span class="comment">// 计算下一列位置</span></span><br><span class="line">        %c1_4 = arith.constant <span class="number">1</span> : index</span><br><span class="line">        %<span class="number">6</span> = arith.addi %arg4, %c1_4 : index  <span class="comment">// %arg4+1</span></span><br><span class="line">        </span><br><span class="line">        <span class="comment">// 滑动窗口加载：复用%4寄存器，仅加载新数据</span></span><br><span class="line">        %<span class="number">7</span> = aievec.upd %arg0[%arg3, %<span class="number">6</span>], %<span class="number">4</span> &#123;index = <span class="number">1</span> : i8, offset = <span class="number">224</span> : i32&#125; </span><br><span class="line">            : memref&lt;?x272xi32&gt;, vector&lt;<span class="number">16</span>xi32&gt;  <span class="comment">// 224=(16-8)*32bit</span></span><br><span class="line">        </span><br><span class="line">        <span class="comment">// 累加计算：输入%7 × 卷积核%0 → 累加到累加器1</span></span><br><span class="line">        %<span class="number">8</span> = aievec_aie<span class="number">1.</span>mac %<span class="number">7</span>, %<span class="number">0</span>, %<span class="number">5</span> &#123;</span><br><span class="line">            xoffsets = <span class="string">&quot;0x76543210&quot;</span>, </span><br><span class="line">            xstart = <span class="string">&quot;1&quot;</span>,  <span class="comment">// 卷积核起始位置1</span></span><br><span class="line">            zstart = <span class="string">&quot;1&quot;</span>   <span class="comment">// 使用累加器1</span></span><br><span class="line">        &#125; : vector&lt;<span class="number">16</span>xi32&gt;, vector&lt;<span class="number">8</span>xi32&gt;, vector&lt;<span class="number">8</span>xi80&gt;</span><br><span class="line">        </span><br><span class="line">        <span class="comment">// 累加计算：同一数据再次使用 → 累加到累加器2</span></span><br><span class="line">        %<span class="number">9</span> = aievec_aie<span class="number">1.</span>mac %<span class="number">7</span>, %<span class="number">0</span>, %<span class="number">8</span> &#123;</span><br><span class="line">            xoffsets = <span class="string">&quot;0x76543210&quot;</span>,</span><br><span class="line">            xstart = <span class="string">&quot;2&quot;</span>,  <span class="comment">// 卷积核起始位置2</span></span><br><span class="line">            zstart = <span class="string">&quot;2&quot;</span>   <span class="comment">// 使用累加器2</span></span><br><span class="line">        &#125; : vector&lt;<span class="number">16</span>xi32&gt;, vector&lt;<span class="number">8</span>xi32&gt;, vector&lt;<span class="number">8</span>xi80&gt;</span><br><span class="line">        </span><br><span class="line">        <span class="comment">// === 第1行卷积计算 ===</span></span><br><span class="line">        <span class="comment">// 加载输入特征图 [%2行(%arg3+1), %arg4列] 的16个元素</span></span><br><span class="line">        %<span class="number">10</span> = aievec.upd %arg0[%<span class="number">2</span>, %arg4] &#123;index = <span class="number">0</span> : i8, offset = <span class="number">0</span> : i32&#125; </span><br><span class="line">            : memref&lt;?x272xi32&gt;, vector&lt;<span class="number">16</span>xi32&gt;</span><br><span class="line">        </span><br><span class="line">        <span class="comment">// 累加计算：新行数据 × 卷积核%0 → 累加到累加器3</span></span><br><span class="line">        %<span class="number">11</span> = aievec_aie<span class="number">1.</span>mac %<span class="number">10</span>, %<span class="number">0</span>, %<span class="number">9</span> &#123;</span><br><span class="line">            xoffsets = <span class="string">&quot;0x76543210&quot;</span>,</span><br><span class="line">            xstart = <span class="string">&quot;0&quot;</span>,  <span class="comment">// 卷积核起始位置0</span></span><br><span class="line">            zstart = <span class="string">&quot;3&quot;</span>   <span class="comment">// 使用累加器3</span></span><br><span class="line">        &#125; : vector&lt;<span class="number">16</span>xi32&gt;, vector&lt;<span class="number">8</span>xi32&gt;, vector&lt;<span class="number">8</span>xi80&gt;</span><br><span class="line">        </span><br><span class="line">        <span class="comment">// 滑动窗口加载：[%2行, %6列]数据</span></span><br><span class="line">        %<span class="number">12</span> = aievec.upd %arg0[%<span class="number">2</span>, %<span class="number">6</span>], %<span class="number">10</span> &#123;index = <span class="number">1</span> : i8, offset = <span class="number">224</span> : i32&#125; </span><br><span class="line">            : memref&lt;?x272xi32&gt;, vector&lt;<span class="number">16</span>xi32&gt;</span><br><span class="line">        </span><br><span class="line">        <span class="comment">// 累加计算：×卷积核%0 → 累加到累加器4</span></span><br><span class="line">        %<span class="number">13</span> = aievec_aie<span class="number">1.</span>mac %<span class="number">12</span>, %<span class="number">0</span>, %<span class="number">11</span> &#123;</span><br><span class="line">            xoffsets = <span class="string">&quot;0x76543210&quot;</span>,</span><br><span class="line">            xstart = <span class="string">&quot;1&quot;</span>,  <span class="comment">// 卷积核位置1</span></span><br><span class="line">            zstart = <span class="string">&quot;4&quot;</span>   <span class="comment">// 累加器4</span></span><br><span class="line">        &#125; : vector&lt;<span class="number">16</span>xi32&gt;, vector&lt;<span class="number">8</span>xi32&gt;, vector&lt;<span class="number">8</span>xi80&gt;</span><br><span class="line">        </span><br><span class="line">        <span class="comment">// 累加计算：同一数据×卷积核%0 → 累加到累加器5</span></span><br><span class="line">        %<span class="number">14</span> = aievec_aie<span class="number">1.</span>mac %<span class="number">12</span>, %<span class="number">0</span>, %<span class="number">13</span> &#123;</span><br><span class="line">            xoffsets = <span class="string">&quot;0x76543210&quot;</span>,</span><br><span class="line">            xstart = <span class="string">&quot;2&quot;</span>,  <span class="comment">// 卷积核位置2</span></span><br><span class="line">            zstart = <span class="string">&quot;5&quot;</span>   <span class="comment">// 累加器5</span></span><br><span class="line">        &#125; : vector&lt;<span class="number">16</span>xi32&gt;, vector&lt;<span class="number">8</span>xi32&gt;, vector&lt;<span class="number">8</span>xi80&gt;</span><br><span class="line">        </span><br><span class="line">        <span class="comment">// === 第2行卷积计算 ===</span></span><br><span class="line">        <span class="comment">// 加载输入特征图 [%3行(%arg3+2), %arg4列] 的16个元素</span></span><br><span class="line">        %<span class="number">15</span> = aievec.upd %arg0[%<span class="number">3</span>, %arg4] &#123;index = <span class="number">0</span> : i8, offset = <span class="number">0</span> : i32&#125; </span><br><span class="line">            : memref&lt;?x272xi32&gt;, vector&lt;<span class="number">16</span>xi32&gt;</span><br><span class="line">        </span><br><span class="line">        <span class="comment">// 累加计算：×卷积核%0 → 累加到累加器6</span></span><br><span class="line">        %<span class="number">16</span> = aievec_aie<span class="number">1.</span>mac %<span class="number">15</span>, %<span class="number">0</span>, %<span class="number">14</span> &#123;</span><br><span class="line">            xoffsets = <span class="string">&quot;0x76543210&quot;</span>,</span><br><span class="line">            xstart = <span class="string">&quot;0&quot;</span>,  <span class="comment">// 卷积核位置0</span></span><br><span class="line">            zstart = <span class="string">&quot;6&quot;</span>   <span class="comment">// 累加器6</span></span><br><span class="line">        &#125; : vector&lt;<span class="number">16</span>xi32&gt;, vector&lt;<span class="number">8</span>xi32&gt;, vector&lt;<span class="number">8</span>xi80&gt;</span><br><span class="line">        </span><br><span class="line">        <span class="comment">// 滑动窗口加载：[%3行, %6列]数据</span></span><br><span class="line">        %<span class="number">17</span> = aievec.upd %arg0[%<span class="number">3</span>, %<span class="number">6</span>], %<span class="number">15</span> &#123;index = <span class="number">1</span> : i8, offset = <span class="number">224</span> : i32&#125; </span><br><span class="line">            : memref&lt;?x272xi32&gt;, vector&lt;<span class="number">16</span>xi32&gt;</span><br><span class="line">        </span><br><span class="line">        <span class="comment">// 累加计算：×卷积核%0 → 累加到累加器7</span></span><br><span class="line">        %<span class="number">18</span> = aievec_aie<span class="number">1.</span>mac %<span class="number">17</span>, %<span class="number">0</span>, %<span class="number">16</span> &#123;</span><br><span class="line">            xoffsets = <span class="string">&quot;0x76543210&quot;</span>,</span><br><span class="line">            xstart = <span class="string">&quot;1&quot;</span>,  <span class="comment">// 卷积核位置1</span></span><br><span class="line">            zstart = <span class="string">&quot;7&quot;</span>   <span class="comment">// 累加器7</span></span><br><span class="line">        &#125; : vector&lt;<span class="number">16</span>xi32&gt;, vector&lt;<span class="number">8</span>xi32&gt;, vector&lt;<span class="number">8</span>xi80&gt;</span><br><span class="line">        </span><br><span class="line">        <span class="comment">// === 最终计算：使用卷积核第2行 ===</span></span><br><span class="line">        <span class="comment">// 累加计算：相同输入数据×卷积核%1 → 回环到累加器0</span></span><br><span class="line">        %<span class="number">19</span> = aievec_aie<span class="number">1.</span>mac %<span class="number">17</span>, %<span class="number">1</span>, %<span class="number">18</span> &#123;</span><br><span class="line">            xoffsets = <span class="string">&quot;0x76543210&quot;</span>,</span><br><span class="line">            xstart = <span class="string">&quot;2&quot;</span>,  <span class="comment">// 卷积核位置2</span></span><br><span class="line">            zstart = <span class="string">&quot;0&quot;</span>   <span class="comment">// 累加器回环到0</span></span><br><span class="line">        &#125; : vector&lt;<span class="number">16</span>xi32&gt;, vector&lt;<span class="number">8</span>xi32&gt;, vector&lt;<span class="number">8</span>xi80&gt;</span><br><span class="line">        </span><br><span class="line">        <span class="comment">// ===== 结果后处理 =====</span></span><br><span class="line">        <span class="comment">// 下移+饱和：80位累加器 → 32位输出 (%c0_i32=0表示无移位)</span></span><br><span class="line">        %<span class="number">20</span> = aievec.srs %<span class="number">19</span>, %c0_i32 : vector&lt;<span class="number">8</span>xi80&gt;, i32, vector&lt;<span class="number">8</span>xi32&gt;</span><br><span class="line">        </span><br><span class="line">        <span class="comment">// ===== 结果写回 =====</span></span><br><span class="line">        <span class="comment">// 将8个结果写入输出特征图 [行%arg3, 列%arg4]</span></span><br><span class="line">        vector.transfer_write %<span class="number">20</span>, %arg2[%arg3, %arg4] </span><br><span class="line">            : vector&lt;<span class="number">8</span>xi32&gt;, memref&lt;?x256xi32&gt;</span><br><span class="line">      &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span></span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 </li>
 <li><p>最终翻译出来的cpp文件</p>
-<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="keyword">define</span> __AIENGINE__ 1</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> NOCPP</span></span><br><span class="line"></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;stdint.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;stdio.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;stdlib.h&gt;</span></span></span><br><span class="line"></span><br><span class="line"><span class="keyword">extern</span> <span class="string">&quot;C&quot;</span> &#123;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="type">void</span> <span class="title">conv2d</span><span class="params">(<span class="type">int32_t</span> * restrict v4, <span class="type">size_t</span> m1, <span class="type">int32_t</span> * restrict v5, <span class="type">size_t</span> m2, <span class="type">int32_t</span> * restrict v6, <span class="type">size_t</span> m3)</span> </span>&#123;</span><br><span class="line">  <span class="type">size_t</span> v7 = <span class="number">2</span>;</span><br><span class="line">  <span class="type">size_t</span> v8 = <span class="number">0</span>;</span><br><span class="line">  <span class="type">int32_t</span> v9 = <span class="number">0</span>;</span><br><span class="line">  v8int32 v10 = *(v8int32 *)(v5 + <span class="number">3</span>*v8+v8);</span><br><span class="line">  v8int32 v11 = *(v8int32 *)(v5 + <span class="number">3</span>*v7+v7);</span><br><span class="line">  <span class="type">size_t</span> v12 = <span class="number">0</span>;</span><br><span class="line">  <span class="type">size_t</span> v13 = <span class="number">16</span>;</span><br><span class="line">  <span class="type">size_t</span> v14 = <span class="number">1</span>;</span><br><span class="line">  <span class="keyword">for</span> (<span class="type">size_t</span> v15 = v12; v15 &lt; v13; v15 += v14)</span><br><span class="line">  <span class="function">chess_prepare_for_pipelining</span></span><br><span class="line"><span class="function">  <span class="title">chess_loop_range</span><span class="params">(<span class="number">16</span>, <span class="number">16</span>)</span></span></span><br><span class="line"><span class="function">  </span>&#123;</span><br><span class="line">    <span class="type">size_t</span> v16 = <span class="number">1</span>;</span><br><span class="line">    <span class="type">size_t</span> v17 = v15 + v16;</span><br><span class="line">    <span class="type">size_t</span> v18 = <span class="number">2</span>;</span><br><span class="line">    <span class="type">size_t</span> v19 = v15 + v18;</span><br><span class="line">    <span class="type">size_t</span> v20 = <span class="number">0</span>;</span><br><span class="line">    <span class="type">size_t</span> v21 = <span class="number">256</span>;</span><br><span class="line">    <span class="type">size_t</span> v22 = <span class="number">8</span>;</span><br><span class="line">    <span class="keyword">for</span> (<span class="type">size_t</span> v23 = v20; v23 &lt; v21; v23 += v22)</span><br><span class="line">    <span class="function">chess_prepare_for_pipelining</span></span><br><span class="line"><span class="function">    <span class="title">chess_loop_range</span><span class="params">(<span class="number">32</span>, <span class="number">32</span>)</span></span></span><br><span class="line"><span class="function">    </span>&#123;</span><br><span class="line">      v16int32 v24;</span><br><span class="line">      <span class="type">int32_t</span> * restrict r_v24_v4 = v4;</span><br><span class="line">      v24 = <span class="built_in">upd_w</span>(v24, <span class="number">0</span>, *(v8int32 *)(r_v24_v4 + <span class="number">272</span>*v15+v23));</span><br><span class="line">      v8acc80 v25 = <span class="built_in">lmul8</span>(v24, <span class="number">0</span>, <span class="number">0x76543210</span>, v10, <span class="number">0</span>, <span class="number">0x00000000</span>);</span><br><span class="line">      <span class="type">size_t</span> v26 = <span class="number">1</span>;</span><br><span class="line">      <span class="type">size_t</span> v27 = v23 + v26;</span><br><span class="line">      v24 = <span class="built_in">upd_w</span>(v24, <span class="number">1</span>, *(v8int32 *)(r_v24_v4 + <span class="number">272</span>*v15+v27 + <span class="number">7</span>));</span><br><span class="line">      v25 = <span class="built_in">lmac8</span>(v25, v24, <span class="number">1</span>, <span class="number">0x76543210</span>, v10, <span class="number">1</span>, <span class="number">0x00000000</span>);</span><br><span class="line">      v25 = <span class="built_in">lmac8</span>(v25, v24, <span class="number">2</span>, <span class="number">0x76543210</span>, v10, <span class="number">2</span>, <span class="number">0x00000000</span>);</span><br><span class="line">      v16int32 v28;</span><br><span class="line">      <span class="type">int32_t</span> * restrict r_v28_v4 = v4;</span><br><span class="line">      v28 = <span class="built_in">upd_w</span>(v28, <span class="number">0</span>, *(v8int32 *)(r_v28_v4 + <span class="number">272</span>*v17+v23));</span><br><span class="line">      v25 = <span class="built_in">lmac8</span>(v25, v28, <span class="number">0</span>, <span class="number">0x76543210</span>, v10, <span class="number">3</span>, <span class="number">0x00000000</span>);</span><br><span class="line">      v28 = <span class="built_in">upd_w</span>(v28, <span class="number">1</span>, *(v8int32 *)(r_v28_v4 + <span class="number">272</span>*v17+v27 + <span class="number">7</span>));</span><br><span class="line">      v25 = <span class="built_in">lmac8</span>(v25, v28, <span class="number">1</span>, <span class="number">0x76543210</span>, v10, <span class="number">4</span>, <span class="number">0x00000000</span>);</span><br><span class="line">      v25 = <span class="built_in">lmac8</span>(v25, v28, <span class="number">2</span>, <span class="number">0x76543210</span>, v10, <span class="number">5</span>, <span class="number">0x00000000</span>);</span><br><span class="line">      v16int32 v29;</span><br><span class="line">      <span class="type">int32_t</span> * restrict r_v29_v4 = v4;</span><br><span class="line">      v29 = <span class="built_in">upd_w</span>(v29, <span class="number">0</span>, *(v8int32 *)(r_v29_v4 + <span class="number">272</span>*v19+v23));</span><br><span class="line">      v25 = <span class="built_in">lmac8</span>(v25, v29, <span class="number">0</span>, <span class="number">0x76543210</span>, v10, <span class="number">6</span>, <span class="number">0x00000000</span>);</span><br><span class="line">      v29 = <span class="built_in">upd_w</span>(v29, <span class="number">1</span>, *(v8int32 *)(r_v29_v4 + <span class="number">272</span>*v19+v27 + <span class="number">7</span>));</span><br><span class="line">      v25 = <span class="built_in">lmac8</span>(v25, v29, <span class="number">1</span>, <span class="number">0x76543210</span>, v10, <span class="number">7</span>, <span class="number">0x00000000</span>);</span><br><span class="line">      v25 = <span class="built_in">lmac8</span>(v25, v29, <span class="number">2</span>, <span class="number">0x76543210</span>, v11, <span class="number">0</span>, <span class="number">0x00000000</span>);</span><br><span class="line">      v8int32 v30 = <span class="built_in">srs</span>(v25, v9);</span><br><span class="line">      *(v8int32 *)(v6 + <span class="number">256</span>*v15+v23) = v30;</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">  <span class="keyword">return</span>;</span><br><span class="line">&#125;</span><br><span class="line">&#125; <span class="comment">// extern &quot;C&quot;</span></span><br></pre></td></tr></table></figure>
-</li>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="keyword">define</span> __AIENGINE__ 1</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> NOCPP</span></span><br><span class="line"></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;stdint.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;stdio.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;stdlib.h&gt;</span></span></span><br><span class="line"></span><br><span class="line"><span class="keyword">extern</span> <span class="string">&quot;C&quot;</span> &#123;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="type">void</span> <span class="title">conv2d</span><span class="params">(<span class="type">int32_t</span> * restrict v4, <span class="type">size_t</span> m1, <span class="type">int32_t</span> * restrict v5, <span class="type">size_t</span> m2, <span class="type">int32_t</span> * restrict v6, <span class="type">size_t</span> m3)</span> </span>&#123;</span><br><span class="line">  <span class="type">size_t</span> v7 = <span class="number">2</span>;</span><br><span class="line">  <span class="type">size_t</span> v8 = <span class="number">0</span>;</span><br><span class="line">  <span class="type">int32_t</span> v9 = <span class="number">0</span>;</span><br><span class="line">  v8int32 v10 = *(v8int32 *)(v5 + <span class="number">3</span>*v8+v8);</span><br><span class="line">  v8int32 v11 = *(v8int32 *)(v5 + <span class="number">3</span>*v7+v7);</span><br><span class="line">  <span class="type">size_t</span> v12 = <span class="number">0</span>;</span><br><span class="line">  <span class="type">size_t</span> v13 = <span class="number">16</span>;</span><br><span class="line">  <span class="type">size_t</span> v14 = <span class="number">1</span>;</span><br><span class="line">  <span class="keyword">for</span> (<span class="type">size_t</span> v15 = v12; v15 &lt; v13; v15 += v14)</span><br><span class="line">  <span class="function">chess_prepare_for_pipelining</span></span><br><span class="line"><span class="function">  <span class="title">chess_loop_range</span><span class="params">(<span class="number">16</span>, <span class="number">16</span>)</span></span></span><br><span class="line"><span class="function">  </span>&#123;</span><br><span class="line">    <span class="type">size_t</span> v16 = <span class="number">1</span>;</span><br><span class="line">    <span class="type">size_t</span> v17 = v15 + v16;</span><br><span class="line">    <span class="type">size_t</span> v18 = <span class="number">2</span>;</span><br><span class="line">    <span class="type">size_t</span> v19 = v15 + v18;</span><br><span class="line">    <span class="type">size_t</span> v20 = <span class="number">0</span>;</span><br><span class="line">    <span class="type">size_t</span> v21 = <span class="number">256</span>;</span><br><span class="line">    <span class="type">size_t</span> v22 = <span class="number">8</span>;</span><br><span class="line">    <span class="keyword">for</span> (<span class="type">size_t</span> v23 = v20; v23 &lt; v21; v23 += v22)</span><br><span class="line">    <span class="function">chess_prepare_for_pipelining</span></span><br><span class="line"><span class="function">    <span class="title">chess_loop_range</span><span class="params">(<span class="number">32</span>, <span class="number">32</span>)</span></span></span><br><span class="line"><span class="function">    </span>&#123;</span><br><span class="line">      v16int32 v24;</span><br><span class="line">      <span class="type">int32_t</span> * restrict r_v24_v4 = v4;</span><br><span class="line">      v24 = <span class="built_in">upd_w</span>(v24, <span class="number">0</span>, *(v8int32 *)(r_v24_v4 + <span class="number">272</span>*v15+v23));</span><br><span class="line">      v8acc80 v25 = <span class="built_in">lmul8</span>(v24, <span class="number">0</span>, <span class="number">0x76543210</span>, v10, <span class="number">0</span>, <span class="number">0x00000000</span>);</span><br><span class="line">      <span class="type">size_t</span> v26 = <span class="number">1</span>;</span><br><span class="line">      <span class="type">size_t</span> v27 = v23 + v26;</span><br><span class="line">      v24 = <span class="built_in">upd_w</span>(v24, <span class="number">1</span>, *(v8int32 *)(r_v24_v4 + <span class="number">272</span>*v15+v27 + <span class="number">7</span>));</span><br><span class="line">      v25 = <span class="built_in">lmac8</span>(v25, v24, <span class="number">1</span>, <span class="number">0x76543210</span>, v10, <span class="number">1</span>, <span class="number">0x00000000</span>);</span><br><span class="line">      v25 = <span class="built_in">lmac8</span>(v25, v24, <span class="number">2</span>, <span class="number">0x76543210</span>, v10, <span class="number">2</span>, <span class="number">0x00000000</span>);</span><br><span class="line">      v16int32 v28;</span><br><span class="line">      <span class="type">int32_t</span> * restrict r_v28_v4 = v4;</span><br><span class="line">      v28 = <span class="built_in">upd_w</span>(v28, <span class="number">0</span>, *(v8int32 *)(r_v28_v4 + <span class="number">272</span>*v17+v23));</span><br><span class="line">      v25 = <span class="built_in">lmac8</span>(v25, v28, <span class="number">0</span>, <span class="number">0x76543210</span>, v10, <span class="number">3</span>, <span class="number">0x00000000</span>);</span><br><span class="line">      v28 = <span class="built_in">upd_w</span>(v28, <span class="number">1</span>, *(v8int32 *)(r_v28_v4 + <span class="number">272</span>*v17+v27 + <span class="number">7</span>));</span><br><span class="line">      v25 = <span class="built_in">lmac8</span>(v25, v28, <span class="number">1</span>, <span class="number">0x76543210</span>, v10, <span class="number">4</span>, <span class="number">0x00000000</span>);</span><br><span class="line">      v25 = <span class="built_in">lmac8</span>(v25, v28, <span class="number">2</span>, <span class="number">0x76543210</span>, v10, <span class="number">5</span>, <span class="number">0x00000000</span>);</span><br><span class="line">      v16int32 v29;</span><br><span class="line">      <span class="type">int32_t</span> * restrict r_v29_v4 = v4;</span><br><span class="line">      v29 = <span class="built_in">upd_w</span>(v29, <span class="number">0</span>, *(v8int32 *)(r_v29_v4 + <span class="number">272</span>*v19+v23));</span><br><span class="line">      v25 = <span class="built_in">lmac8</span>(v25, v29, <span class="number">0</span>, <span class="number">0x76543210</span>, v10, <span class="number">6</span>, <span class="number">0x00000000</span>);</span><br><span class="line">      v29 = <span class="built_in">upd_w</span>(v29, <span class="number">1</span>, *(v8int32 *)(r_v29_v4 + <span class="number">272</span>*v19+v27 + <span class="number">7</span>));</span><br><span class="line">      v25 = <span class="built_in">lmac8</span>(v25, v29, <span class="number">1</span>, <span class="number">0x76543210</span>, v10, <span class="number">7</span>, <span class="number">0x00000000</span>);</span><br><span class="line">      v25 = <span class="built_in">lmac8</span>(v25, v29, <span class="number">2</span>, <span class="number">0x76543210</span>, v11, <span class="number">0</span>, <span class="number">0x00000000</span>);</span><br><span class="line">      v8int32 v30 = <span class="built_in">srs</span>(v25, v9);</span><br><span class="line">      *(v8int32 *)(v6 + <span class="number">256</span>*v15+v23) = v30;</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">  <span class="keyword">return</span>;</span><br><span class="line">&#125;</span><br><span class="line">&#125; <span class="comment">// extern &quot;C&quot;</span></span><br></pre></td></tr></table></figure></li>
 </ul>
 <p>由此便是一个完整的算子代码生成流程。</p>
 <h3 id="AIE1Vec指令集"><a href="#AIE1Vec指令集" class="headerlink" title="AIE1Vec指令集"></a><font color = green>AIE1Vec指令集</font></h3><p>这部分主要参考<code>mlir-aie</code>项目的<code>/include/aie/Dialect/AIEVec/AIE1/IR/AIEVecAIE1Ops.td</code>文件。整个流程是将<code>affine dialect</code>的代码转换优化成<code>aievec dialect</code>，然后借助于<code>aie-translate</code>翻译成用AI intrinsic编写的cpp代码。所以我们日后的很多优化工作其实是会在<code>aievec dialect</code>上来完成。</p>
 <p>这里罗列AIE1Vec中支持的指令集：</p>
 <blockquote>
-<div class="table-container">
 <table>
 <thead>
 <tr>
-<th style="text-align:center"><strong>操作名称</strong></th>
-<th style="text-align:center"><strong>操作符</strong></th>
-<th style="text-align:center"><strong>输入参数</strong></th>
-<th style="text-align:center"><strong>输出</strong></th>
-<th style="text-align:center"><strong>关键属性</strong></th>
-<th style="text-align:center"><strong>功能描述</strong></th>
+<th align="center"><strong>操作名称</strong></th>
+<th align="center"><strong>操作符</strong></th>
+<th align="center"><strong>输入参数</strong></th>
+<th align="center"><strong>输出</strong></th>
+<th align="center"><strong>关键属性</strong></th>
+<th align="center"><strong>功能描述</strong></th>
 </tr>
 </thead>
-<tbody>
-<tr>
-<td style="text-align:center"><strong>算术运算</strong></td>
-<td style="text-align:center"></td>
-<td style="text-align:center"></td>
-<td style="text-align:center"></td>
-<td style="text-align:center"></td>
-<td style="text-align:center"></td>
+<tbody><tr>
+<td align="center"><strong>算术运算</strong></td>
+<td align="center"></td>
+<td align="center"></td>
+<td align="center"></td>
+<td align="center"></td>
+<td align="center"></td>
 </tr>
 <tr>
-<td style="text-align:center">向量加法</td>
-<td style="text-align:center"><code>add</code></td>
-<td style="text-align:center"><code>lhs, rhs</code></td>
-<td style="text-align:center"><code>result</code></td>
-<td style="text-align:center"><code>xstart, xoffsets, xoffsets_hi, xsquare, zstart, zoffsets, zoffsets_hi, zsquare</code></td>
-<td style="text-align:center">对两个1-D向量进行通道选择加法，支持256位以上向量</td>
+<td align="center">向量加法</td>
+<td align="center"><code>add</code></td>
+<td align="center"><code>lhs, rhs</code></td>
+<td align="center"><code>result</code></td>
+<td align="center"><code>xstart, xoffsets, xoffsets_hi, xsquare, zstart, zoffsets, zoffsets_hi, zsquare</code></td>
+<td align="center">对两个1-D向量进行通道选择加法，支持256位以上向量</td>
 </tr>
 <tr>
-<td style="text-align:center">向量减法</td>
-<td style="text-align:center"><code>sub</code></td>
-<td style="text-align:center"><code>lhs, rhs</code></td>
-<td style="text-align:center"><code>result</code></td>
-<td style="text-align:center">同加法操作属性</td>
-<td style="text-align:center">对两个1-D向量进行通道选择减法，支持256位以上向量</td>
+<td align="center">向量减法</td>
+<td align="center"><code>sub</code></td>
+<td align="center"><code>lhs, rhs</code></td>
+<td align="center"><code>result</code></td>
+<td align="center">同加法操作属性</td>
+<td align="center">对两个1-D向量进行通道选择减法，支持256位以上向量</td>
 </tr>
 <tr>
-<td style="text-align:center">向量乘法</td>
-<td style="text-align:center"><code>mul</code></td>
-<td style="text-align:center"><code>lhs, rhs</code></td>
-<td style="text-align:center"><code>result</code></td>
-<td style="text-align:center"><code>xstep, zstep</code>（新增步长属性）</td>
-<td style="text-align:center">左操作数至少为右操作数2倍，支持8/16/32位整数，输出48/80位累加器</td>
+<td align="center">向量乘法</td>
+<td align="center"><code>mul</code></td>
+<td align="center"><code>lhs, rhs</code></td>
+<td align="center"><code>result</code></td>
+<td align="center"><code>xstep, zstep</code>（新增步长属性）</td>
+<td align="center">左操作数至少为右操作数2倍，支持8&#x2F;16&#x2F;32位整数，输出48&#x2F;80位累加器</td>
 </tr>
 <tr>
-<td style="text-align:center">乘加融合</td>
-<td style="text-align:center"><code>mac</code></td>
-<td style="text-align:center"><code>lhs, rhs, acc</code></td>
-<td style="text-align:center"><code>result</code></td>
-<td style="text-align:center"><code>fmsub</code>（乘减模式开关）</td>
-<td style="text-align:center">支持乘加(<code>lhs*rhs+acc</code>)或乘减(<code>lhs*rhs-acc</code>)模式</td>
+<td align="center">乘加融合</td>
+<td align="center"><code>mac</code></td>
+<td align="center"><code>lhs, rhs, acc</code></td>
+<td align="center"><code>result</code></td>
+<td align="center"><code>fmsub</code>（乘减模式开关）</td>
+<td align="center">支持乘加(<code>lhs*rhs+acc</code>)或乘减(<code>lhs*rhs-acc</code>)模式</td>
 </tr>
 <tr>
-<td style="text-align:center"><strong>数据操作</strong></td>
-<td style="text-align:center"></td>
-<td style="text-align:center"></td>
-<td style="text-align:center"></td>
-<td style="text-align:center"></td>
-<td style="text-align:center"></td>
+<td align="center"><strong>数据操作</strong></td>
+<td align="center"></td>
+<td align="center"></td>
+<td align="center"></td>
+<td align="center"></td>
+<td align="center"></td>
 </tr>
 <tr>
-<td style="text-align:center">通道选择</td>
-<td style="text-align:center"><code>select</code></td>
-<td style="text-align:center"><code>xbuff, [ybuff]</code></td>
-<td style="text-align:center"><code>result</code></td>
-<td style="text-align:center"><code>select, ystart, yoffsets, yoffsets_hi, ysquare</code></td>
-<td style="text-align:center">根据<code>select</code>位的0/1选择xbuff/ybuff的通道</td>
+<td align="center">通道选择</td>
+<td align="center"><code>select</code></td>
+<td align="center"><code>xbuff, [ybuff]</code></td>
+<td align="center"><code>result</code></td>
+<td align="center"><code>select, ystart, yoffsets, yoffsets_hi, ysquare</code></td>
+<td align="center">根据<code>select</code>位的0&#x2F;1选择xbuff&#x2F;ybuff的通道</td>
 </tr>
 <tr>
-<td style="text-align:center">向量提取</td>
-<td style="text-align:center"><code>ext</code></td>
-<td style="text-align:center"><code>source</code></td>
-<td style="text-align:center"><code>result</code></td>
-<td style="text-align:center"><code>index</code>（0-7范围）</td>
+<td align="center">向量提取</td>
+<td align="center"><code>ext</code></td>
+<td align="center"><code>source</code></td>
+<td align="center"><code>result</code></td>
+<td align="center"><code>index</code>（0-7范围）</td>
+<td align="center"></td>
 </tr>
-</tbody>
-</table>
-</div>
+</tbody></table>
 </blockquote>
 <p>除AIEVec1指令集，还有部分aievec指令也支持AIE1架构：</p>
-<div class="table-container">
 <table>
 <thead>
 <tr>
-<th style="text-align:center"><strong>操作类别</strong></th>
-<th style="text-align:center"><strong>操作名称</strong></th>
-<th style="text-align:center"><strong>操作符</strong></th>
-<th style="text-align:center"><strong>输入/输出</strong></th>
-<th style="text-align:center"><strong>关键特性</strong></th>
-<th style="text-align:center"><strong>典型应用场景</strong></th>
+<th align="center"><strong>操作类别</strong></th>
+<th align="center"><strong>操作名称</strong></th>
+<th align="center"><strong>操作符</strong></th>
+<th align="center"><strong>输入&#x2F;输出</strong></th>
+<th align="center"><strong>关键特性</strong></th>
+<th align="center"><strong>典型应用场景</strong></th>
 </tr>
 </thead>
-<tbody>
-<tr>
-<td style="text-align:center"><strong>基础算术运算</strong></td>
-<td style="text-align:center">元素加法</td>
-<td style="text-align:center"><code>add_elem</code></td>
-<td style="text-align:center"><code>lhs, rhs → result</code></td>
-<td style="text-align:center">支持所有向量类型（整型/浮点）的逐元素加法</td>
-<td style="text-align:center">向量叠加、数据融合</td>
+<tbody><tr>
+<td align="center"><strong>基础算术运算</strong></td>
+<td align="center">元素加法</td>
+<td align="center"><code>add_elem</code></td>
+<td align="center"><code>lhs, rhs → result</code></td>
+<td align="center">支持所有向量类型（整型&#x2F;浮点）的逐元素加法</td>
+<td align="center">向量叠加、数据融合</td>
 </tr>
 <tr>
-<td style="text-align:center"></td>
-<td style="text-align:center">元素减法</td>
-<td style="text-align:center"><code>sub_elem</code></td>
-<td style="text-align:center"><code>lhs, rhs → result</code></td>
-<td style="text-align:center">逐元素减法，类型匹配验证</td>
-<td style="text-align:center">差值计算、梯度更新</td>
+<td align="center"></td>
+<td align="center">元素减法</td>
+<td align="center"><code>sub_elem</code></td>
+<td align="center"><code>lhs, rhs → result</code></td>
+<td align="center">逐元素减法，类型匹配验证</td>
+<td align="center">差值计算、梯度更新</td>
 </tr>
 <tr>
-<td style="text-align:center"></td>
-<td style="text-align:center">乘加融合</td>
-<td style="text-align:center"><code>mac_elem</code></td>
-<td style="text-align:center"><code>lhs, rhs, acc → result</code></td>
-<td style="text-align:center">支持乘加(<code>lhs*rhs+acc</code>)或乘减（<code>fmsub=true</code>）</td>
-<td style="text-align:center">矩阵乘法、卷积核累加</td>
+<td align="center"></td>
+<td align="center">乘加融合</td>
+<td align="center"><code>mac_elem</code></td>
+<td align="center"><code>lhs, rhs, acc → result</code></td>
+<td align="center">支持乘加(<code>lhs*rhs+acc</code>)或乘减（<code>fmsub=true</code>）</td>
+<td align="center">矩阵乘法、卷积核累加</td>
 </tr>
 <tr>
-<td style="text-align:center"><strong>数据移动与转换</strong></td>
-<td style="text-align:center">上移位</td>
-<td style="text-align:center"><code>ups</code></td>
-<td style="text-align:center"><code>source, shift → result</code></td>
-<td style="text-align:center">数据从向量类型迁移到累加器类型，精度由<code>shift</code>控制</td>
-<td style="text-align:center">高精度计算前数据准备</td>
+<td align="center"><strong>数据移动与转换</strong></td>
+<td align="center">上移位</td>
+<td align="center"><code>ups</code></td>
+<td align="center"><code>source, shift → result</code></td>
+<td align="center">数据从向量类型迁移到累加器类型，精度由<code>shift</code>控制</td>
+<td align="center">高精度计算前数据准备</td>
 </tr>
 <tr>
-<td style="text-align:center"></td>
-<td style="text-align:center">移位-舍入-饱和</td>
-<td style="text-align:center"><code>srs</code></td>
-<td style="text-align:center"><code>source, shift → result</code></td>
-<td style="text-align:center">累加器数据降精度转回向量类型，防止溢出</td>
-<td style="text-align:center">量化输出、结果存储</td>
+<td align="center"></td>
+<td align="center">移位-舍入-饱和</td>
+<td align="center"><code>srs</code></td>
+<td align="center"><code>source, shift → result</code></td>
+<td align="center">累加器数据降精度转回向量类型，防止溢出</td>
+<td align="center">量化输出、结果存储</td>
 </tr>
 <tr>
-<td style="text-align:center"></td>
-<td style="text-align:center">类型转换</td>
-<td style="text-align:center"><code>cast</code></td>
-<td style="text-align:center"><code>source → result</code></td>
-<td style="text-align:center">支持向量/累加器类型互转（<code>isResAcc</code>控制方向）</td>
-<td style="text-align:center">混合精度计算流水线</td>
+<td align="center"></td>
+<td align="center">类型转换</td>
+<td align="center"><code>cast</code></td>
+<td align="center"><code>source → result</code></td>
+<td align="center">支持向量&#x2F;累加器类型互转（<code>isResAcc</code>控制方向）</td>
+<td align="center">混合精度计算流水线</td>
 </tr>
 <tr>
-<td style="text-align:center"></td>
-<td style="text-align:center">向量更新</td>
-<td style="text-align:center"><code>upd</code></td>
-<td style="text-align:center"><code>source, indices, offset → result</code></td>
-<td style="text-align:center">从内存加载数据并更新目标向量的连续通道</td>
-<td style="text-align:center">DMA数据传输优化</td>
+<td align="center"></td>
+<td align="center">向量更新</td>
+<td align="center"><code>upd</code></td>
+<td align="center"><code>source, indices, offset → result</code></td>
+<td align="center">从内存加载数据并更新目标向量的连续通道</td>
+<td align="center">DMA数据传输优化</td>
 </tr>
 <tr>
-<td style="text-align:center"></td>
-<td style="text-align:center">向量连接</td>
-<td style="text-align:center"><code>concat</code></td>
-<td style="text-align:center"><code>sources... → result</code></td>
-<td style="text-align:center">合并多个小向量为大向量（需通道数一致）</td>
-<td style="text-align:center">数据块重组、张量拼接</td>
+<td align="center"></td>
+<td align="center">向量连接</td>
+<td align="center"><code>concat</code></td>
+<td align="center"><code>sources... → result</code></td>
+<td align="center">合并多个小向量为大向量（需通道数一致）</td>
+<td align="center">数据块重组、张量拼接</td>
 </tr>
 <tr>
-<td style="text-align:center"></td>
-<td style="text-align:center">向量提取</td>
-<td style="text-align:center"><code>ext</code></td>
-<td style="text-align:center"><code>source, index → result</code></td>
-<td style="text-align:center">按索引提取子向量（半向量/四分之一向量）</td>
-<td style="text-align:center">子块处理、数据分片</td>
+<td align="center"></td>
+<td align="center">向量提取</td>
+<td align="center"><code>ext</code></td>
+<td align="center"><code>source, index → result</code></td>
+<td align="center">按索引提取子向量（半向量&#x2F;四分之一向量）</td>
+<td align="center">子块处理、数据分片</td>
 </tr>
 <tr>
-<td style="text-align:center"></td>
-<td style="text-align:center">数据打包</td>
-<td style="text-align:center"><code>pack</code></td>
-<td style="text-align:center"><code>source → result</code></td>
-<td style="text-align:center">16位向量→8位向量（通道数加倍）</td>
-<td style="text-align:center">带宽压缩、存储优化</td>
+<td align="center"></td>
+<td align="center">数据打包</td>
+<td align="center"><code>pack</code></td>
+<td align="center"><code>source → result</code></td>
+<td align="center">16位向量→8位向量（通道数加倍）</td>
+<td align="center">带宽压缩、存储优化</td>
 </tr>
 <tr>
-<td style="text-align:center"></td>
-<td style="text-align:center">数据解包</td>
-<td style="text-align:center"><code>unpack</code></td>
-<td style="text-align:center"><code>source → result</code></td>
-<td style="text-align:center">8位向量→16位向量（通道数减半）</td>
-<td style="text-align:center">数据恢复、精度扩展</td>
+<td align="center"></td>
+<td align="center">数据解包</td>
+<td align="center"><code>unpack</code></td>
+<td align="center"><code>source → result</code></td>
+<td align="center">8位向量→16位向量（通道数减半）</td>
+<td align="center">数据恢复、精度扩展</td>
 </tr>
 <tr>
-<td style="text-align:center"><strong>比较与选择</strong></td>
-<td style="text-align:center">最小值</td>
-<td style="text-align:center"><code>min</code></td>
-<td style="text-align:center"><code>lhs, rhs → result</code></td>
-<td style="text-align:center">逐元素取最小值</td>
-<td style="text-align:center">激活函数(ReLU)、归一化</td>
+<td align="center"><strong>比较与选择</strong></td>
+<td align="center">最小值</td>
+<td align="center"><code>min</code></td>
+<td align="center"><code>lhs, rhs → result</code></td>
+<td align="center">逐元素取最小值</td>
+<td align="center">激活函数(ReLU)、归一化</td>
 </tr>
 <tr>
-<td style="text-align:center"></td>
-<td style="text-align:center">最大值</td>
-<td style="text-align:center"><code>max</code></td>
-<td style="text-align:center"><code>lhs, rhs → result</code></td>
-<td style="text-align:center">逐元素取最大值</td>
-<td style="text-align:center">池化层、范围裁剪</td>
+<td align="center"></td>
+<td align="center">最大值</td>
+<td align="center"><code>max</code></td>
+<td align="center"><code>lhs, rhs → result</code></td>
+<td align="center">逐元素取最大值</td>
+<td align="center">池化层、范围裁剪</td>
 </tr>
 <tr>
-<td style="text-align:center"></td>
-<td style="text-align:center">元素比较</td>
-<td style="text-align:center"><code>cmp</code></td>
-<td style="text-align:center"><code>lhs, rhs, pred → result</code></td>
-<td style="text-align:center">支持10种比较模式（eq/slt/uge等）</td>
-<td style="text-align:center">条件分支、掩码生成</td>
+<td align="center"></td>
+<td align="center">元素比较</td>
+<td align="center"><code>cmp</code></td>
+<td align="center"><code>lhs, rhs, pred → result</code></td>
+<td align="center">支持10种比较模式（eq&#x2F;slt&#x2F;uge等）</td>
+<td align="center">条件分支、掩码生成</td>
 </tr>
 <tr>
-<td style="text-align:center"></td>
-<td style="text-align:center">通道选择</td>
-<td style="text-align:center"><code>sel</code></td>
-<td style="text-align:center"><code>lhs, rhs, sel → result</code></td>
-<td style="text-align:center">按<code>sel</code>位掩码选择<code>lhs</code>或<code>rhs</code>的通道</td>
-<td style="text-align:center">数据混合、条件赋值</td>
+<td align="center"></td>
+<td align="center">通道选择</td>
+<td align="center"><code>sel</code></td>
+<td align="center"><code>lhs, rhs, sel → result</code></td>
+<td align="center">按<code>sel</code>位掩码选择<code>lhs</code>或<code>rhs</code>的通道</td>
+<td align="center">数据混合、条件赋值</td>
 </tr>
 <tr>
-<td style="text-align:center"><strong>特殊操作</strong></td>
-<td style="text-align:center">元素提取</td>
-<td style="text-align:center"><code>ext_elem</code></td>
-<td style="text-align:center"><code>source, index → scalar</code></td>
-<td style="text-align:center">从向量中提取标量元素</td>
-<td style="text-align:center">标量结果输出、归约操作</td>
+<td align="center"><strong>特殊操作</strong></td>
+<td align="center">元素提取</td>
+<td align="center"><code>ext_elem</code></td>
+<td align="center"><code>source, index → scalar</code></td>
+<td align="center">从向量中提取标量元素</td>
+<td align="center">标量结果输出、归约操作</td>
 </tr>
 <tr>
-<td style="text-align:center"></td>
-<td style="text-align:center">向量取负</td>
-<td style="text-align:center"><code>neg</code></td>
-<td style="text-align:center"><code>source → result</code></td>
-<td style="text-align:center">逐元素取负值</td>
-<td style="text-align:center">梯度反转、数值变换</td>
+<td align="center"></td>
+<td align="center">向量取负</td>
+<td align="center"><code>neg</code></td>
+<td align="center"><code>source → result</code></td>
+<td align="center">逐元素取负值</td>
+<td align="center">梯度反转、数值变换</td>
 </tr>
-</tbody>
-</table>
-</div>
+</tbody></table>
 <h3 id="AI引擎intrinsic指南"><a href="#AI引擎intrinsic指南" class="headerlink" title="AI引擎intrinsic指南"></a><font color = green>AI引擎intrinsic指南</font></h3><p>这一部分主要参考<a target="_blank" rel="noopener" href="https://download.amd.com/docnav/aiengine/xilinx2025_1/aiengine_intrinsics/intrinsics/index.html">AI引擎intrinsics指南</a>和<a target="_blank" rel="noopener" href="https://download.amd.com/docnav/aiengine/xilinx2023_2/aiengine_api/aie_api/doc/group__group__mmul.html">AI Engine API用户手册</a>。原理性质的资料参考<a target="_blank" rel="noopener" href="https://docs.amd.com/r/en-US/ug1079-ai-engine-kernel-coding/Single-Kernel-Programming-using-Intrinsics">AI Engine Kernel and Graph Programming Guide</a>和<a target="_blank" rel="noopener" href="https://docs.amd.com/r/en-US/ug1079-ai-engine-kernel-coding/Vector-Register-Lane-Permutations">Vector Register Lane</a>。由于<code>MLIR-AIE</code>处于实验性工具，上述的算子代码生成流程尚存在众多问题。具体表现为：</p>
 <ul>
 <li><p>sim的时候memory没有对齐</p>
@@ -596,60 +596,60 @@
 <h3 id="2D-SIMD架构"><a href="#2D-SIMD架构" class="headerlink" title="2D SIMD架构"></a><font color = green>2D SIMD架构</font></h3><p>在Vyasa论文中，提到AI引擎的SIMD架构十分特殊，不同于传统的SIMD，AI引擎是二维SIMD架构（Lane和column）。<strong>其中Lane就是传统的SIMD架构的多数据并行通道（概念一致），而column则是支持规约操作，最终输出为一个Lane一个数值。</strong></p>
 <blockquote>
 <p>Vyasa论文中对于Lane和Column概念的解读：</p>
-<p><img src="/images/image-20250617170100366.png" alt="image-20250617170100366" style="zoom: 67%;" /></p>
+<img src="/images/image-20250617170100366.png" alt="image-20250617170100366" style="zoom: 67%;" />
+
 <p>Vyasa论文中Lane和Column配置的解读：</p>
-<div class="table-container">
 <table>
 <thead>
 <tr>
-<th style="text-align:center"><strong>精度</strong></th>
-<th style="text-align:center"><strong>数据路径配置</strong></th>
-<th style="text-align:center"><strong>每周期MAC数</strong></th>
-<th style="text-align:center"><strong>硬件资源利用特点</strong></th>
+<th align="center"><strong>精度</strong></th>
+<th align="center"><strong>数据路径配置</strong></th>
+<th align="center"><strong>每周期MAC数</strong></th>
+<th align="center"><strong>硬件资源利用特点</strong></th>
 </tr>
 </thead>
-<tbody>
-<tr>
-<td style="text-align:center">32位</td>
-<td style="text-align:center">8通道×1列</td>
-<td style="text-align:center">8</td>
-<td style="text-align:center">高精度但低并行度，适合标量控制逻辑</td>
+<tbody><tr>
+<td align="center">32位</td>
+<td align="center">8通道×1列</td>
+<td align="center">8</td>
+<td align="center">高精度但低并行度，适合标量控制逻辑</td>
 </tr>
 <tr>
-<td style="text-align:center">16位</td>
-<td style="text-align:center">16通道×2列</td>
-<td style="text-align:center">32</td>
-<td style="text-align:center">平衡精度与吞吐量，广泛用于信号处理</td>
+<td align="center">16位</td>
+<td align="center">16通道×2列</td>
+<td align="center">32</td>
+<td align="center">平衡精度与吞吐量，广泛用于信号处理</td>
 </tr>
 <tr>
-<td style="text-align:center">8位</td>
-<td style="text-align:center">16通道×8列</td>
-<td style="text-align:center">128</td>
-<td style="text-align:center">极致吞吐量，专为AI推理优化</td>
+<td align="center">8位</td>
+<td align="center">16通道×8列</td>
+<td align="center">128</td>
+<td align="center">极致吞吐量，专为AI推理优化</td>
 </tr>
-</tbody>
-</table>
-</div>
+</tbody></table>
 </blockquote>
 <p>这个架构有一个十分trickey的地方，即一个Lane不允许部分使用。如果我们的一个instruction只使用一个column（大多数指令均如此），则最高效的硬件资源利用方法是组合多条b并行指令集合（指令之间带有规约），打包成一个Lane上多个column。下图是Vyasa论文中的示意图：</p>
-<p><img src="/images/image-20250617165102997.png" alt="image-20250617165102997" style="zoom:67%;" /></p>
+<img src="/images/image-20250617165102997.png" alt="image-20250617165102997" style="zoom:67%;" />
+
 <p>该图中，共16Lane，2 column。由于有2 column，所以将两条指令打包，中间的reduction操作是加法。这个2D SIMD架构十分有趣，感兴趣的读者可以阅读<a target="_blank" rel="noopener" href="https://ieeexplore.ieee.org/document/4205131/">论文</a>。</p>
 <h3 id="Shuffle-Network"><a href="#Shuffle-Network" class="headerlink" title="Shuffle Network"></a><font color = green>Shuffle Network</font></h3><p>AI引擎的另一个有趣的架构，是Lane，column和寄存器的选取逻辑。这一部分称作<strong>shuffle network</strong>，具体可以参考<a target="_blank" rel="noopener" href="https://docs.amd.com/r/en-US/ug1079-ai-engine-kernel-coding/Vector-Register-Lane-Permutations">Data Selection guide</a>。</p>
 <h4 id="Data-Shuffle"><a href="#Data-Shuffle" class="headerlink" title="Data Shuffle"></a>Data Shuffle</h4><p><img src="/images/image-20250617184610209.png" alt="image-20250617184610209"></p>
 <p><img src="/images/image-20250617184623663.png" alt="image-20250617184623663"></p>
 <h4 id="Data-Select"><a href="#Data-Select" class="headerlink" title="Data Select"></a>Data Select</h4><h3 id="VLIW超长指令字"><a href="#VLIW超长指令字" class="headerlink" title="VLIW超长指令字"></a><font color = green>VLIW超长指令字</font></h3><p>VLIW架构是一种古老的架构，其特点是一次instruction luanch可以执行多个打包好的指令。该架构对于编译器的负担很重（如何发现可以并行的指令，并组合拼接成一条长指令），因此并没有得到大面积的推广。在vyasa论文中，对于AI引擎的VLIW架构有如下介绍：</p>
 <blockquote>
-<p><strong>AI Engine 是一种超长指令字（VLIW）架构，每个时钟周期可执行一条指令，每条指令最多包含六个发射槽（issue slot）。每条 VLIW 指令最多包含：两个标量操作、两个矢量加载操作、一个矢量存储操作，以及一个定点/浮点矢量操作。目前，AI Engine 编译器支持对最内层循环进行自动软件流水线化（automatic software pipelining），以充分利用指令级并行性。</strong></p>
+<p><strong>AI Engine 是一种超长指令字（VLIW）架构，每个时钟周期可执行一条指令，每条指令最多包含六个发射槽（issue slot）。每条 VLIW 指令最多包含：两个标量操作、两个矢量加载操作、一个矢量存储操作，以及一个定点&#x2F;浮点矢量操作。目前，AI Engine 编译器支持对最内层循环进行自动软件流水线化（automatic software pipelining），以充分利用指令级并行性。</strong></p>
 </blockquote>
 <p>根据上面的解释，闭源的chesscc工具对于VLIW架构做了针对性优化，作为工具链开发者，只能从更高的层次考虑VLIW架构的可能优化。在Vyasa论文中，其选用的VLIW优化策略如下：</p>
 <blockquote>
-<p>代码生成过程中<strong>重排内存访问顺序</strong>，并将其与矢量乘加运算<strong>交错执行</strong>，从而缩短每个变量的存活期。这一优化得益于 Halide 中内存访问模式的已知信息，能有效辅助下游编译器将存储、加载和矢量乘加操作更高效地<strong>打包（pack）</strong>到超长指令字（VLIW）指令中。</p>
+<p>代码生成过程中<strong>重排内存访问顺序</strong>，并将其与矢量乘加运算<strong>交错执行</strong>，从而缩短每个变量的存活期。这一优化得益于 Halide 中内存访问模式的已知信息，能有效辅助下游编译器将存储、加载和矢量乘加操作更高效地**打包（pack）**到超长指令字（VLIW）指令中。</p>
 </blockquote>
 <h2 id="自动生成源码剖析"><a href="#自动生成源码剖析" class="headerlink" title="自动生成源码剖析"></a><font color = brown>自动生成源码剖析</font></h2><p><code>MLIR-AIE</code>项目的整个自动生成脚本如下所示：</p>
 <figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">cgeist conv2D.c --function=conv2d -S --raise-scf-to-affine</span><br><span class="line"></span><br><span class="line">aie-opt conv2D.mlir \</span><br><span class="line">        --affine-loop-unroll=&quot;unroll-full unroll-full-threshold=3&quot; \</span><br><span class="line">        --canonicalize -affine-super-vectorize=&quot;virtual-vector-size=8 \</span><br><span class="line">        vectorize-reductions&quot; --aie-vectorize \</span><br><span class="line">        -o result1.mlir</span><br><span class="line"></span><br><span class="line">aie-translate --aievec-to-cpp result1.mlir \</span><br><span class="line">    2&gt;&amp;1 | tee kernel.cc</span><br></pre></td></tr></table></figure>
+
 <p>属于<code>MLIR-AIE</code>项目的工具是<code>aie-opt</code>和<code>aie-translate</code>。为了后续能够基于这个flow提出优化点，这一章节深入源码来理解整个自动生成的流程过程。源码分析的示例demo选择逐元素算子乘计算任务，该计算任务整个流程相对更容易分析。</p>
 <h3 id="aie-translate"><a href="#aie-translate" class="headerlink" title="aie-translate"></a><font color = green>aie-translate</font></h3><p>aie-translate的作用比较清晰，就是将<code>aievec</code> 方言的mlir代码翻译成cpp文件。如下是输入文件：</p>
 <figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">module</span> &#123;</span><br><span class="line">  func.func @<span class="built_in">pointwise_mult</span>(%arg0: memref&lt;<span class="number">2048</span>xf32&gt;, %arg1: memref&lt;<span class="number">2048</span>xf32&gt;, %arg2: memref&lt;<span class="number">2048</span>xf32&gt;) &#123;</span><br><span class="line">    %c0 = arith.constant <span class="number">0</span> : index</span><br><span class="line">    %c2048 = arith.constant <span class="number">2048</span> : index</span><br><span class="line">    %c8 = arith.constant <span class="number">8</span> : index</span><br><span class="line">    scf.<span class="keyword">for</span> %arg3 = %c0 to %c2048 step %c8 &#123;</span><br><span class="line">      %<span class="number">0</span> = aievec.upd %arg0[%arg3] &#123;index = <span class="number">0</span> : i8, offset = <span class="number">0</span> : i32&#125; : memref&lt;<span class="number">2048</span>xf32&gt;, vector&lt;<span class="number">8</span>xf32&gt;</span><br><span class="line">      %<span class="number">1</span> = aievec.upd %arg1[%arg3] &#123;index = <span class="number">0</span> : i8, offset = <span class="number">0</span> : i32&#125; : memref&lt;<span class="number">2048</span>xf32&gt;, vector&lt;<span class="number">8</span>xf32&gt;</span><br><span class="line">      %<span class="number">2</span> = aievec.concat %<span class="number">0</span>, %<span class="number">0</span> : vector&lt;<span class="number">8</span>xf32&gt;, vector&lt;<span class="number">16</span>xf32&gt;</span><br><span class="line">      %<span class="number">3</span> = aievec_aie<span class="number">1.</span>mul %<span class="number">2</span>, %<span class="number">1</span> &#123;xoffsets = <span class="string">&quot;0x76543210&quot;</span>, xstart = <span class="string">&quot;0&quot;</span>, zoffsets = <span class="string">&quot;0x76543210&quot;</span>, zstart = <span class="string">&quot;0&quot;</span>&#125; : vector&lt;<span class="number">16</span>xf32&gt;, vector&lt;<span class="number">8</span>xf32&gt;, vector&lt;<span class="number">8</span>xf32&gt;</span><br><span class="line">      vector.transfer_write %<span class="number">3</span>, %arg2[%arg3] : vector&lt;<span class="number">8</span>xf32&gt;, memref&lt;<span class="number">2048</span>xf32&gt;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span></span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
 <p>上述aievec代码中，有如下比较关键的点：</p>
 <ul>
 <li><p><code>aievec.upd</code> 从内存加载连续数据到向量寄存器</p>
@@ -663,16 +663,260 @@
 <li>xoffsets重排允许更加高效的非连续访问</li>
 </ul>
 <p>如下是mlir-aie中的指令定义</p>
-<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br></pre></td><td class="code"><pre><span class="line">def AIEVecAIE1_MulOp:</span><br><span class="line">  AIEVecAIE1_Op&lt;<span class="string">&quot;mul&quot;</span>, [</span><br><span class="line">    Pure</span><br><span class="line">  ]&gt;,</span><br><span class="line">  Arguments&lt;(ins AnyVector:$lhs, AnyVector:$rhs,</span><br><span class="line">               DefaultValuedStrAttr&lt;StrAttr, <span class="string">&quot;&quot;</span>&gt;:$xstart,</span><br><span class="line">               DefaultValuedStrAttr&lt;StrAttr, <span class="string">&quot;&quot;</span>&gt;:$xoffsets,</span><br><span class="line">               DefaultValuedStrAttr&lt;StrAttr, <span class="string">&quot;&quot;</span>&gt;:$xoffsets_hi,</span><br><span class="line">               DefaultValuedStrAttr&lt;StrAttr, <span class="string">&quot;&quot;</span>&gt;:$xstep,</span><br><span class="line">               DefaultValuedStrAttr&lt;StrAttr, <span class="string">&quot;&quot;</span>&gt;:$xsquare,</span><br><span class="line">               DefaultValuedStrAttr&lt;StrAttr, <span class="string">&quot;&quot;</span>&gt;:$zstart,</span><br><span class="line">               DefaultValuedStrAttr&lt;StrAttr, <span class="string">&quot;&quot;</span>&gt;:$zoffsets,</span><br><span class="line">               DefaultValuedStrAttr&lt;StrAttr, <span class="string">&quot;&quot;</span>&gt;:$zoffsets_hi,</span><br><span class="line">               DefaultValuedStrAttr&lt;StrAttr, <span class="string">&quot;&quot;</span>&gt;:$zstep,</span><br><span class="line">               DefaultValuedStrAttr&lt;StrAttr, <span class="string">&quot;&quot;</span>&gt;:$zsquare)&gt;,</span><br><span class="line">  Results&lt;(outs AnyVector:$result)&gt; &#123;</span><br><span class="line">  let summary = <span class="string">&quot;AIE vector multiply&quot;</span>;</span><br><span class="line">  let description = [&#123;</span><br><span class="line">    AMD-specific multiply operation that multiplies two <span class="number">1</span>-D vectors.</span><br><span class="line">    The vector sizes are at least <span class="number">256</span> bits, <span class="keyword">and</span> the left operand vector </span><br><span class="line">    is at least twice the size of right operand vector. For integers, the</span><br><span class="line">    lhs <span class="keyword">and</span> rhs are <span class="number">8</span>/<span class="number">16</span>/<span class="number">32</span> bits, <span class="keyword">and</span> result is a <span class="number">48</span>-bit <span class="keyword">or</span> <span class="number">80</span>-bit accumulator.</span><br><span class="line">    `$result = `$lhs * $rhs`.</span><br><span class="line">  &#125;];</span><br><span class="line">  let builders = [</span><br><span class="line">    OpBuilder&lt;(ins <span class="string">&quot;mlir::Value&quot;</span>:$lhs, <span class="string">&quot;mlir::Value&quot;</span>:$rhs, <span class="string">&quot;mlir::Type&quot;</span>:$accType,</span><br><span class="line">            <span class="string">&quot;llvm::StringRef&quot;</span>:$xstart,</span><br><span class="line">            <span class="string">&quot;llvm::StringRef&quot;</span>:$xoffsets, <span class="string">&quot;llvm::StringRef&quot;</span>:$xoffsets_hi,</span><br><span class="line">            <span class="string">&quot;llvm::StringRef&quot;</span>:$xstep, <span class="string">&quot;llvm::StringRef&quot;</span>:$xsquare,</span><br><span class="line">            <span class="string">&quot;llvm::StringRef&quot;</span>:$zstart,</span><br><span class="line">            <span class="string">&quot;llvm::StringRef&quot;</span>:$zoffsets, <span class="string">&quot;llvm::StringRef&quot;</span>:$zoffsets_hi,</span><br><span class="line">            <span class="string">&quot;llvm::StringRef&quot;</span>:$zstep, <span class="string">&quot;llvm::StringRef&quot;</span>:$zsquare),</span><br><span class="line">    [&#123;<span class="built_in">build</span>($_builder, $_state, accType, lhs, rhs, </span><br><span class="line">            xstart, xoffsets, xoffsets_hi,</span><br><span class="line">            xstep, xsquare,</span><br><span class="line">            zstart, zoffsets, zoffsets_hi,</span><br><span class="line">            zstep, zsquare);&#125;]&gt;</span><br><span class="line">  ];</span><br></pre></td></tr></table></figure>
-</li>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br></pre></td><td class="code"><pre><span class="line">def AIEVecAIE1_MulOp:</span><br><span class="line">  AIEVecAIE1_Op&lt;<span class="string">&quot;mul&quot;</span>, [</span><br><span class="line">    Pure</span><br><span class="line">  ]&gt;,</span><br><span class="line">  Arguments&lt;(ins AnyVector:$lhs, AnyVector:$rhs,</span><br><span class="line">               DefaultValuedStrAttr&lt;StrAttr, <span class="string">&quot;&quot;</span>&gt;:$xstart,</span><br><span class="line">               DefaultValuedStrAttr&lt;StrAttr, <span class="string">&quot;&quot;</span>&gt;:$xoffsets,</span><br><span class="line">               DefaultValuedStrAttr&lt;StrAttr, <span class="string">&quot;&quot;</span>&gt;:$xoffsets_hi,</span><br><span class="line">               DefaultValuedStrAttr&lt;StrAttr, <span class="string">&quot;&quot;</span>&gt;:$xstep,</span><br><span class="line">               DefaultValuedStrAttr&lt;StrAttr, <span class="string">&quot;&quot;</span>&gt;:$xsquare,</span><br><span class="line">               DefaultValuedStrAttr&lt;StrAttr, <span class="string">&quot;&quot;</span>&gt;:$zstart,</span><br><span class="line">               DefaultValuedStrAttr&lt;StrAttr, <span class="string">&quot;&quot;</span>&gt;:$zoffsets,</span><br><span class="line">               DefaultValuedStrAttr&lt;StrAttr, <span class="string">&quot;&quot;</span>&gt;:$zoffsets_hi,</span><br><span class="line">               DefaultValuedStrAttr&lt;StrAttr, <span class="string">&quot;&quot;</span>&gt;:$zstep,</span><br><span class="line">               DefaultValuedStrAttr&lt;StrAttr, <span class="string">&quot;&quot;</span>&gt;:$zsquare)&gt;,</span><br><span class="line">  Results&lt;(outs AnyVector:$result)&gt; &#123;</span><br><span class="line">  let summary = <span class="string">&quot;AIE vector multiply&quot;</span>;</span><br><span class="line">  let description = [&#123;</span><br><span class="line">    AMD-specific multiply operation that multiplies two <span class="number">1</span>-D vectors.</span><br><span class="line">    The vector sizes are at least <span class="number">256</span> bits, <span class="keyword">and</span> the left operand vector </span><br><span class="line">    is at least twice the size of right operand vector. For integers, the</span><br><span class="line">    lhs <span class="keyword">and</span> rhs are <span class="number">8</span>/<span class="number">16</span>/<span class="number">32</span> bits, <span class="keyword">and</span> result is a <span class="number">48</span>-bit <span class="keyword">or</span> <span class="number">80</span>-bit accumulator.</span><br><span class="line">    `$result = `$lhs * $rhs`.</span><br><span class="line">  &#125;];</span><br><span class="line">  let builders = [</span><br><span class="line">    OpBuilder&lt;(ins <span class="string">&quot;mlir::Value&quot;</span>:$lhs, <span class="string">&quot;mlir::Value&quot;</span>:$rhs, <span class="string">&quot;mlir::Type&quot;</span>:$accType,</span><br><span class="line">            <span class="string">&quot;llvm::StringRef&quot;</span>:$xstart,</span><br><span class="line">            <span class="string">&quot;llvm::StringRef&quot;</span>:$xoffsets, <span class="string">&quot;llvm::StringRef&quot;</span>:$xoffsets_hi,</span><br><span class="line">            <span class="string">&quot;llvm::StringRef&quot;</span>:$xstep, <span class="string">&quot;llvm::StringRef&quot;</span>:$xsquare,</span><br><span class="line">            <span class="string">&quot;llvm::StringRef&quot;</span>:$zstart,</span><br><span class="line">            <span class="string">&quot;llvm::StringRef&quot;</span>:$zoffsets, <span class="string">&quot;llvm::StringRef&quot;</span>:$zoffsets_hi,</span><br><span class="line">            <span class="string">&quot;llvm::StringRef&quot;</span>:$zstep, <span class="string">&quot;llvm::StringRef&quot;</span>:$zsquare),</span><br><span class="line">    [&#123;<span class="built_in">build</span>($_builder, $_state, accType, lhs, rhs, </span><br><span class="line">            xstart, xoffsets, xoffsets_hi,</span><br><span class="line">            xstep, xsquare,</span><br><span class="line">            zstart, zoffsets, zoffsets_hi,</span><br><span class="line">            zstep, zsquare);&#125;]&gt;</span><br><span class="line">  ];</span><br></pre></td></tr></table></figure></li>
 </ul>
-<p>​    该指令的硬件执行流程如下，详细内容参考<a target="_blank" rel="noopener" href="https://download.amd.com/docnav/aiengine/xilinx2025_1/aiengine_intrinsics/intrinsics/group__vect__mult__intrinsics__explained.html#full_lane_explained">AI Intrinsic user guide</a>：</p>
-<p>​    <img src="/images/image-20250618190920385.png" alt="image-20250618190920385" style="zoom:67%;" /></p>
+<p>​	该指令的硬件执行流程如下，详细内容参考<a target="_blank" rel="noopener" href="https://download.amd.com/docnav/aiengine/xilinx2025_1/aiengine_intrinsics/intrinsics/group__vect__mult__intrinsics__explained.html#full_lane_explained">AI Intrinsic user guide</a>：</p>
+<p>​	<img src="/images/image-20250618190920385.png" alt="image-20250618190920385" style="zoom:67%;" /></p>
 <p>通过如下脚本生成cpp算子文件：</p>
 <figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">aie-translate --aievec-to-cpp aievec2.mlir \</span><br><span class="line">    2&gt;&amp;1 | tee kernel.cc</span><br></pre></td></tr></table></figure>
+
 <p>生成的算子如下：</p>
 <figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="keyword">define</span> __AIENGINE__ 1</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> NOCPP</span></span><br><span class="line"></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;stdint.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;stdio.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;stdlib.h&gt;</span></span></span><br><span class="line"></span><br><span class="line"><span class="keyword">extern</span> <span class="string">&quot;C&quot;</span> &#123;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="type">void</span> <span class="title">pointwise_mult</span><span class="params">(<span class="type">float</span> * restrict v1, <span class="type">float</span> * restrict v2, <span class="type">float</span> * restrict v3)</span> </span>&#123;</span><br><span class="line">  <span class="type">size_t</span> v4 = <span class="number">0</span>;</span><br><span class="line">  <span class="type">size_t</span> v5 = <span class="number">2048</span>;</span><br><span class="line">  <span class="type">size_t</span> v6 = <span class="number">8</span>;</span><br><span class="line">  <span class="keyword">for</span> (<span class="type">size_t</span> v7 = v4; v7 &lt; v5; v7 += v6)</span><br><span class="line">  <span class="function">chess_prepare_for_pipelining</span></span><br><span class="line"><span class="function">  <span class="title">chess_loop_range</span><span class="params">(<span class="number">256</span>, <span class="number">256</span>)</span></span></span><br><span class="line"><span class="function">  </span>&#123;</span><br><span class="line">    v8float v8 = *(v8float *)(v1 + v7);</span><br><span class="line">    v8float v9 = *(v8float *)(v2 + v7);</span><br><span class="line">    v16float v10 = <span class="built_in">concat</span>(v8, v8);</span><br><span class="line">    v8float v11 = <span class="built_in">fpmul</span>(v10, <span class="number">0</span>, <span class="number">0x76543210</span>, v9, <span class="number">0</span>, <span class="number">0x76543210</span>);</span><br><span class="line">    *(v8float *)(v3 + v7) = v11;</span><br><span class="line">  &#125;</span><br><span class="line">  <span class="keyword">return</span>;</span><br><span class="line">&#125;</span><br><span class="line">&#125; <span class="comment">// extern &quot;C&quot;</span></span><br></pre></td></tr></table></figure>
+
 <p>整体的translate代码，在<code>lib/Targets/AIEVecToCpp/TranslateAIEVecToCpp.cpp</code>，总共3000+行。</p>
+<h2 id="可做的创新点"><a href="#可做的创新点" class="headerlink" title="可做的创新点"></a><font color = brown>可做的创新点</font></h2><h3 id="2D-SIMD优化"><a href="#2D-SIMD优化" class="headerlink" title="2D SIMD优化"></a><font color = green>2D SIMD优化</font></h3><p>目前的初步想法是对于f8和f16，尝试自动化group满足条件的向量计算，从而利用好column reduction。</p>
+<h3 id="寄存器复用"><a href="#寄存器复用" class="headerlink" title="寄存器复用"></a><font color = green>寄存器复用</font></h3><h4 id="向量寄存器复用"><a href="#向量寄存器复用" class="headerlink" title="向量寄存器复用"></a>向量寄存器复用</h4><p>参考Vyasa论文中的idea，对于相邻指令，如果存储单元有overlap，可以尝试变化为获取更大范围寄存器并相应的做data selection操作。</p>
+<h4 id="标量寄存器复用"><a href="#标量寄存器复用" class="headerlink" title="标量寄存器复用"></a>标量寄存器复用</h4><p>如果saclar之间在内存空间上是连续的，则可以一个向量获取，并通过data selection机制进行获取单一的scalar元素。</p>
+<h3 id="VLIW优化"><a href="#VLIW优化" class="headerlink" title="VLIW优化"></a><font color = green>VLIW优化</font></h3><p>针对VLIW指令字特点：两个scalar计算单元，两个vector load，一个vector store，一个fixed point。所以需要对于指令进行重排布，可能会有收益。</p>
+<h2 id="优化pass-idea"><a href="#优化pass-idea" class="headerlink" title="优化pass idea"></a><font color = brown>优化pass idea</font></h2><h3 id="手工Perf结果"><a href="#手工Perf结果" class="headerlink" title="手工Perf结果"></a><font color = green>手工Perf结果</font></h3><ol>
+<li><p>原始的int16 conv2D结果，kernel size是3x3，output size是32x32。</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="keyword">define</span> __AIENGINE__ 1</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> NOCPP</span></span><br><span class="line"></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;stdint.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;stdio.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;stdlib.h&gt;</span></span></span><br><span class="line"></span><br><span class="line"><span class="keyword">extern</span> <span class="string">&quot;C&quot;</span> &#123;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="type">void</span> <span class="title">conv2d</span><span class="params">(<span class="type">int16_t</span> * restrict v4, <span class="type">int16_t</span> * restrict v5, <span class="type">int16_t</span> * restrict v6)</span> </span>&#123;</span><br><span class="line">  <span class="type">int32_t</span> v7 = <span class="number">0</span>;</span><br><span class="line">  <span class="type">size_t</span> v8 = <span class="number">0</span>;</span><br><span class="line"></span><br><span class="line">  <span class="comment">// kernel直接存入16长度的向量寄存器</span></span><br><span class="line">  v16int16 v9 = *(v16int16 *)(v5 + <span class="number">3</span>*v8+v8);</span><br><span class="line">  <span class="type">size_t</span> v10 = <span class="number">0</span>;</span><br><span class="line">  <span class="type">size_t</span> v11 = <span class="number">32</span>;</span><br><span class="line">  <span class="type">size_t</span> v12 = <span class="number">1</span>;</span><br><span class="line"></span><br><span class="line">  <span class="comment">// 最外层32循环</span></span><br><span class="line">  <span class="keyword">for</span> (<span class="type">size_t</span> v13 = v10; v13 &lt; v11; v13 += v12)</span><br><span class="line">  <span class="function">chess_prepare_for_pipelining</span></span><br><span class="line"><span class="function">  <span class="title">chess_loop_range</span><span class="params">(<span class="number">32</span>, <span class="number">32</span>)</span></span></span><br><span class="line"><span class="function">  </span>&#123;</span><br><span class="line">    <span class="comment">// 为后续的3行计算做准备</span></span><br><span class="line">    <span class="type">size_t</span> v14 = <span class="number">1</span>;</span><br><span class="line">    <span class="type">size_t</span> v15 = v13 + v14;</span><br><span class="line">    <span class="type">size_t</span> v16 = <span class="number">2</span>;</span><br><span class="line">    <span class="type">size_t</span> v17 = v13 + v16;</span><br><span class="line">    <span class="type">size_t</span> v18 = <span class="number">0</span>;</span><br><span class="line">    <span class="type">size_t</span> v19 = <span class="number">32</span>;</span><br><span class="line">    <span class="type">size_t</span> v20 = <span class="number">16</span>;</span><br><span class="line">    <span class="comment">// 处理每行的16个元素</span></span><br><span class="line">    <span class="keyword">for</span> (<span class="type">size_t</span> v21 = v18; v21 &lt; v19; v21 += v20)</span><br><span class="line">    <span class="function">chess_prepare_for_pipelining</span></span><br><span class="line"><span class="function">    <span class="title">chess_loop_range</span><span class="params">(<span class="number">2</span>, <span class="number">2</span>)</span></span></span><br><span class="line"><span class="function">    </span>&#123;</span><br><span class="line">      <span class="comment">// ============================= 第1行 ===========================</span></span><br><span class="line">      <span class="comment">// 由于一行要做三次乘发，且涉及位移，所以要加载两个向量化</span></span><br><span class="line">      v32int16 v22;</span><br><span class="line">      <span class="type">int16_t</span> * restrict r_v22_v4 = v4;</span><br><span class="line">      <span class="comment">// 0表示更新低位置，1表示跟新高位置</span></span><br><span class="line">      v22 = <span class="built_in">upd_w</span>(v22, <span class="number">0</span>, *(v16int16 *)(r_v22_v4 + <span class="number">64</span>*v13+v21));</span><br><span class="line">      v22 = <span class="built_in">upd_w</span>(v22, <span class="number">1</span>, *(v16int16 *)(r_v22_v4 + <span class="number">64</span>*v13+v21 + <span class="number">16</span>));</span><br><span class="line"></span><br><span class="line">      <span class="comment">// 计算第一行的16个元素</span></span><br><span class="line">      v16acc48 v23 = <span class="built_in">mul16</span>(v22, <span class="number">0</span>, <span class="number">0x03020100</span>, <span class="number">0x07060504</span>, <span class="number">0x2110</span>, v9, <span class="number">0</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">1</span>);</span><br><span class="line">      v23 = <span class="built_in">mac16</span>(v23, v22, <span class="number">2</span>, <span class="number">0x03020100</span>, <span class="number">0x07060504</span>, <span class="number">0x2110</span>, v9, <span class="number">2</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">13</span>);</span><br><span class="line"></span><br><span class="line">      <span class="comment">// ============================= 第2行 ============================</span></span><br><span class="line">      v32int16 v24;</span><br><span class="line">      <span class="type">int16_t</span> * restrict r_v24_v4 = v4;</span><br><span class="line">      v24 = <span class="built_in">upd_w</span>(v24, <span class="number">0</span>, *(v16int16 *)(r_v24_v4 + <span class="number">64</span>*v15+v21));</span><br><span class="line">      v24 = <span class="built_in">upd_w</span>(v24, <span class="number">1</span>, *(v16int16 *)(r_v24_v4 + <span class="number">64</span>*v15+v21 + <span class="number">16</span>));</span><br><span class="line">      v23 = <span class="built_in">mac16</span>(v23, v24, <span class="number">0</span>, <span class="number">0x03020100</span>, <span class="number">0x07060504</span>, <span class="number">0x2110</span>, v9, <span class="number">3</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">1</span>);</span><br><span class="line">      v23 = <span class="built_in">mac16</span>(v23, v24, <span class="number">2</span>, <span class="number">0x03020100</span>, <span class="number">0x07060504</span>, <span class="number">0x2110</span>, v9, <span class="number">5</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">10</span>);</span><br><span class="line">      </span><br><span class="line">      <span class="comment">// ============================= 第3行 ============================</span></span><br><span class="line">      v32int16 v25;</span><br><span class="line">      <span class="type">int16_t</span> * restrict r_v25_v4 = v4;</span><br><span class="line">      v25 = <span class="built_in">upd_w</span>(v25, <span class="number">0</span>, *(v16int16 *)(r_v25_v4 + <span class="number">64</span>*v17+v21));</span><br><span class="line">      v25 = <span class="built_in">upd_w</span>(v25, <span class="number">1</span>, *(v16int16 *)(r_v25_v4 + <span class="number">64</span>*v17+v21 + <span class="number">16</span>));</span><br><span class="line">      v23 = <span class="built_in">mac16</span>(v23, v25, <span class="number">0</span>, <span class="number">0x03020100</span>, <span class="number">0x07060504</span>, <span class="number">0x2110</span>, v9, <span class="number">6</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">1</span>);</span><br><span class="line">      v23 = <span class="built_in">mac16</span>(v23, v25, <span class="number">2</span>, <span class="number">0x03020100</span>, <span class="number">0x07060504</span>, <span class="number">0x2110</span>, v9, <span class="number">8</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">7</span>);</span><br><span class="line"></span><br><span class="line">      v16int16 v26 = <span class="built_in">srs</span>(v23, v7);</span><br><span class="line">      *(v16int16 *)(v6 + <span class="number">32</span>*v13+v21) = v26;</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">  <span class="keyword">return</span>;</span><br><span class="line">&#125;</span><br><span class="line">&#125; <span class="comment">// extern &quot;C&quot;</span></span><br></pre></td></tr></table></figure>
+
+<p>perf结果：</p>
+<p><img src="/images/image-20250629105407219.png" alt="image-20250629105407219"></p>
+</li>
+<li><p>尝试对于<code>chess_loop_range(2, 2)</code> unroll一下，以获得更多的优化空间</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="keyword">define</span> __AIENGINE__ 1</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> NOCPP</span></span><br><span class="line"></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;stdint.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;stdio.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;stdlib.h&gt;</span></span></span><br><span class="line"></span><br><span class="line"><span class="keyword">extern</span> <span class="string">&quot;C&quot;</span> &#123;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="type">void</span> <span class="title">conv2d</span><span class="params">(<span class="type">int16_t</span> * restrict v4, <span class="type">int16_t</span> * restrict v5, <span class="type">int16_t</span> * restrict v6)</span> </span>&#123;</span><br><span class="line">  <span class="type">int32_t</span> v7 = <span class="number">0</span>;</span><br><span class="line">  <span class="type">size_t</span> v8 = <span class="number">0</span>;</span><br><span class="line"></span><br><span class="line">  <span class="comment">// kernel直接存入16长度的向量寄存器</span></span><br><span class="line">  v16int16 v9 = *(v16int16 *)(v5 + <span class="number">3</span> * v8 + v8);</span><br><span class="line"></span><br><span class="line">  <span class="keyword">for</span> (<span class="type">size_t</span> v13 = <span class="number">0</span>; v13 &lt; <span class="number">32</span>; ++v13)</span><br><span class="line">  <span class="function">chess_prepare_for_pipelining</span></span><br><span class="line"><span class="function">  <span class="title">chess_loop_range</span><span class="params">(<span class="number">32</span>, <span class="number">32</span>)</span></span></span><br><span class="line"><span class="function">  </span>&#123;</span><br><span class="line">    <span class="type">size_t</span> v15 = v13 + <span class="number">1</span>;</span><br><span class="line">    <span class="type">size_t</span> v17 = v13 + <span class="number">2</span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// ===== v21 = 0 =====</span></span><br><span class="line">    &#123;</span><br><span class="line">      v32int16 vin_1;</span><br><span class="line">      vin_1 = <span class="built_in">upd_w</span>(vin_1, <span class="number">0</span>, *(v16int16 *)(v4 + <span class="number">64</span> * v13));</span><br><span class="line">      vin_1 = <span class="built_in">upd_w</span>(vin_1, <span class="number">1</span>, *(v16int16 *)(v4 + <span class="number">64</span> * v13 + <span class="number">16</span>));</span><br><span class="line"></span><br><span class="line">      v16acc48 acc = <span class="built_in">mul16</span>(vin_1, <span class="number">0</span>, <span class="number">0x03020100</span>, <span class="number">0x07060504</span>, <span class="number">0x2110</span>, v9, <span class="number">0</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">1</span>);</span><br><span class="line">      acc = <span class="built_in">mac16</span>(acc, vin_1, <span class="number">2</span>, <span class="number">0x03020100</span>, <span class="number">0x07060504</span>, <span class="number">0x2110</span>, v9, <span class="number">2</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">13</span>);</span><br><span class="line"></span><br><span class="line">      v32int16 vin_2;</span><br><span class="line">      vin_2 = <span class="built_in">upd_w</span>(vin_2, <span class="number">0</span>, *(v16int16 *)(v4 + <span class="number">64</span> * v15));</span><br><span class="line">      vin_2 = <span class="built_in">upd_w</span>(vin_2, <span class="number">1</span>, *(v16int16 *)(v4 + <span class="number">64</span> * v15 + <span class="number">16</span>));</span><br><span class="line">      acc = <span class="built_in">mac16</span>(acc, vin_2, <span class="number">0</span>, <span class="number">0x03020100</span>, <span class="number">0x07060504</span>, <span class="number">0x2110</span>, v9, <span class="number">3</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">1</span>);</span><br><span class="line">      acc = <span class="built_in">mac16</span>(acc, vin_2, <span class="number">2</span>, <span class="number">0x03020100</span>, <span class="number">0x07060504</span>, <span class="number">0x2110</span>, v9, <span class="number">5</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">10</span>);</span><br><span class="line"></span><br><span class="line">      v32int16 vin_3;</span><br><span class="line">      vin_3 = <span class="built_in">upd_w</span>(vin_3, <span class="number">0</span>, *(v16int16 *)(v4 + <span class="number">64</span> * v17));</span><br><span class="line">      vin_3 = <span class="built_in">upd_w</span>(vin_3, <span class="number">1</span>, *(v16int16 *)(v4 + <span class="number">64</span> * v17 + <span class="number">16</span>));</span><br><span class="line">      acc = <span class="built_in">mac16</span>(acc, vin_3, <span class="number">0</span>, <span class="number">0x03020100</span>, <span class="number">0x07060504</span>, <span class="number">0x2110</span>, v9, <span class="number">6</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">1</span>);</span><br><span class="line">      acc = <span class="built_in">mac16</span>(acc, vin_3, <span class="number">2</span>, <span class="number">0x03020100</span>, <span class="number">0x07060504</span>, <span class="number">0x2110</span>, v9, <span class="number">8</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">7</span>);</span><br><span class="line"></span><br><span class="line">      *(v16int16 *)(v6 + <span class="number">32</span> * v13) = <span class="built_in">srs</span>(acc, v7);</span><br><span class="line"></span><br><span class="line">      <span class="comment">// ===== v21 = 16 =====</span></span><br><span class="line">      v32int16 vin_1;</span><br><span class="line">      vin_1 = <span class="built_in">upd_w</span>(vin_1, <span class="number">0</span>, *(v16int16 *)(v4 + <span class="number">64</span> * v13 + <span class="number">16</span>));</span><br><span class="line">      vin_1 = <span class="built_in">upd_w</span>(vin_1, <span class="number">1</span>, *(v16int16 *)(v4 + <span class="number">64</span> * v13 + <span class="number">32</span>));</span><br><span class="line"></span><br><span class="line">      v16acc48 acc1 = <span class="built_in">mul16</span>(vin_1, <span class="number">0</span>, <span class="number">0x03020100</span>, <span class="number">0x07060504</span>, <span class="number">0x2110</span>, v9, <span class="number">0</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">1</span>);</span><br><span class="line">      acc1 = <span class="built_in">mac16</span>(acc1, vin_1, <span class="number">2</span>, <span class="number">0x03020100</span>, <span class="number">0x07060504</span>, <span class="number">0x2110</span>, v9, <span class="number">2</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">13</span>);</span><br><span class="line"></span><br><span class="line">      v32int16 vin_2;</span><br><span class="line">      vin_2 = <span class="built_in">upd_w</span>(vin_2, <span class="number">0</span>, *(v16int16 *)(v4 + <span class="number">64</span> * v15 + <span class="number">16</span>));</span><br><span class="line">      vin_2 = <span class="built_in">upd_w</span>(vin_2, <span class="number">1</span>, *(v16int16 *)(v4 + <span class="number">64</span> * v15 + <span class="number">32</span>));</span><br><span class="line">      acc1 = <span class="built_in">mac16</span>(acc1, vin_2, <span class="number">0</span>, <span class="number">0x03020100</span>, <span class="number">0x07060504</span>, <span class="number">0x2110</span>, v9, <span class="number">3</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">1</span>);</span><br><span class="line">      acc1 = <span class="built_in">mac16</span>(acc1, vin_2, <span class="number">2</span>, <span class="number">0x03020100</span>, <span class="number">0x07060504</span>, <span class="number">0x2110</span>, v9, <span class="number">5</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">10</span>);</span><br><span class="line"></span><br><span class="line">      v32int16 vin_3;</span><br><span class="line">      vin_3 = <span class="built_in">upd_w</span>(vin_3, <span class="number">0</span>, *(v16int16 *)(v4 + <span class="number">64</span> * v17 + <span class="number">16</span>));</span><br><span class="line">      vin_3 = <span class="built_in">upd_w</span>(vin_3, <span class="number">1</span>, *(v16int16 *)(v4 + <span class="number">64</span> * v17 + <span class="number">32</span>));</span><br><span class="line">      acc1 = <span class="built_in">mac16</span>(acc1, vin_3, <span class="number">0</span>, <span class="number">0x03020100</span>, <span class="number">0x07060504</span>, <span class="number">0x2110</span>, v9, <span class="number">6</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">1</span>);</span><br><span class="line">      acc1 = <span class="built_in">mac16</span>(acc1, vin_3, <span class="number">2</span>, <span class="number">0x03020100</span>, <span class="number">0x07060504</span>, <span class="number">0x2110</span>, v9, <span class="number">8</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">7</span>);</span><br><span class="line"></span><br><span class="line">      *(v16int16 *)(v6 + <span class="number">32</span> * v13 + <span class="number">16</span>) = <span class="built_in">srs</span>(acc1, v7);</span><br><span class="line">    &#125; </span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>perf结果：</p>
+<p><img src="/images/image-20250629105950468.png" alt="image-20250629105950468"></p>
+</li>
+<li><p>做一下register level的double buffer的trick</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="keyword">define</span> __AIENGINE__ 1</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> NOCPP</span></span><br><span class="line"></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;stdint.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;stdio.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;stdlib.h&gt;</span></span></span><br><span class="line"></span><br><span class="line"><span class="keyword">extern</span> <span class="string">&quot;C&quot;</span> &#123;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="type">void</span> <span class="title">conv2d</span><span class="params">(<span class="type">int16_t</span> * restrict v4, <span class="type">int16_t</span> * restrict v5, <span class="type">int16_t</span> * restrict v6)</span> </span>&#123;</span><br><span class="line">  <span class="type">int32_t</span> v7 = <span class="number">0</span>;</span><br><span class="line">  <span class="type">size_t</span> v8 = <span class="number">0</span>;</span><br><span class="line"></span><br><span class="line">  <span class="comment">// kernel直接存入16长度的向量寄存器</span></span><br><span class="line">  v16int16 v9 = *(v16int16 *)(v5 + <span class="number">3</span> * v8 + v8);</span><br><span class="line"></span><br><span class="line">  <span class="keyword">for</span> (<span class="type">size_t</span> v13 = <span class="number">0</span>; v13 &lt; <span class="number">32</span>; ++v13)</span><br><span class="line">  <span class="function">chess_prepare_for_pipelining</span></span><br><span class="line"><span class="function">  <span class="title">chess_loop_range</span><span class="params">(<span class="number">32</span>, <span class="number">32</span>)</span></span></span><br><span class="line"><span class="function">  </span>&#123;</span><br><span class="line">    <span class="type">size_t</span> v15 = v13 + <span class="number">1</span>;</span><br><span class="line">    <span class="type">size_t</span> v17 = v13 + <span class="number">2</span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// ===== v21 = 0 =====</span></span><br><span class="line">    &#123;</span><br><span class="line">      v32int16 vin_1;</span><br><span class="line">      vin_1 = <span class="built_in">upd_w</span>(vin_1, <span class="number">0</span>, *(v16int16 *)(v4 + <span class="number">64</span> * v13));</span><br><span class="line">      vin_1 = <span class="built_in">upd_w</span>(vin_1, <span class="number">1</span>, *(v16int16 *)(v4 + <span class="number">64</span> * v13 + <span class="number">16</span>));</span><br><span class="line"></span><br><span class="line">      v16acc48 acc = <span class="built_in">mul16</span>(vin_1, <span class="number">0</span>, <span class="number">0x03020100</span>, <span class="number">0x07060504</span>, <span class="number">0x2110</span>, v9, <span class="number">0</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">1</span>);</span><br><span class="line">      acc = <span class="built_in">mac16</span>(acc, vin_1, <span class="number">2</span>, <span class="number">0x03020100</span>, <span class="number">0x07060504</span>, <span class="number">0x2110</span>, v9, <span class="number">2</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">13</span>);</span><br><span class="line"></span><br><span class="line">      v32int16 vin_2;</span><br><span class="line">      vin_2 = <span class="built_in">upd_w</span>(vin_2, <span class="number">0</span>, *(v16int16 *)(v4 + <span class="number">64</span> * v15));</span><br><span class="line">      vin_2 = <span class="built_in">upd_w</span>(vin_2, <span class="number">1</span>, *(v16int16 *)(v4 + <span class="number">64</span> * v15 + <span class="number">16</span>));</span><br><span class="line">      acc = <span class="built_in">mac16</span>(acc, vin_2, <span class="number">0</span>, <span class="number">0x03020100</span>, <span class="number">0x07060504</span>, <span class="number">0x2110</span>, v9, <span class="number">3</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">1</span>);</span><br><span class="line">      acc = <span class="built_in">mac16</span>(acc, vin_2, <span class="number">2</span>, <span class="number">0x03020100</span>, <span class="number">0x07060504</span>, <span class="number">0x2110</span>, v9, <span class="number">5</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">10</span>);</span><br><span class="line"></span><br><span class="line">      v32int16 vin_3;</span><br><span class="line">      vin_3 = <span class="built_in">upd_w</span>(vin_3, <span class="number">0</span>, *(v16int16 *)(v4 + <span class="number">64</span> * v17));</span><br><span class="line">      vin_3 = <span class="built_in">upd_w</span>(vin_3, <span class="number">1</span>, *(v16int16 *)(v4 + <span class="number">64</span> * v17 + <span class="number">16</span>));</span><br><span class="line">      acc = <span class="built_in">mac16</span>(acc, vin_3, <span class="number">0</span>, <span class="number">0x03020100</span>, <span class="number">0x07060504</span>, <span class="number">0x2110</span>, v9, <span class="number">6</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">1</span>);</span><br><span class="line">      acc = <span class="built_in">mac16</span>(acc, vin_3, <span class="number">2</span>, <span class="number">0x03020100</span>, <span class="number">0x07060504</span>, <span class="number">0x2110</span>, v9, <span class="number">8</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">7</span>);</span><br><span class="line"></span><br><span class="line">      *(v16int16 *)(v6 + <span class="number">32</span> * v13) = <span class="built_in">srs</span>(acc, v7);</span><br><span class="line"></span><br><span class="line">      <span class="comment">// ===== v21 = 16 =====</span></span><br><span class="line">      <span class="comment">// v32int16 vin;</span></span><br><span class="line">      <span class="comment">// vin_1 = upd_w(vin_1, 0, *(v16int16 *)(v4 + 64 * v13 + 16));</span></span><br><span class="line">      vin_1 = <span class="built_in">upd_w</span>(vin_1, <span class="number">0</span>, *(v16int16 *)(v4 + <span class="number">64</span> * v13 + <span class="number">32</span>));</span><br><span class="line"></span><br><span class="line">      v16acc48 acc1 = <span class="built_in">mul16</span>(vin_1, <span class="number">0</span>, <span class="number">0x07060504</span>, <span class="number">0x03020100</span>, <span class="number">0x2110</span>, v9, <span class="number">0</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">1</span>);</span><br><span class="line">      acc1 = <span class="built_in">mac16</span>(acc1, vin_1, <span class="number">2</span>, <span class="number">0x07060504</span>, <span class="number">0x03020100</span>, <span class="number">0x2110</span>, v9, <span class="number">2</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">13</span>);</span><br><span class="line"></span><br><span class="line">      <span class="comment">// vin_2 = upd_w(vin_2, 0, *(v16int16 *)(v4 + 64 * v15 + 16));</span></span><br><span class="line">      vin_2 = <span class="built_in">upd_w</span>(vin_2, <span class="number">0</span>, *(v16int16 *)(v4 + <span class="number">64</span> * v15 + <span class="number">32</span>));</span><br><span class="line">      acc1 = <span class="built_in">mac16</span>(acc1, vin_2, <span class="number">0</span>, <span class="number">0x07060504</span>, <span class="number">0x03020100</span>, <span class="number">0x2110</span>, v9, <span class="number">3</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">1</span>);</span><br><span class="line">      acc1 = <span class="built_in">mac16</span>(acc1, vin_2, <span class="number">2</span>, <span class="number">0x07060504</span>, <span class="number">0x03020100</span>, <span class="number">0x2110</span>, v9, <span class="number">5</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">10</span>);</span><br><span class="line"></span><br><span class="line">      <span class="comment">// vin_3 = upd_w(vin_3, 0, *(v16int16 *)(v4 + 64 * v17 + 16));</span></span><br><span class="line">      vin_3 = <span class="built_in">upd_w</span>(vin_3, <span class="number">0</span>, *(v16int16 *)(v4 + <span class="number">64</span> * v17 + <span class="number">32</span>));</span><br><span class="line">      acc1 = <span class="built_in">mac16</span>(acc1, vin_3, <span class="number">0</span>, <span class="number">0x07060504</span>, <span class="number">0x03020100</span>, <span class="number">0x2110</span>, v9, <span class="number">6</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">1</span>);</span><br><span class="line">      acc1 = <span class="built_in">mac16</span>(acc1, vin_3, <span class="number">2</span>, <span class="number">0x07060504</span>, <span class="number">0x03020100</span>, <span class="number">0x2110</span>, v9, <span class="number">8</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">7</span>);</span><br><span class="line"></span><br><span class="line">      *(v16int16 *)(v6 + <span class="number">32</span> * v13 + <span class="number">16</span>) = <span class="built_in">srs</span>(acc1, v7);</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>perf结果：</p>
+<p><img src="/images/image-20250629110224939.png" alt="image-20250629110224939"></p>
+</li>
+</ol>
+<p>综上，这一条优化链，其性能效果还是非常可观的。</p>
+<table>
+<thead>
+<tr>
+<th align="center">优化策略</th>
+<th align="center">32x32</th>
+<th align="center">64x32</th>
+<th align="center">32x64</th>
+<th align="center">64x64</th>
+<th align="center">16x256</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="center"><strong>向量化</strong></td>
+<td align="center">828</td>
+<td align="center">1628</td>
+<td align="center">985</td>
+<td align="center">1943</td>
+<td align="center">1849</td>
+</tr>
+<tr>
+<td align="center"><strong>展开（因子2）</strong></td>
+<td align="center">414</td>
+<td align="center">798</td>
+<td align="center">1222</td>
+<td align="center">3298</td>
+<td align="center">-</td>
+</tr>
+<tr>
+<td align="center"><strong>全展开</strong></td>
+<td align="center">-</td>
+<td align="center">-</td>
+<td align="center">1227</td>
+<td align="center">2411</td>
+<td align="center">3511</td>
+</tr>
+<tr>
+<td align="center"><strong>展开（因子2）+ 寄存器复用</strong></td>
+<td align="center">442</td>
+<td align="center">858</td>
+<td align="center">1697</td>
+<td align="center">3362</td>
+<td align="center">2123</td>
+</tr>
+<tr>
+<td align="center"><strong>全展开 + 寄存器复用</strong></td>
+<td align="center">-</td>
+<td align="center">-</td>
+<td align="center">826</td>
+<td align="center">1626</td>
+<td align="center">2526</td>
+</tr>
+<tr>
+<td align="center"><strong>展开（因子4）+ 寄存器复用</strong></td>
+<td align="center">-</td>
+<td align="center">-</td>
+<td align="center">826</td>
+<td align="center">1626</td>
+<td align="center">1738</td>
+</tr>
+<tr>
+<td align="center"><strong>展开（因子8）+ 寄存器复用</strong></td>
+<td align="center">-</td>
+<td align="center">-</td>
+<td align="center">-</td>
+<td align="center">-</td>
+<td align="center">1939</td>
+</tr>
+</tbody></table>
+<h2 id="汇编阅读"><a href="#汇编阅读" class="headerlink" title="汇编阅读"></a><font color = brown>汇编阅读</font></h2><table>
+<thead>
+<tr>
+<th align="center"><strong>PC</strong></th>
+<th align="center"><strong>指令</strong></th>
+<th align="center"><strong>功能解析</strong></th>
+<th align="center"><strong>硬件行为</strong></th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="center">2064</td>
+<td align="center"><code>MOV.s10 r6, #0; MOV.s9 r8, #0; MOV.s12 m0, #2</code></td>
+<td align="center">初始化关键寄存器：<code>r6</code>(累加器移位值)、<code>r8</code>(输出通道索引)清零；<code>m0</code>(地址步长)设为2，用于卷积核跨行访问（对应C++中<code>3*v8+v8</code>的系数3）</td>
+<td align="center">单周期完成多指令并行（VLIW特性）</td>
+</tr>
+<tr>
+<td align="center">2076</td>
+<td align="center"><code>PADDA [p0], m0; MOV.s9 r12, #2</code></td>
+<td align="center"><code>p0</code>指向卷积核基地址(<code>v5</code>)，设置<code>r12</code>为行循环计数器</td>
+<td align="center"><code>PADDA</code>预计算地址偏移，避免动态计算开销</td>
+</tr>
+<tr>
+<td align="center">2088</td>
+<td align="center"><code>MOV.s10 m0, #128; MOV.s9 r9, #30</code></td>
+<td align="center">设置输入行步长<code>m0=128</code>（对应C++的<code>128*v13</code>），<code>r9=30</code>为内循环计数器</td>
+<td align="center">128元素对齐优化内存访问</td>
+</tr>
+<tr>
+<td align="center">2100-2164</td>
+<td align="center"><code>MOV.u20 cl4, #256</code> <code>MOV.u20 ch5, #394500</code></td>
+<td align="center">配置向量寄存器参数： - <code>cl4=256</code>：输入行偏移 - <code>ch5=394500</code>：累加器参数</td>
+<td align="center">专用向量寄存器(cl&#x2F;ch)加速常数加载</td>
+</tr>
+<tr>
+<td align="center">2172-2220</td>
+<td align="center"><code>VLDA wr0, [p4], #32</code> <code>VLDA wd0, [p0], #32</code></td>
+<td align="center">预加载输入数据： - <code>p4</code>指向输入<code>v4</code> - <code>#32</code>表示32字节步长（16个int16）</td>
+<td align="center">流式DMA预取，隐藏内存延迟</td>
+</tr>
+</tbody></table>
+<hr>
+<h3 id="二、主计算循环（PC-2304-2572）"><a href="#二、主计算循环（PC-2304-2572）" class="headerlink" title="二、主计算循环（PC 2304-2572）"></a><strong>二、主计算循环（PC 2304-2572）</strong></h3><h4 id="1-外循环控制（PC-2304-2336）"><a href="#1-外循环控制（PC-2304-2336）" class="headerlink" title="1. 外循环控制（PC 2304-2336）"></a><strong>1. 外循环控制（PC 2304-2336）</strong></h4><table>
+<thead>
+<tr>
+<th align="center"><strong>PC</strong></th>
+<th align="center"><strong>指令</strong></th>
+<th align="center"><strong>功能解析</strong></th>
+<th align="center"><strong>硬件行为</strong></th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="center">2304</td>
+<td align="center"><code>MOV.s12 lc, #2</code></td>
+<td align="center">设置外循环计数器<code>lc=2</code>（实际执行32次，因流水线展开）</td>
+<td align="center">零开销循环硬件支持</td>
+</tr>
+<tr>
+<td align="center">2320</td>
+<td align="center"><code>MOV.u20 le, #2432</code></td>
+<td align="center">计算输入数据最大偏移<code>2432=128×19</code>（覆盖循环范围）</td>
+<td align="center">地址生成单元(AGU)自动计算</td>
+</tr>
+<tr>
+<td align="center">2336</td>
+<td align="center"><code>VMAC.48 bm0, ya.s16, ...</code></td>
+<td align="center"><strong>卷积核心计算</strong>：<code>bm0 += ya * c5 + r6 * wc0</code> 对应C++的<code>mul16(v22, ... v9)</code></td>
+<td align="center">单周期16个乘加（7.6 MACs&#x2F;cycle）</td>
+</tr>
+</tbody></table>
+<h4 id="2-内循环计算（PC-2352-2524）"><a href="#2-内循环计算（PC-2352-2524）" class="headerlink" title="2. 内循环计算（PC 2352-2524）"></a><strong>2. 内循环计算（PC 2352-2524）</strong></h4><table>
+<thead>
+<tr>
+<th align="center"><strong>PC</strong></th>
+<th align="center"><strong>指令</strong></th>
+<th align="center"><strong>C++对应</strong></th>
+<th align="center"><strong>优化点</strong></th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="center">2352</td>
+<td align="center"><code>VLDA wr0, [p4], #32</code></td>
+<td align="center"><code>v22 = upd_w(v22, 0, *(v16int16*)(...))</code></td>
+<td align="center">交错加载三行输入（<code>v22/v24/v25</code>）</td>
+</tr>
+<tr>
+<td align="center">2360</td>
+<td align="center"><code>VMUL.48 bm0, ya.s16</code></td>
+<td align="center"><code>v23 = mul16(v22, ...)</code></td>
+<td align="center">累加器<code>bm0</code>初始化为首行卷积结果</td>
+</tr>
+<tr>
+<td align="center">2372</td>
+<td align="center"><code>VMAC.48 bm0, yd.s16, ...</code></td>
+<td align="center"><code>v23 = mac16(v23, v22, 2, ...)</code></td>
+<td align="center">累加首行剩余部分（复用<code>v22</code>）</td>
+</tr>
+<tr>
+<td align="center">2464</td>
+<td align="center"><code>VMAC.48 bm0, yd.s16, r12...</code></td>
+<td align="center"><code>v23 = mac16(v23, v24, 0, ...)</code></td>
+<td align="center">累加第二行输入(<code>v24</code>对应<code>v15</code>)</td>
+</tr>
+<tr>
+<td align="center">2488</td>
+<td align="center"><code>VMAC.48 bm0, yd.s16, ...</code></td>
+<td align="center"><code>v23 = mac16(v23, v25, 0, ...)</code></td>
+<td align="center">累加第三行输入(<code>v25</code>对应<code>v17</code>)</td>
+</tr>
+<tr>
+<td align="center">2416</td>
+<td align="center"><code>VST.48.SRSS bm0, s0, [p2], #32</code></td>
+<td align="center"><code>*(v16int16*)(v6+64*v13+v21)=v26</code></td>
+<td align="center">结果饱和移位存储（<code>srs</code>的硬件实现）</td>
+</tr>
+<tr>
+<td align="center">2524</td>
+<td align="center"><code>BDEC r9, r9, cb0</code></td>
+<td align="center"><code>chess_loop_range(4,4)</code></td>
+<td align="center">零气泡循环：分支与计算并行</td>
+</tr>
+</tbody></table>
+<hr>
+<h3 id="三、收尾阶段（PC-2774-2792）"><a href="#三、收尾阶段（PC-2774-2792）" class="headerlink" title="三、收尾阶段（PC 2774-2792）"></a><strong>三、收尾阶段（PC 2774-2792）</strong></h3><table>
+<thead>
+<tr>
+<th align="center"><strong>PC</strong></th>
+<th align="center"><strong>指令</strong></th>
+<th align="center"><strong>功能解析</strong></th>
+<th align="center"><strong>设计意图</strong></th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="center">2774</td>
+<td align="center"><code>RET lr</code></td>
+<td align="center">函数返回</td>
+<td align="center">保留LR寄存器实现快速返回</td>
+</tr>
+<tr>
+<td align="center">2776-2788</td>
+<td align="center"><code>PADDS [p4], m0</code> <code>VST.48.SRSS ...</code></td>
+<td align="center">复位地址指针和存储流水线</td>
+<td align="center">清理硬件状态，避免残留影响</td>
+</tr>
+<tr>
+<td align="center">2792</td>
+<td align="center"><code>NOP</code></td>
+<td align="center">空操作</td>
+<td align="center">流水线对齐，确保RET执行完整</td>
+</tr>
+</tbody></table>
 
     </div>
 
@@ -758,7 +1002,7 @@
 
       <!--noindex-->
       <div class="post-toc-wrap sidebar-panel">
-          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%AE%97%E5%AD%90%E9%9B%86%E6%88%90%E6%B5%81%E7%A8%8B"><span class="nav-number">1.</span> <span class="nav-text">算子集成流程</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%8D%95%E6%A0%B8%E7%AE%97%E5%AD%90perf%E6%B5%81%E7%A8%8B"><span class="nav-number">1.1.</span> <span class="nav-text">单核算子perf流程</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%AE%97%E5%AD%90%E5%BC%80%E5%8F%91%E6%8C%87%E5%8D%97"><span class="nav-number">2.</span> <span class="nav-text">算子开发指南</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%AE%8C%E6%95%B4%E7%9A%84%E7%AE%97%E5%AD%90%E5%BC%80%E5%8F%91%E6%B5%81%E7%A8%8B"><span class="nav-number">2.1.</span> <span class="nav-text">完整的算子开发流程</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#AIE1Vec%E6%8C%87%E4%BB%A4%E9%9B%86"><span class="nav-number">2.2.</span> <span class="nav-text">AIE1Vec指令集</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#AI%E5%BC%95%E6%93%8Eintrinsic%E6%8C%87%E5%8D%97"><span class="nav-number">2.3.</span> <span class="nav-text">AI引擎intrinsic指南</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#%E6%95%B0%E6%8D%AE%E7%B1%BB%E5%9E%8B"><span class="nav-number">2.3.1.</span> <span class="nav-text">数据类型</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E6%93%8D%E4%BD%9C%E9%9B%86%E5%90%88"><span class="nav-number">2.3.2.</span> <span class="nav-text">操作集合</span></a></li></ol></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#AI%E5%BC%95%E6%93%8E%E5%8D%95%E6%A0%B8%E6%9E%B6%E6%9E%84"><span class="nav-number">3.</span> <span class="nav-text">AI引擎单核架构</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#2D-SIMD%E6%9E%B6%E6%9E%84"><span class="nav-number">3.1.</span> <span class="nav-text">2D SIMD架构</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Shuffle-Network"><span class="nav-number">3.2.</span> <span class="nav-text">Shuffle Network</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#Data-Shuffle"><span class="nav-number">3.2.1.</span> <span class="nav-text">Data Shuffle</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#Data-Select"><span class="nav-number">3.2.2.</span> <span class="nav-text">Data Select</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#VLIW%E8%B6%85%E9%95%BF%E6%8C%87%E4%BB%A4%E5%AD%97"><span class="nav-number">3.3.</span> <span class="nav-text">VLIW超长指令字</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E8%87%AA%E5%8A%A8%E7%94%9F%E6%88%90%E6%BA%90%E7%A0%81%E5%89%96%E6%9E%90"><span class="nav-number">4.</span> <span class="nav-text">自动生成源码剖析</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#aie-translate"><span class="nav-number">4.1.</span> <span class="nav-text">aie-translate</span></a></li></ol></li></ol></div>
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%AE%97%E5%AD%90%E9%9B%86%E6%88%90%E6%B5%81%E7%A8%8B"><span class="nav-number">1.</span> <span class="nav-text">算子集成流程</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%8D%95%E6%A0%B8%E7%AE%97%E5%AD%90perf%E6%B5%81%E7%A8%8B"><span class="nav-number">1.1.</span> <span class="nav-text">单核算子perf流程</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%AE%97%E5%AD%90%E5%BC%80%E5%8F%91%E6%8C%87%E5%8D%97"><span class="nav-number">2.</span> <span class="nav-text">算子开发指南</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%AE%8C%E6%95%B4%E7%9A%84%E7%AE%97%E5%AD%90%E5%BC%80%E5%8F%91%E6%B5%81%E7%A8%8B"><span class="nav-number">2.1.</span> <span class="nav-text">完整的算子开发流程</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#AIE1Vec%E6%8C%87%E4%BB%A4%E9%9B%86"><span class="nav-number">2.2.</span> <span class="nav-text">AIE1Vec指令集</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#AI%E5%BC%95%E6%93%8Eintrinsic%E6%8C%87%E5%8D%97"><span class="nav-number">2.3.</span> <span class="nav-text">AI引擎intrinsic指南</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#%E6%95%B0%E6%8D%AE%E7%B1%BB%E5%9E%8B"><span class="nav-number">2.3.1.</span> <span class="nav-text">数据类型</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E6%93%8D%E4%BD%9C%E9%9B%86%E5%90%88"><span class="nav-number">2.3.2.</span> <span class="nav-text">操作集合</span></a></li></ol></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#AI%E5%BC%95%E6%93%8E%E5%8D%95%E6%A0%B8%E6%9E%B6%E6%9E%84"><span class="nav-number">3.</span> <span class="nav-text">AI引擎单核架构</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#2D-SIMD%E6%9E%B6%E6%9E%84"><span class="nav-number">3.1.</span> <span class="nav-text">2D SIMD架构</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Shuffle-Network"><span class="nav-number">3.2.</span> <span class="nav-text">Shuffle Network</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#Data-Shuffle"><span class="nav-number">3.2.1.</span> <span class="nav-text">Data Shuffle</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#Data-Select"><span class="nav-number">3.2.2.</span> <span class="nav-text">Data Select</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#VLIW%E8%B6%85%E9%95%BF%E6%8C%87%E4%BB%A4%E5%AD%97"><span class="nav-number">3.3.</span> <span class="nav-text">VLIW超长指令字</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E8%87%AA%E5%8A%A8%E7%94%9F%E6%88%90%E6%BA%90%E7%A0%81%E5%89%96%E6%9E%90"><span class="nav-number">4.</span> <span class="nav-text">自动生成源码剖析</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#aie-translate"><span class="nav-number">4.1.</span> <span class="nav-text">aie-translate</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%8F%AF%E5%81%9A%E7%9A%84%E5%88%9B%E6%96%B0%E7%82%B9"><span class="nav-number">5.</span> <span class="nav-text">可做的创新点</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#2D-SIMD%E4%BC%98%E5%8C%96"><span class="nav-number">5.1.</span> <span class="nav-text">2D SIMD优化</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%AF%84%E5%AD%98%E5%99%A8%E5%A4%8D%E7%94%A8"><span class="nav-number">5.2.</span> <span class="nav-text">寄存器复用</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#%E5%90%91%E9%87%8F%E5%AF%84%E5%AD%98%E5%99%A8%E5%A4%8D%E7%94%A8"><span class="nav-number">5.2.1.</span> <span class="nav-text">向量寄存器复用</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E6%A0%87%E9%87%8F%E5%AF%84%E5%AD%98%E5%99%A8%E5%A4%8D%E7%94%A8"><span class="nav-number">5.2.2.</span> <span class="nav-text">标量寄存器复用</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#VLIW%E4%BC%98%E5%8C%96"><span class="nav-number">5.3.</span> <span class="nav-text">VLIW优化</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BC%98%E5%8C%96pass-idea"><span class="nav-number">6.</span> <span class="nav-text">优化pass idea</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%89%8B%E5%B7%A5Perf%E7%BB%93%E6%9E%9C"><span class="nav-number">6.1.</span> <span class="nav-text">手工Perf结果</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%B1%87%E7%BC%96%E9%98%85%E8%AF%BB"><span class="nav-number">7.</span> <span class="nav-text">汇编阅读</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%BA%8C%E3%80%81%E4%B8%BB%E8%AE%A1%E7%AE%97%E5%BE%AA%E7%8E%AF%EF%BC%88PC-2304-2572%EF%BC%89"><span class="nav-number">7.1.</span> <span class="nav-text">二、主计算循环（PC 2304-2572）</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#1-%E5%A4%96%E5%BE%AA%E7%8E%AF%E6%8E%A7%E5%88%B6%EF%BC%88PC-2304-2336%EF%BC%89"><span class="nav-number">7.1.1.</span> <span class="nav-text">1. 外循环控制（PC 2304-2336）</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#2-%E5%86%85%E5%BE%AA%E7%8E%AF%E8%AE%A1%E7%AE%97%EF%BC%88PC-2352-2524%EF%BC%89"><span class="nav-number">7.1.2.</span> <span class="nav-text">2. 内循环计算（PC 2352-2524）</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%B8%89%E3%80%81%E6%94%B6%E5%B0%BE%E9%98%B6%E6%AE%B5%EF%BC%88PC-2774-2792%EF%BC%89"><span class="nav-number">7.2.</span> <span class="nav-text">三、收尾阶段（PC 2774-2792）</span></a></li></ol></li></ol></div>
       </div>
       <!--/noindex-->
 
@@ -772,20 +1016,20 @@
       <div class="site-state-item site-state-posts">
           <a href="/archives/">
         
-          <span class="site-state-item-count">29</span>
+          <span class="site-state-item-count">32</span>
           <span class="site-state-item-name">日志</span>
         </a>
       </div>
       <div class="site-state-item site-state-categories">
             <a href="/categories/">
           
-        <span class="site-state-item-count">23</span>
+        <span class="site-state-item-count">24</span>
         <span class="site-state-item-name">分类</span></a>
       </div>
       <div class="site-state-item site-state-tags">
             <a href="/tags/">
           
-        <span class="site-state-item-count">17</span>
+        <span class="site-state-item-count">18</span>
         <span class="site-state-item-name">标签</span></a>
       </div>
   </nav>
@@ -822,13 +1066,13 @@
       <i class="fa fa-chart-area"></i>
     </span>
       <span class="post-meta-item-text">站点总字数：</span>
-    <span title="站点总字数">271k</span>
+    <span title="站点总字数">302k</span>
     <span class="post-meta-divider">|</span>
     <span class="post-meta-item-icon">
       <i class="fa fa-coffee"></i>
     </span>
       <span class="post-meta-item-text">站点阅读时长 &asymp;</span>
-    <span title="站点阅读时长">4:06</span>
+    <span title="站点阅读时长">4:34</span>
 </div>
   <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://pisces.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Pisces</a> 强力驱动
   </div>
