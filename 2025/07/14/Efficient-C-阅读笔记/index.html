@@ -27,7 +27,7 @@
 <meta property="og:locale" content="zh_CN">
 <meta property="og:image" content="http://example.com/images/image-20250714184730341.png">
 <meta property="article:published_time" content="2025-07-14T10:44:18.000Z">
-<meta property="article:modified_time" content="2025-07-14T11:02:57.353Z">
+<meta property="article:modified_time" content="2025-07-15T02:04:07.055Z">
 <meta property="article:author" content="Leon Dou">
 <meta property="article:tag" content="C++">
 <meta name="twitter:card" content="summary">
@@ -216,10 +216,16 @@
                 <i class="far fa-calendar"></i>
               </span>
               <span class="post-meta-item-text">发表于</span>
-              
 
-              <time title="创建时间：2025-07-14 18:44:18 / 修改时间：19:02:57" itemprop="dateCreated datePublished" datetime="2025-07-14T18:44:18+08:00">2025-07-14</time>
+              <time title="创建时间：2025-07-14 18:44:18" itemprop="dateCreated datePublished" datetime="2025-07-14T18:44:18+08:00">2025-07-14</time>
             </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2025-07-15 10:04:07" itemprop="dateModified" datetime="2025-07-15T10:04:07+08:00">2025-07-15</time>
+              </span>
             <span class="post-meta-item">
               <span class="post-meta-item-icon">
                 <i class="far fa-folder"></i>
@@ -243,7 +249,7 @@
                 <i class="far fa-file-word"></i>
               </span>
                 <span class="post-meta-item-text">本文字数：</span>
-              <span>129</span>
+              <span>1k</span>
             </span>
             <span class="post-meta-item" title="阅读时长">
               <span class="post-meta-item-icon">
@@ -264,15 +270,67 @@
       
         <p><img src="/images/image-20250714184730341.png" alt="image-20250714184730341"></p>
 <span id="more"></span>
-
 <blockquote>
 <p>通过阅读Efficient C++一书，对C++知识进行查漏补缺。</p>
 </blockquote>
-<h2 id="条款2-尽量以const，enum，inline替换-define"><a href="#条款2-尽量以const，enum，inline替换-define" class="headerlink" title="条款2: 尽量以const，enum，inline替换#define"></a><font color = brown>条款2: 尽量以const，enum，inline替换#define</font></h2><ul>
-<li>对于单纯常量，最好以const对象或enums替换#defines</li>
-<li>对于形似函数的宏，最好改用inline函数替换#defines</li>
+<h2 id="C-是什么？"><a href="#C-是什么？" class="headerlink" title="C++是什么？"></a><font color = brown>C++是什么？</font></h2><ul>
+<li>以C为基础，包含内置数据类型，数组，指针，预处理器</li>
+<li>Object-Oriented C++</li>
+<li>Template C++</li>
+<li>STL库</li>
 </ul>
+<h2 id="条款2-尽量以const，enum，inline替换-define"><a href="#条款2-尽量以const，enum，inline替换-define" class="headerlink" title="条款2: 尽量以const，enum，inline替换#define"></a><font color = brown>条款2: 尽量以const，enum，inline替换#define</font></h2><ul>
+<li><p>对于单纯常量，最好以const对象或enums替换#defines</p>
+<blockquote>
+<p>why？</p>
+<ul>
+<li><p>首先define会在预处理阶段替换，因此记号不会进入符号表</p>
+<ul>
+<li>debug带来不方便，用户可能会看到一串数字，但是不知道追踪到哪</li>
+<li>代码存储空间变大，盲目将名称替换为数字可能导致目标码变大</li>
+</ul>
+</li>
+<li><p>需要注意的点</p>
+<ul>
+<li><p>定义常量指针</p>
+</li>
+<li><p>class专属常量，这个点有两个要求：1</p>
+<ol>
+<li>常量受到class作用域的限制 -&gt; 是成员</li>
+<li>一个class的常量最多只有一个实体 -&gt; 是static 成员</li>
+</ol>
+<p><code>.h</code>文件</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">class</span> <span class="title class_">GamePlayer</span> &#123;</span><br><span class="line"><span class="keyword">private</span>:</span><br><span class="line">    <span class="type">static</span> <span class="type">const</span> <span class="type">int</span> NumTurns = <span class="number">5</span>;</span><br><span class="line">    <span class="type">int</span> scores[NumTurns];</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+<p><code>.cpp</code>文件</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">const</span> <span class="type">int</span> GamePlayer::NumTurns;</span><br></pre></td></tr></table></figure>
+<font color = red>注意：如果编译器不允许在编译时对static赋值，可以用`enum hack`的做法。</font>
 
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">class</span> <span class="title class_">GamePlayer</span> &#123;</span><br><span class="line"><span class="keyword">private</span>:</span><br><span class="line">    <span class="keyword">enum</span> &#123; NumTurns = <span class="number">5</span> &#125;;</span><br><span class="line">    </span><br><span class="line">    <span class="type">int</span> scores[NumTurns];</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+<p>根据书中解释，enum hack的好处是阻止用户获得某个整数常量的地址或引用。</p>
+</li>
+</ul>
+</li>
+</ul>
+</blockquote>
+</li>
+<li><p>对于形似函数的宏，最好改用inline函数替换#defines</p>
+<blockquote>
+<h1 id="define-可能导致行为不可预料："><a href="#define-可能导致行为不可预料：" class="headerlink" title="define 可能导致行为不可预料："></a>define 可能导致行为不可预料：</h1><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="keyword">define</span> CALL_WITH_MAX(a, b) f((a) &gt; (b) ? (a) : (b))</span></span><br></pre></td></tr></table></figure>
+<p>比如如下测试case：</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">int</span> a = <span class="number">5</span>, b = <span class="number">0</span>;</span><br><span class="line"><span class="built_in">CALL_WITH_MAX</span>(++a, b);</span><br><span class="line"><span class="built_in">CALL_WITH_MAX</span>(++a, b<span class="number">+10</span>);</span><br></pre></td></tr></table></figure>
+<p>这里面a++几次，完全取决于a和b的大小，这是十分讨厌的。</p>
+<p>解决方案是：<font color = red>template inline函数</font>，可以同时兼顾宏函数的性能（节省function call）+可预料行为+类型安全。</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> T&gt;</span><br><span class="line"><span class="function"><span class="keyword">inline</span> <span class="type">void</span> <span class="title">callWithMax</span><span class="params">(<span class="type">const</span> T&amp; a, <span class="type">const</span> T&amp; b)</span> </span>&#123;</span><br><span class="line">    <span class="built_in">f</span>(a &gt; b ? a : b);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+</blockquote>
+</li>
+<li><p>什么样的宏仍旧被需要？</p>
+<ul>
+<li><h1 id="include"><a href="#include" class="headerlink" title="include"></a>include</h1></li>
+<li><h1 id="ifdef-ifndef"><a href="#ifdef-ifndef" class="headerlink" title="ifdef/#ifndef"></a>ifdef/#ifndef</h1></li>
+</ul>
+</li>
+</ul>
+<h2 id="条款3：尽可能使用const"><a href="#条款3：尽可能使用const" class="headerlink" title="条款3：尽可能使用const"></a><font color = brown>条款3：尽可能使用const</font></h2>
     </div>
 
     
@@ -353,7 +411,7 @@
 
       <!--noindex-->
       <div class="post-toc-wrap sidebar-panel">
-          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%9D%A1%E6%AC%BE2-%E5%B0%BD%E9%87%8F%E4%BB%A5const%EF%BC%8Cenum%EF%BC%8Cinline%E6%9B%BF%E6%8D%A2-define"><span class="nav-number">1.</span> <span class="nav-text">条款2: 尽量以const，enum，inline替换#define</span></a></li></ol></div>
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#C-%E6%98%AF%E4%BB%80%E4%B9%88%EF%BC%9F"><span class="nav-number">1.</span> <span class="nav-text">C++是什么？</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%9D%A1%E6%AC%BE2-%E5%B0%BD%E9%87%8F%E4%BB%A5const%EF%BC%8Cenum%EF%BC%8Cinline%E6%9B%BF%E6%8D%A2-define"><span class="nav-number">2.</span> <span class="nav-text">条款2: 尽量以const，enum，inline替换#define</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#define-%E5%8F%AF%E8%83%BD%E5%AF%BC%E8%87%B4%E8%A1%8C%E4%B8%BA%E4%B8%8D%E5%8F%AF%E9%A2%84%E6%96%99%EF%BC%9A"><span class="nav-number"></span> <span class="nav-text">define 可能导致行为不可预料：</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#include"><span class="nav-number"></span> <span class="nav-text">include</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#ifdef-ifndef"><span class="nav-number"></span> <span class="nav-text">ifdef&#x2F;#ifndef</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%9D%A1%E6%AC%BE3%EF%BC%9A%E5%B0%BD%E5%8F%AF%E8%83%BD%E4%BD%BF%E7%94%A8const"><span class="nav-number">1.</span> <span class="nav-text">条款3：尽可能使用const</span></a></li></ol></div>
       </div>
       <!--/noindex-->
 
@@ -417,7 +475,7 @@
       <i class="fa fa-chart-area"></i>
     </span>
       <span class="post-meta-item-text">站点总字数：</span>
-    <span title="站点总字数">302k</span>
+    <span title="站点总字数">301k</span>
     <span class="post-meta-divider">|</span>
     <span class="post-meta-item-icon">
       <i class="fa fa-coffee"></i>

@@ -256,7 +256,7 @@
                 <i class="far fa-file-word"></i>
               </span>
                 <span class="post-meta-item-text">本文字数：</span>
-              <span>3.2k</span>
+              <span>3.1k</span>
             </span>
             <span class="post-meta-item" title="阅读时长">
               <span class="post-meta-item-icon">
@@ -277,7 +277,6 @@
       
         <p><img src="/images/image-20250606105520769.png" alt="image-20250606105520769"></p>
 <span id="more"></span>
-
 <blockquote>
 <p>日常工作中，有时候组内服务器权限限制，一些小的项目尝试在本地跑会更方便。这个博客主要记录一些vmware使用中的要点，方便自己日后回顾，因此多为命令行罗列，具体细节理解提供可参考博客链接。</p>
 </blockquote>
@@ -297,152 +296,154 @@
 </li>
 <li><p>在gparted中，点击swap空间（我的在sda4上），点击information，记录uuid号</p>
 </li>
-<li><p>sudo vim &#x2F;etc&#x2F;fstab，修改swapspace处：</p>
+<li><p>sudo vim /etc/fstab，修改swapspace处：</p>
 <p> <img src="/images/image-20250606125138939.png" alt="image-20250606125138939"></p>
 </li>
-<li><p>sudo swapon &#x2F;dev&#x2F;sda4，启用swapspace</p>
+<li><p>sudo swapon /dev/sda4，启用swapspace</p>
 </li>
 <li><p>用free -m指令查看：</p>
 <p><img src="/images/image-20250606125728013.png" alt="image-20250606125728013"></p>
 </li>
 </ol>
-<p>​	可以看到成功扩容了Mem和Swap</p>
+<p>​    可以看到成功扩容了Mem和Swap</p>
 <h2 id="SSH配置相关"><a href="#SSH配置相关" class="headerlink" title="SSH配置相关"></a><font color = brown>SSH配置相关</font></h2><p>ssh配置比较基础，直接参考博客即可：<a target="_blank" rel="noopener" href="https://blog.csdn.net/m0_64655190/article/details/130569010">ssh配置</a>。</p>
 <h2 id="PIP和APT包管理"><a href="#PIP和APT包管理" class="headerlink" title="PIP和APT包管理"></a><font color = brown>PIP和APT包管理</font></h2><p>pip和apt工具是开发过程中常用的两个包管理工具，区别如下：</p>
 <ul>
 <li><code>pip</code>：Python包的安装工具，用于从Python Package Index (PyPI) 安装Python库。</li>
-<li><code>apt</code>：Debian&#x2F;Ubuntu系统的包管理工具，用于安装系统和应用程序级别的软件（主要是用C&#x2F;C++等编译的二进制程序，也包括Python、Perl等脚本语言编写的系统级工具）。</li>
+<li><code>apt</code>：Debian/Ubuntu系统的包管理工具，用于安装系统和应用程序级别的软件（主要是用C/C++等编译的二进制程序，也包括Python、Perl等脚本语言编写的系统级工具）。</li>
 </ul>
 <p>更详细的对比见下表：</p>
+<div class="table-container">
 <table>
 <thead>
 <tr>
-<th align="center"><strong>对比维度</strong></th>
-<th align="center"><strong>pip (Python 包管理)</strong></th>
-<th align="center"><strong>apt (Debian&#x2F;Ubuntu 系统包管理)</strong></th>
+<th style="text-align:center"><strong>对比维度</strong></th>
+<th style="text-align:center"><strong>pip (Python 包管理)</strong></th>
+<th style="text-align:center"><strong>apt (Debian/Ubuntu 系统包管理)</strong></th>
 </tr>
 </thead>
-<tbody><tr>
-<td align="center"><strong>管理对象</strong></td>
-<td align="center">Python 库和程序</td>
-<td align="center">系统级软件（C&#x2F;C++程序、服务等）</td>
+<tbody>
+<tr>
+<td style="text-align:center"><strong>管理对象</strong></td>
+<td style="text-align:center">Python 库和程序</td>
+<td style="text-align:center">系统级软件（C/C++程序、服务等）</td>
 </tr>
 <tr>
-<td align="center"><strong>依赖范围</strong></td>
-<td align="center">仅 Python 依赖</td>
-<td align="center">系统级依赖（共享库、系统服务等）</td>
+<td style="text-align:center"><strong>依赖范围</strong></td>
+<td style="text-align:center">仅 Python 依赖</td>
+<td style="text-align:center">系统级依赖（共享库、系统服务等）</td>
 </tr>
 <tr>
-<td align="center"><strong>安装位置</strong></td>
-<td align="center">用户目录或虚拟环境（~&#x2F;.local&#x2F;lib）</td>
-<td align="center">系统目录（&#x2F;usr, &#x2F;bin, &#x2F;etc）</td>
+<td style="text-align:center"><strong>安装位置</strong></td>
+<td style="text-align:center">用户目录或虚拟环境（~/.local/lib）</td>
+<td style="text-align:center">系统目录（/usr, /bin, /etc）</td>
 </tr>
 <tr>
-<td align="center"><strong>隔离机制</strong></td>
-<td align="center">虚拟环境</td>
-<td align="center">全局安装</td>
+<td style="text-align:center"><strong>隔离机制</strong></td>
+<td style="text-align:center">虚拟环境</td>
+<td style="text-align:center">全局安装</td>
 </tr>
 <tr>
-<td align="center"><strong>包来源</strong></td>
-<td align="center">PyPI（Python 包索引）</td>
-<td align="center">Ubuntu&#x2F;Debian 官方仓库和 PPA</td>
+<td style="text-align:center"><strong>包来源</strong></td>
+<td style="text-align:center">PyPI（Python 包索引）</td>
+<td style="text-align:center">Ubuntu/Debian 官方仓库和 PPA</td>
 </tr>
 <tr>
-<td align="center"><strong>安装权限</strong></td>
-<td align="center">普通用户权限</td>
-<td align="center">需要 sudo 权限</td>
+<td style="text-align:center"><strong>安装权限</strong></td>
+<td style="text-align:center">普通用户权限</td>
+<td style="text-align:center">需要 sudo 权限</td>
 </tr>
 <tr>
-<td align="center"><strong>跨平台支持</strong></td>
-<td align="center">支持所有操作系统</td>
-<td align="center">仅限 Debian&#x2F;Ubuntu 系 Linux</td>
+<td style="text-align:center"><strong>跨平台支持</strong></td>
+<td style="text-align:center">支持所有操作系统</td>
+<td style="text-align:center">仅限 Debian/Ubuntu 系 Linux</td>
 </tr>
 <tr>
-<td align="center"><strong>依赖解析</strong></td>
-<td align="center">简单树状结构</td>
-<td align="center">复杂拓扑关系</td>
+<td style="text-align:center"><strong>依赖解析</strong></td>
+<td style="text-align:center">简单树状结构</td>
+<td style="text-align:center">复杂拓扑关系</td>
 </tr>
 <tr>
-<td align="center"><strong>典型用途</strong></td>
-<td align="center"><code>pip install numpy</code></td>
-<td align="center"><code>sudo apt install python3-numpy</code></td>
+<td style="text-align:center"><strong>典型用途</strong></td>
+<td style="text-align:center"><code>pip install numpy</code></td>
+<td style="text-align:center"><code>sudo apt install python3-numpy</code></td>
 </tr>
 <tr>
-<td align="center"><strong>版本控制</strong></td>
-<td align="center">可精确指定版本</td>
-<td align="center">安装仓库提供的稳定版本</td>
+<td style="text-align:center"><strong>版本控制</strong></td>
+<td style="text-align:center">可精确指定版本</td>
+<td style="text-align:center">安装仓库提供的稳定版本</td>
 </tr>
 <tr>
-<td align="center"><strong>配置文件</strong></td>
-<td align="center">requirements.txt</td>
-<td align="center">&#x2F;etc&#x2F;apt&#x2F;sources.list</td>
+<td style="text-align:center"><strong>配置文件</strong></td>
+<td style="text-align:center">requirements.txt</td>
+<td style="text-align:center">/etc/apt/sources.list</td>
 </tr>
 <tr>
-<td align="center"><strong>包结构</strong></td>
-<td align="center">Wheel 或源码包</td>
-<td align="center">预编译 .deb 包</td>
+<td style="text-align:center"><strong>包结构</strong></td>
+<td style="text-align:center">Wheel 或源码包</td>
+<td style="text-align:center">预编译 .deb 包</td>
 </tr>
 <tr>
-<td align="center"><strong>安装示例</strong></td>
-<td align="center">TensorFlow, Flask, PyTorch</td>
-<td align="center">gcc, nginx, docker</td>
+<td style="text-align:center"><strong>安装示例</strong></td>
+<td style="text-align:center">TensorFlow, Flask, PyTorch</td>
+<td style="text-align:center">gcc, nginx, docker</td>
 </tr>
-</tbody></table>
+</tbody>
+</table>
+</div>
 <h3 id="PIP换源"><a href="#PIP换源" class="headerlink" title="PIP换源"></a><font color = green>PIP换源</font></h3><p>临时换源，用清华镜像：</p>
 <figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">pip install package -i https://pypi.tuna.tsinghua.edu.cn/simple</span><br></pre></td></tr></table></figure>
-
 <p>常用国内镜像源：</p>
+<div class="table-container">
 <table>
 <thead>
 <tr>
-<th align="center">镜像名称</th>
-<th align="center">URL</th>
-<th align="center">推荐指数</th>
+<th style="text-align:center">镜像名称</th>
+<th style="text-align:center">URL</th>
+<th style="text-align:center">推荐指数</th>
 </tr>
 </thead>
-<tbody><tr>
-<td align="center">清华大学</td>
-<td align="center"><a target="_blank" rel="noopener" href="https://pypi.tuna.tsinghua.edu.cn/simple">https://pypi.tuna.tsinghua.edu.cn/simple</a></td>
-<td align="center">⭐⭐⭐⭐⭐</td>
+<tbody>
+<tr>
+<td style="text-align:center">清华大学</td>
+<td style="text-align:center"><a target="_blank" rel="noopener" href="https://pypi.tuna.tsinghua.edu.cn/simple">https://pypi.tuna.tsinghua.edu.cn/simple</a></td>
+<td style="text-align:center">⭐⭐⭐⭐⭐</td>
 </tr>
 <tr>
-<td align="center">阿里云</td>
-<td align="center"><a target="_blank" rel="noopener" href="https://mirrors.aliyun.com/pypi/simple">https://mirrors.aliyun.com/pypi/simple</a></td>
-<td align="center">⭐⭐⭐⭐</td>
+<td style="text-align:center">阿里云</td>
+<td style="text-align:center"><a target="_blank" rel="noopener" href="https://mirrors.aliyun.com/pypi/simple">https://mirrors.aliyun.com/pypi/simple</a></td>
+<td style="text-align:center">⭐⭐⭐⭐</td>
 </tr>
 <tr>
-<td align="center">中科大</td>
-<td align="center"><a target="_blank" rel="noopener" href="https://pypi.mirrors.ustc.edu.cn/simple">https://pypi.mirrors.ustc.edu.cn/simple</a></td>
-<td align="center">⭐⭐⭐⭐</td>
+<td style="text-align:center">中科大</td>
+<td style="text-align:center"><a target="_blank" rel="noopener" href="https://pypi.mirrors.ustc.edu.cn/simple">https://pypi.mirrors.ustc.edu.cn/simple</a></td>
+<td style="text-align:center">⭐⭐⭐⭐</td>
 </tr>
 <tr>
-<td align="center">豆瓣</td>
-<td align="center"><a target="_blank" rel="noopener" href="https://pypi.doubanio.com/simple">https://pypi.doubanio.com/simple</a></td>
-<td align="center">⭐⭐⭐</td>
+<td style="text-align:center">豆瓣</td>
+<td style="text-align:center"><a target="_blank" rel="noopener" href="https://pypi.doubanio.com/simple">https://pypi.doubanio.com/simple</a></td>
+<td style="text-align:center">⭐⭐⭐</td>
 </tr>
 <tr>
-<td align="center">华为云</td>
-<td align="center"><a target="_blank" rel="noopener" href="https://repo.huaweicloud.com/repository/pypi/simple">https://repo.huaweicloud.com/repository/pypi/simple</a></td>
-<td align="center">⭐⭐⭐⭐</td>
+<td style="text-align:center">华为云</td>
+<td style="text-align:center"><a target="_blank" rel="noopener" href="https://repo.huaweicloud.com/repository/pypi/simple">https://repo.huaweicloud.com/repository/pypi/simple</a></td>
+<td style="text-align:center">⭐⭐⭐⭐</td>
 </tr>
-</tbody></table>
+</tbody>
+</table>
+</div>
 <h3 id="apt换源"><a href="#apt换源" class="headerlink" title="apt换源"></a><font color = green>apt换源</font></h3><p>直接修改<code>sources.list</code>，需要sudo权限。</p>
 <figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">sudo sed -i &#x27;s|http://.*archive.ubuntu.com|https://mirrors.tuna.tsinghua.edu.cn|g&#x27; /etc/apt/sources.list</span><br><span class="line">sudo sed -i &#x27;s|http://.*security.ubuntu.com|https://mirrors.tuna.tsinghua.edu.cn|g&#x27; /etc/apt/sources.list</span><br></pre></td></tr></table></figure>
-
 <h3 id="Proxy代理配置"><a href="#Proxy代理配置" class="headerlink" title="Proxy代理配置"></a><font color = green>Proxy代理配置</font></h3><p>下载东西可以配置proxy，翻墙加速，步骤如下：</p>
 <ol>
 <li><p>clash for windows设置LAN为打开状态</p>
 </li>
 <li><p>在服务器的terminal中设置环境变量：</p>
-<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta prompt_"># </span><span class="language-bash">download 代理</span></span><br><span class="line">export http_proxy=&quot;http://192.168.31.174:7890&quot;</span><br><span class="line">export https_proxy=&quot;http://192.168.31.174:7890&quot;</span><br><span class="line"><span class="meta prompt_"></span></span><br><span class="line"><span class="meta prompt_"># </span><span class="language-bash">验证代理</span></span><br><span class="line">git config --global --get http.proxy</span><br><span class="line">git config --global --get https.proxy</span><br><span class="line"><span class="meta prompt_"></span></span><br><span class="line"><span class="meta prompt_"># </span><span class="language-bash">只对github 做代理</span></span><br><span class="line">git config --global http.https://github.com.proxy https://192.168.31.174:7890</span><br><span class="line"></span><br><span class="line">git config --global http.https.proxy https://192.168.31.174:7890</span><br><span class="line">git config --global http.http.proxy http://192.168.31.174:7890</span><br><span class="line"><span class="meta prompt_"></span></span><br><span class="line"><span class="meta prompt_"># </span><span class="language-bash">取消代理</span></span><br><span class="line">git config --global --unset http.proxy </span><br><span class="line">git config --global --unset https.proxy</span><br><span class="line">git config --global --unset http.https://github.com.proxy</span><br></pre></td></tr></table></figure></li>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta prompt_"># </span><span class="language-bash">download 代理</span></span><br><span class="line">export http_proxy=&quot;http://192.168.31.174:7890&quot;</span><br><span class="line">export https_proxy=&quot;http://192.168.31.174:7890&quot;</span><br><span class="line"><span class="meta prompt_"></span></span><br><span class="line"><span class="meta prompt_"># </span><span class="language-bash">验证代理</span></span><br><span class="line">git config --global --get http.proxy</span><br><span class="line">git config --global --get https.proxy</span><br><span class="line"><span class="meta prompt_"></span></span><br><span class="line"><span class="meta prompt_"># </span><span class="language-bash">只对github 做代理</span></span><br><span class="line">git config --global http.https://github.com.proxy https://192.168.31.174:7890</span><br><span class="line"></span><br><span class="line">git config --global http.https.proxy https://192.168.31.174:7890</span><br><span class="line">git config --global http.http.proxy http://192.168.31.174:7890</span><br><span class="line"><span class="meta prompt_"></span></span><br><span class="line"><span class="meta prompt_"># </span><span class="language-bash">取消代理</span></span><br><span class="line">git config --global --unset http.proxy </span><br><span class="line">git config --global --unset https.proxy</span><br><span class="line">git config --global --unset http.https://github.com.proxy</span><br></pre></td></tr></table></figure>
+</li>
 </ol>
 <p>参考<a target="_blank" rel="noopener" href="https://www.sujx.net/2023/07/31/vm-clash/index.html">VMware虚拟机通过宿主机的clash for windows访问外部节点</a>，可以编写一个小的脚本：</p>
 <figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta prompt_">#</span><span class="language-bash">!/bin/bash</span></span><br><span class="line"><span class="meta prompt_"># </span><span class="language-bash">encoding: utf-8</span></span><br><span class="line"></span><br><span class="line">Proxy_IP=192.168.1.10</span><br><span class="line">Proxy_Port=7890</span><br><span class="line"><span class="meta prompt_"></span></span><br><span class="line"><span class="meta prompt_"># </span><span class="language-bash">Set System Proxy</span></span><br><span class="line">function xyon()&#123;</span><br><span class="line">    export https_proxy=http://$Proxy_IP:$Proxy_Port</span><br><span class="line">    export http_proxy=http://$Proxy_IP:$Proxy_Port</span><br><span class="line">    export all_proxy=socks5://$Proxy_IP:$Proxy_Port</span><br><span class="line">    echo -e &quot;System Proxy is $Proxy_IP:$Proxy_Port&quot;</span><br><span class="line">&#125;</span><br><span class="line"><span class="meta prompt_"></span></span><br><span class="line"><span class="meta prompt_"># </span><span class="language-bash">unSet System Proxy</span></span><br><span class="line">function xyoff()&#123;</span><br><span class="line">    unset all_proxy</span><br><span class="line">    unset https_proxy</span><br><span class="line">    unset http_proxy</span><br><span class="line">    echo -e &quot;System Proxy is Disabled&quot;</span><br><span class="line">&#125;</span><br><span class="line"><span class="meta prompt_"></span></span><br><span class="line"><span class="meta prompt_"># </span><span class="language-bash">Default Function is Set Proxy</span></span><br><span class="line">if [ $# != 0 ]</span><br><span class="line">then</span><br><span class="line">	if [ $1 == &#x27;off&#x27; ]</span><br><span class="line">	then</span><br><span class="line">		xyoff</span><br><span class="line">	elif [ $1 == &#x27;on&#x27; ]</span><br><span class="line">	then</span><br><span class="line">		xyon</span><br><span class="line">	else</span><br><span class="line">		echo &quot;Please Input on or off!&quot;</span><br><span class="line">	fi</span><br><span class="line">else</span><br><span class="line">	echo &quot;Please input command.&quot;</span><br><span class="line">fi</span><br></pre></td></tr></table></figure>
-
-
-
-
-
 
     </div>
 
@@ -592,7 +593,7 @@
       <i class="fa fa-chart-area"></i>
     </span>
       <span class="post-meta-item-text">站点总字数：</span>
-    <span title="站点总字数">302k</span>
+    <span title="站点总字数">301k</span>
     <span class="post-meta-divider">|</span>
     <span class="post-meta-item-icon">
       <i class="fa fa-coffee"></i>
