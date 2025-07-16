@@ -27,7 +27,7 @@
 <meta property="og:locale" content="zh_CN">
 <meta property="og:image" content="http://example.com/images/image-20250714184730341.png">
 <meta property="article:published_time" content="2025-07-14T10:44:18.000Z">
-<meta property="article:modified_time" content="2025-07-15T02:04:07.055Z">
+<meta property="article:modified_time" content="2025-07-16T02:07:20.246Z">
 <meta property="article:author" content="Leon Dou">
 <meta property="article:tag" content="C++">
 <meta name="twitter:card" content="summary">
@@ -224,7 +224,7 @@
                   <i class="far fa-calendar-check"></i>
                 </span>
                 <span class="post-meta-item-text">更新于</span>
-                <time title="修改时间：2025-07-15 10:04:07" itemprop="dateModified" datetime="2025-07-15T10:04:07+08:00">2025-07-15</time>
+                <time title="修改时间：2025-07-16 10:07:20" itemprop="dateModified" datetime="2025-07-16T10:07:20+08:00">2025-07-16</time>
               </span>
             <span class="post-meta-item">
               <span class="post-meta-item-icon">
@@ -249,14 +249,14 @@
                 <i class="far fa-file-word"></i>
               </span>
                 <span class="post-meta-item-text">本文字数：</span>
-              <span>1k</span>
+              <span>5k</span>
             </span>
             <span class="post-meta-item" title="阅读时长">
               <span class="post-meta-item-icon">
                 <i class="far fa-clock"></i>
               </span>
                 <span class="post-meta-item-text">阅读时长 &asymp;</span>
-              <span>1 分钟</span>
+              <span>5 分钟</span>
             </span>
 
         </div>
@@ -270,6 +270,7 @@
       
         <p><img src="/images/image-20250714184730341.png" alt="image-20250714184730341"></p>
 <span id="more"></span>
+
 <blockquote>
 <p>通过阅读Efficient C++一书，对C++知识进行查漏补缺。</p>
 </blockquote>
@@ -301,11 +302,13 @@
 </ol>
 <p><code>.h</code>文件</p>
 <figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">class</span> <span class="title class_">GamePlayer</span> &#123;</span><br><span class="line"><span class="keyword">private</span>:</span><br><span class="line">    <span class="type">static</span> <span class="type">const</span> <span class="type">int</span> NumTurns = <span class="number">5</span>;</span><br><span class="line">    <span class="type">int</span> scores[NumTurns];</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
 <p><code>.cpp</code>文件</p>
 <figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">const</span> <span class="type">int</span> GamePlayer::NumTurns;</span><br></pre></td></tr></table></figure>
-<font color = red>注意：如果编译器不允许在编译时对static赋值，可以用`enum hack`的做法。</font>
 
+<p><font color = red>注意：如果编译器不允许在编译时对static赋值，可以用<code>enum hack</code>的做法。</font></p>
 <figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">class</span> <span class="title class_">GamePlayer</span> &#123;</span><br><span class="line"><span class="keyword">private</span>:</span><br><span class="line">    <span class="keyword">enum</span> &#123; NumTurns = <span class="number">5</span> &#125;;</span><br><span class="line">    </span><br><span class="line">    <span class="type">int</span> scores[NumTurns];</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
 <p>根据书中解释，enum hack的好处是阻止用户获得某个整数常量的地址或引用。</p>
 </li>
 </ul>
@@ -315,22 +318,74 @@
 </li>
 <li><p>对于形似函数的宏，最好改用inline函数替换#defines</p>
 <blockquote>
-<h1 id="define-可能导致行为不可预料："><a href="#define-可能导致行为不可预料：" class="headerlink" title="define 可能导致行为不可预料："></a>define 可能导致行为不可预料：</h1><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="keyword">define</span> CALL_WITH_MAX(a, b) f((a) &gt; (b) ? (a) : (b))</span></span><br></pre></td></tr></table></figure>
+<p>#define 可能导致行为不可预料：</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="keyword">define</span> CALL_WITH_MAX(a, b) f((a) &gt; (b) ? (a) : (b))</span></span><br></pre></td></tr></table></figure>
+
 <p>比如如下测试case：</p>
 <figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">int</span> a = <span class="number">5</span>, b = <span class="number">0</span>;</span><br><span class="line"><span class="built_in">CALL_WITH_MAX</span>(++a, b);</span><br><span class="line"><span class="built_in">CALL_WITH_MAX</span>(++a, b<span class="number">+10</span>);</span><br></pre></td></tr></table></figure>
+
 <p>这里面a++几次，完全取决于a和b的大小，这是十分讨厌的。</p>
 <p>解决方案是：<font color = red>template inline函数</font>，可以同时兼顾宏函数的性能（节省function call）+可预料行为+类型安全。</p>
-<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> T&gt;</span><br><span class="line"><span class="function"><span class="keyword">inline</span> <span class="type">void</span> <span class="title">callWithMax</span><span class="params">(<span class="type">const</span> T&amp; a, <span class="type">const</span> T&amp; b)</span> </span>&#123;</span><br><span class="line">    <span class="built_in">f</span>(a &gt; b ? a : b);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-</blockquote>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> T&gt;</span><br><span class="line"><span class="function"><span class="keyword">inline</span> <span class="type">void</span> <span class="title">callWithMax</span><span class="params">(<span class="type">const</span> T&amp; a, <span class="type">const</span> T&amp; b)</span> </span>&#123;</span><br><span class="line">    <span class="built_in">f</span>(a &gt; b ? a : b);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></blockquote>
 </li>
 <li><p>什么样的宏仍旧被需要？</p>
 <ul>
-<li><h1 id="include"><a href="#include" class="headerlink" title="include"></a>include</h1></li>
-<li><h1 id="ifdef-ifndef"><a href="#ifdef-ifndef" class="headerlink" title="ifdef/#ifndef"></a>ifdef/#ifndef</h1></li>
+<li>#include</li>
+<li>#ifdef&#x2F;#ifndef</li>
 </ul>
 </li>
 </ul>
-<h2 id="条款3：尽可能使用const"><a href="#条款3：尽可能使用const" class="headerlink" title="条款3：尽可能使用const"></a><font color = brown>条款3：尽可能使用const</font></h2>
+<h2 id="条款3：尽可能使用const"><a href="#条款3：尽可能使用const" class="headerlink" title="条款3：尽可能使用const"></a><font color = brown>条款3：尽可能使用const</font></h2><h3 id="Const的含义"><a href="#Const的含义" class="headerlink" title="Const的含义"></a><font color = green>Const的含义</font></h3><p>首先，const修饰符比较容易混淆的是其具体修饰的是<strong>指针本身还是指针所指的对象</strong>。有如下口诀：如果关键字const出现在星号左边，表示被指物是常量，如果出现在星号右边，表示指针自身是常量。通过下面的例子来加深理解：</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">char</span> greeting[] = <span class="string">&quot;Hello&quot;</span>;</span><br><span class="line"><span class="type">char</span>* p = greeting;</span><br><span class="line"><span class="type">char</span>* <span class="type">const</span> p = greeting;      <span class="comment">// const pointer, non-const data</span></span><br><span class="line"><span class="type">const</span> <span class="type">char</span>* p = greeting;      <span class="comment">// non-const pointer, const data  </span></span><br></pre></td></tr></table></figure>
+
+<p>接下来我们将目光从指针引向迭代器。迭代器的作用就是T*指针，所以其const修饰也有讲究，具体如下：</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">std::vector&lt;<span class="type">int</span>&gt; vec;</span><br><span class="line"></span><br><span class="line"><span class="type">const</span> std::vector&lt;<span class="type">int</span>&gt;::iterator iter = vec.<span class="built_in">begin</span>()              <span class="comment">// 作用类似T* const</span></span><br><span class="line">*iter = <span class="number">10</span>;                                                      <span class="comment">// 改变所指物，ok</span></span><br><span class="line">++iter;                                                          <span class="comment">// 改变指针，不ok</span></span><br><span class="line"></span><br><span class="line">std::vector&lt;<span class="type">int</span>&gt;::const_iterator cIter = vec.<span class="built_in">begin</span>()             <span class="comment">// 作用类似const T*</span></span><br><span class="line">*cIter = <span class="number">10</span>;                                                     <span class="comment">// 改变所指物，不ok</span></span><br><span class="line">++cIter;                                                         <span class="comment">// 改变指针，不ok</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="Const搭配函数"><a href="#Const搭配函数" class="headerlink" title="Const搭配函数"></a><font color = green>Const搭配函数</font></h3><p>const的一个最具威的用法是在函数声明时使用。const可以和（1）<strong>函数返回值</strong>（2）<strong>各参数</strong>（3）<strong>函数自身</strong>（如果是成员函数）产生关联。</p>
+<h4 id="函数返回常量值"><a href="#函数返回常量值" class="headerlink" title="函数返回常量值"></a>函数返回常量值</h4><p>例子如下：</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">class</span> <span class="title class_">Rational</span> &#123; ... &#125;;</span><br><span class="line"><span class="type">const</span> Rational <span class="keyword">operator</span>* (<span class="type">const</span> Rational&amp; lhs, <span class="type">const</span> Rational&amp; rhs);</span><br></pre></td></tr></table></figure>
+
+<p>函数参数的const作用是防止修改传入的lhs，后续会讲解<code>pass by reference to const</code>，这种写法也是比较推荐替代<code>pass by value</code>的方案。</p>
+<p>返回值const的作用，则是用来<strong>预防用户可能的使用错误</strong>。比如用户可能如下使用：</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">if</span> (a * b = c)       <span class="comment">// 应该是==但是写成=了</span></span><br></pre></td></tr></table></figure>
+
+<p>如果添加const修饰，则上述用法会直接报错。</p>
+<h4 id="const成员函数"><a href="#const成员函数" class="headerlink" title="const成员函数"></a>const成员函数</h4><p>书中总结const成员函数两大作用：</p>
+<ul>
+<li>使得class接口比较容易被理解</li>
+<li>使操作const对象成为可能</li>
+</ul>
+<p>接下来我们通过一个例子解析const成员函数的相关用法：</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;iostream&gt;</span></span></span><br><span class="line"></span><br><span class="line"><span class="keyword">using</span> <span class="keyword">namespace</span> std;</span><br><span class="line"></span><br><span class="line"><span class="keyword">class</span> <span class="title class_">TextBook</span> &#123;</span><br><span class="line"><span class="keyword">public</span>:</span><br><span class="line">    <span class="built_in">TextBook</span>(<span class="type">const</span> string&amp; title) : <span class="built_in">title</span>(title) &#123;&#125;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="type">void</span> <span class="title">printTitle</span><span class="params">()</span> <span class="type">const</span> </span>&#123;</span><br><span class="line">        cout &lt;&lt; <span class="string">&quot;Title: &quot;</span> &lt;&lt; title &lt;&lt; endl;</span><br><span class="line">    &#125;   </span><br><span class="line"></span><br><span class="line">    <span class="type">const</span> <span class="type">char</span>&amp; <span class="keyword">operator</span>[](<span class="type">size_t</span> index) <span class="type">const</span> &#123;</span><br><span class="line">        <span class="keyword">return</span> title[index];</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="type">char</span>&amp; <span class="keyword">operator</span>[](<span class="type">size_t</span> index) &#123;</span><br><span class="line">        <span class="keyword">return</span> title[index];</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">private</span>:</span><br><span class="line">    string title;</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="type">int</span> <span class="title">main</span><span class="params">()</span> </span>&#123;</span><br><span class="line">    <span class="function">TextBook <span class="title">book</span><span class="params">(<span class="string">&quot;C++ Programming&quot;</span>)</span></span>;</span><br><span class="line"></span><br><span class="line">    book.<span class="built_in">printTitle</span>();</span><br><span class="line"></span><br><span class="line">    cout &lt;&lt; <span class="string">&quot;First character: &quot;</span> &lt;&lt; book[<span class="number">0</span>] &lt;&lt; endl;</span><br><span class="line">    book[<span class="number">0</span>] = <span class="string">&#x27;c&#x27;</span>; <span class="comment">// 修改第一个字符</span></span><br><span class="line">    cout &lt;&lt; <span class="string">&quot;Modified first character: &quot;</span> &lt;&lt; book[<span class="number">0</span>] &lt;&lt; endl;</span><br><span class="line"></span><br><span class="line">    book.<span class="built_in">printTitle</span>();</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="type">const</span> TextBook <span class="title">ctb</span><span class="params">(<span class="string">&quot;World&quot;</span>)</span></span>;</span><br><span class="line">    ctb.<span class="built_in">printTitle</span>();</span><br><span class="line">    cout &lt;&lt; <span class="string">&quot;First character of const TextBook: &quot;</span> &lt;&lt; ctb[<span class="number">0</span>] &lt;&lt; endl;</span><br><span class="line">    <span class="comment">// ctb[0] = &#x27;w&#x27;; // 错误，不能修改 const</span></span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>这段代码的要点是，函数可以只有const属性不一样，也是一种重载。对于不同的对象，使用不同的重载函数，得到不同的处理。这里有一个要点，operator返回的是pass by reference to char，不是value。如果是pass by value，则其逻辑是改变一个副本。</p>
+<h4 id="Bit-wise-constness和Logical-constness"><a href="#Bit-wise-constness和Logical-constness" class="headerlink" title="Bit wise constness和Logical constness"></a>Bit wise constness和Logical constness</h4><p>对于constness的界定分为两个派别：</p>
+<ul>
+<li><p>Bit wise constness：不更改对象内的任何一个bit</p>
+<ul>
+<li><p>优点：编译器特别容易分析违反的点，只用追踪assign操作</p>
+</li>
+<li><p>缺点：对于一个指针是对象，如果修改其所指内容，破坏constness，但是却没有违背bit wise constness</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;iostream&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;cstring&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;cstddef&gt;</span></span></span><br><span class="line"></span><br><span class="line"><span class="keyword">using</span> <span class="keyword">namespace</span> std;</span><br><span class="line"></span><br><span class="line"><span class="keyword">class</span> <span class="title class_">TextBook</span> &#123;</span><br><span class="line"><span class="keyword">public</span>:</span><br><span class="line">    <span class="built_in">TextBook</span>(<span class="type">const</span> <span class="type">char</span>* title) &#123;</span><br><span class="line">        <span class="keyword">this</span>-&gt;title = <span class="keyword">new</span> <span class="type">char</span>[<span class="built_in">strlen</span>(title) + <span class="number">1</span>];</span><br><span class="line">        <span class="built_in">strcpy</span>(<span class="keyword">this</span>-&gt;title, title);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    ~<span class="built_in">TextBook</span>() &#123;</span><br><span class="line">        <span class="keyword">delete</span>[] title;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="type">void</span> <span class="title">printTitle</span><span class="params">()</span> <span class="type">const</span> </span>&#123;</span><br><span class="line">        cout &lt;&lt; <span class="string">&quot;Title: &quot;</span> &lt;&lt; title &lt;&lt; endl;</span><br><span class="line">    &#125;   </span><br><span class="line"></span><br><span class="line">    <span class="type">char</span>&amp; <span class="keyword">operator</span>[](<span class="type">size_t</span> index) <span class="type">const</span> &#123;</span><br><span class="line">        <span class="keyword">return</span> title[index];</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="type">char</span>&amp; <span class="keyword">operator</span>[](<span class="type">size_t</span> index) &#123;</span><br><span class="line">        <span class="keyword">return</span> title[index];</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">private</span>:</span><br><span class="line">    <span class="type">char</span>* title;</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="type">int</span> <span class="title">main</span><span class="params">()</span> </span>&#123;</span><br><span class="line">    <span class="function">TextBook <span class="title">book</span><span class="params">(<span class="string">&quot;C++ Programming&quot;</span>)</span></span>;</span><br><span class="line"></span><br><span class="line">    book.<span class="built_in">printTitle</span>();</span><br><span class="line"></span><br><span class="line">    cout &lt;&lt; <span class="string">&quot;First character: &quot;</span> &lt;&lt; book[<span class="number">0</span>] &lt;&lt; endl;</span><br><span class="line">    book[<span class="number">0</span>] = <span class="string">&#x27;c&#x27;</span>; <span class="comment">// 修改第一个字符</span></span><br><span class="line">    cout &lt;&lt; <span class="string">&quot;Modified first character: &quot;</span> &lt;&lt; book[<span class="number">0</span>] &lt;&lt; endl;</span><br><span class="line"></span><br><span class="line">    book.<span class="built_in">printTitle</span>();</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="type">const</span> TextBook <span class="title">ctb</span><span class="params">(<span class="string">&quot;World&quot;</span>)</span></span>;</span><br><span class="line">    ctb.<span class="built_in">printTitle</span>();</span><br><span class="line">    <span class="type">char</span>* pc = &amp;ctb[<span class="number">0</span>];</span><br><span class="line">    *pc = <span class="string">&#x27;w&#x27;</span>; <span class="comment">// 修改 const 对象的字符</span></span><br><span class="line"></span><br><span class="line">    cout &lt;&lt; <span class="string">&quot;First character of const TextBook: &quot;</span> &lt;&lt; ctb[<span class="number">0</span>] &lt;&lt; endl;</span><br><span class="line">    <span class="comment">// ctb[0] = &#x27;w&#x27;; // 错误，不能修改 const</span></span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>上述写法通过在const成员函数返回非常量引用，打破了const约束，要杜绝这种写法。</p>
+</li>
+</ul>
+</li>
+<li><p>logical constness</p>
+<p>其思想很简单，用户觉得什么是可变的，什么就是可变的，什么该是const，就是const。通过mutable关键字来决定哪些成员变量可以被更改。</p>
+</li>
+</ul>
+<h4 id="Const和non-const成员函数冗余问题"><a href="#Const和non-const成员函数冗余问题" class="headerlink" title="Const和non-const成员函数冗余问题"></a>Const和non-const成员函数冗余问题</h4><p>如果对于const和non-const，有大量重复逻辑，那么会带来巨大的冗余开销。一种设计办法是做常量转移（转移方向是将const转移成无const语义，反过来是不安全的）。具体代码示例如下：</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">class</span> <span class="title class_">TextBook</span> &#123;</span><br><span class="line"><span class="keyword">public</span>:</span><br><span class="line">    <span class="type">const</span> <span class="type">char</span>&amp; <span class="keyword">operator</span>[](std::<span class="type">size_t</span> position) <span class="type">const</span> &#123;</span><br><span class="line">        ...</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="type">char</span>&amp; <span class="keyword">operator</span>[](std::<span class="type">size_t</span> position) &#123;</span><br><span class="line">        <span class="keyword">return</span> </span><br><span class="line">            <span class="built_in">const_cast</span>&lt;<span class="type">char</span>&amp;&gt;(                     <span class="comment">// cast away const</span></span><br><span class="line">            	<span class="built_in">static_cast</span>&lt;<span class="type">const</span> TextBlock&amp;&gt;(*<span class="keyword">this</span>)[position]</span><br><span class="line">        );</span><br><span class="line">    &#125;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<p>上述代码有两处转型：</p>
+<ul>
+<li>static_cast是将this变成const语义，因为non-const要调用const的成员函数，给先转型，否则会触发递归调用。</li>
+<li>获得const返回值，需要cast away const语义，用const_cast</li>
+</ul>
+<p>方向问题：如果是const调用non-const，就有问题，因为const承诺不改变成员变量，导致语义冲突。</p>
+
     </div>
 
     
@@ -411,7 +466,7 @@
 
       <!--noindex-->
       <div class="post-toc-wrap sidebar-panel">
-          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#C-%E6%98%AF%E4%BB%80%E4%B9%88%EF%BC%9F"><span class="nav-number">1.</span> <span class="nav-text">C++是什么？</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%9D%A1%E6%AC%BE2-%E5%B0%BD%E9%87%8F%E4%BB%A5const%EF%BC%8Cenum%EF%BC%8Cinline%E6%9B%BF%E6%8D%A2-define"><span class="nav-number">2.</span> <span class="nav-text">条款2: 尽量以const，enum，inline替换#define</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#define-%E5%8F%AF%E8%83%BD%E5%AF%BC%E8%87%B4%E8%A1%8C%E4%B8%BA%E4%B8%8D%E5%8F%AF%E9%A2%84%E6%96%99%EF%BC%9A"><span class="nav-number"></span> <span class="nav-text">define 可能导致行为不可预料：</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#include"><span class="nav-number"></span> <span class="nav-text">include</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#ifdef-ifndef"><span class="nav-number"></span> <span class="nav-text">ifdef&#x2F;#ifndef</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%9D%A1%E6%AC%BE3%EF%BC%9A%E5%B0%BD%E5%8F%AF%E8%83%BD%E4%BD%BF%E7%94%A8const"><span class="nav-number">1.</span> <span class="nav-text">条款3：尽可能使用const</span></a></li></ol></div>
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#C-%E6%98%AF%E4%BB%80%E4%B9%88%EF%BC%9F"><span class="nav-number">1.</span> <span class="nav-text">C++是什么？</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%9D%A1%E6%AC%BE2-%E5%B0%BD%E9%87%8F%E4%BB%A5const%EF%BC%8Cenum%EF%BC%8Cinline%E6%9B%BF%E6%8D%A2-define"><span class="nav-number">2.</span> <span class="nav-text">条款2: 尽量以const，enum，inline替换#define</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%9D%A1%E6%AC%BE3%EF%BC%9A%E5%B0%BD%E5%8F%AF%E8%83%BD%E4%BD%BF%E7%94%A8const"><span class="nav-number">3.</span> <span class="nav-text">条款3：尽可能使用const</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#Const%E7%9A%84%E5%90%AB%E4%B9%89"><span class="nav-number">3.1.</span> <span class="nav-text">Const的含义</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Const%E6%90%AD%E9%85%8D%E5%87%BD%E6%95%B0"><span class="nav-number">3.2.</span> <span class="nav-text">Const搭配函数</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#%E5%87%BD%E6%95%B0%E8%BF%94%E5%9B%9E%E5%B8%B8%E9%87%8F%E5%80%BC"><span class="nav-number">3.2.1.</span> <span class="nav-text">函数返回常量值</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#const%E6%88%90%E5%91%98%E5%87%BD%E6%95%B0"><span class="nav-number">3.2.2.</span> <span class="nav-text">const成员函数</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#Bit-wise-constness%E5%92%8CLogical-constness"><span class="nav-number">3.2.3.</span> <span class="nav-text">Bit wise constness和Logical constness</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#Const%E5%92%8Cnon-const%E6%88%90%E5%91%98%E5%87%BD%E6%95%B0%E5%86%97%E4%BD%99%E9%97%AE%E9%A2%98"><span class="nav-number">3.2.4.</span> <span class="nav-text">Const和non-const成员函数冗余问题</span></a></li></ol></li></ol></li></ol></div>
       </div>
       <!--/noindex-->
 
@@ -475,13 +530,13 @@
       <i class="fa fa-chart-area"></i>
     </span>
       <span class="post-meta-item-text">站点总字数：</span>
-    <span title="站点总字数">301k</span>
+    <span title="站点总字数">307k</span>
     <span class="post-meta-divider">|</span>
     <span class="post-meta-item-icon">
       <i class="fa fa-coffee"></i>
     </span>
       <span class="post-meta-item-text">站点阅读时长 &asymp;</span>
-    <span title="站点阅读时长">4:34</span>
+    <span title="站点阅读时长">4:39</span>
 </div>
   <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://pisces.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Pisces</a> 强力驱动
   </div>
