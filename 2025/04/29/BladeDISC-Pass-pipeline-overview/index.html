@@ -289,83 +289,81 @@
       
         <p><img src="/images/image-20250430230905042.png" alt="image-20250430230905042"></p>
 <span id="more"></span>
+
 <blockquote>
 <p>BladeDISC编译器是一个完整的端到端机器学习编译器，其整个流水线的亮点是动态shape支持和大尺度计算密集和内存密集算子融合支持。整个流水线参考XLA的设计，本博客结合实际测试case讲解BladeDISC的流水线设计。</p>
 </blockquote>
 <h2 id="Pass-Pipeline日志"><a href="#Pass-Pipeline日志" class="headerlink" title="Pass Pipeline日志"></a><font color = brown>Pass Pipeline日志</font></h2><figure class="highlight txt"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br></pre></td><td class="code"><pre><span class="line">===-------------------------------------------------------------------------===</span><br><span class="line">                         ... Execution time report ...</span><br><span class="line">===-------------------------------------------------------------------------===</span><br><span class="line">  Total Execution Time: 0.4353 seconds</span><br><span class="line"></span><br><span class="line">  ----Wall Time----  ----Name----</span><br><span class="line">    0.0001 (  0.0%)  ReviseArgumentsForStaticRankPass</span><br><span class="line">    0.0000 (  0.0%)  FunctionalControlFlowToRegionsPass</span><br><span class="line">    0.0328 (  7.5%)  Inliner</span><br><span class="line">    0.0004 (  0.1%)    (A) CallGraph</span><br><span class="line">    0.0098 (  2.2%)  &#x27;func.func&#x27; Pipeline</span><br><span class="line">    0.0098 (  2.2%)    Canonicalizer</span><br><span class="line">    0.0002 (  0.1%)  &#x27;func.func&#x27; Pipeline</span><br><span class="line">    0.0000 (  0.0%)    DropWhileShapeInvariantPass</span><br><span class="line">    0.0000 (  0.0%)    ReplicateTensorListInitOpsPass</span><br><span class="line">    0.0002 (  0.0%)    Canonicalizer</span><br><span class="line">    0.0023 (  0.5%)  SCCP</span><br><span class="line">    0.0001 (  0.0%)  GuaranteeAllFuncsOneUsePass</span><br><span class="line">    0.0000 (  0.0%)    (A) CallGraph</span><br><span class="line">    0.0000 (  0.0%)  TensorFlowShapeInferencePass</span><br><span class="line">    0.0011 (  0.3%)  SCCP</span><br><span class="line">    0.0000 (  0.0%)  TensorListOpsDecompositionPass</span><br><span class="line">    0.0000 (  0.0%)  StackOpsDecompositionPass</span><br><span class="line">    0.0000 (  0.0%)  TensorArrayOpsDecompositionPass</span><br><span class="line">    0.0282 (  6.5%)  &#x27;func.func&#x27; Pipeline</span><br><span class="line">    0.0282 (  6.5%)    DecomposeResourceOpsPass</span><br><span class="line">    0.0000 (  0.0%)  PromoteResourcesToArgsPass</span><br><span class="line">    0.0000 (  0.0%)  SymbolDCE</span><br><span class="line">    0.0000 (  0.0%)  &#x27;func.func&#x27; Pipeline</span><br><span class="line">    0.0000 (  0.0%)    SinkConstantsToControlFlowPass</span><br><span class="line">    0.0000 (  0.0%)  TensorFlowShapeInferencePass</span><br><span class="line">    0.0223 (  5.1%)  StablehloLegalizeToHloPass</span><br><span class="line">    0.0224 (  5.2%)  &#x27;func.func&#x27; Pipeline</span><br><span class="line">    0.0121 (  2.8%)    DiscLowerTfPass</span><br><span class="line">    0.0103 (  2.4%)    LowerQuantizedPass</span><br><span class="line">    0.0001 (  0.0%)  LegalizeTfTypesPass</span><br><span class="line">    0.0933 ( 21.4%)  LegalizeTF</span><br><span class="line">    0.0055 (  1.3%)  &#x27;func.func&#x27; Pipeline</span><br><span class="line">    0.0054 (  1.2%)    DiscLowerTfPass</span><br><span class="line">    0.0001 (  0.0%)    InfeedOpsXlaAdjustLayout</span><br><span class="line">    0.0001 (  0.0%)  LegalizeTFCollective</span><br><span class="line">    0.0062 (  1.4%)  &#x27;func.func&#x27; Pipeline</span><br><span class="line">    0.0062 (  1.4%)    Canonicalizer</span><br><span class="line">    0.0001 (  0.0%)  TensorFlowShapeInferencePass</span><br><span class="line">    0.0007 (  0.2%)  LegalizeTF</span><br><span class="line">    0.0001 (  0.0%)  LegalizeTFCommunicationPass</span><br><span class="line">    0.0002 (  0.0%)  &#x27;func.func&#x27; Pipeline</span><br><span class="line">    0.0001 (  0.0%)    DiscDynamicSliceConverterPass</span><br><span class="line">    0.0001 (  0.0%)    SinkConstantsToControlFlowPass</span><br><span class="line">    0.2094 ( 48.1%)  Rest</span><br><span class="line">    0.4353 (100.0%)  Total</span><br></pre></td></tr></table></figure>
+
 <figure class="highlight txt"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br><span class="line">116</span><br><span class="line">117</span><br><span class="line">118</span><br><span class="line">119</span><br><span class="line">120</span><br><span class="line">121</span><br><span class="line">122</span><br><span class="line">123</span><br><span class="line">124</span><br><span class="line">125</span><br><span class="line">126</span><br><span class="line">127</span><br><span class="line">128</span><br><span class="line">129</span><br><span class="line">130</span><br><span class="line">131</span><br><span class="line">132</span><br><span class="line">133</span><br><span class="line">134</span><br><span class="line">135</span><br><span class="line">136</span><br><span class="line">137</span><br><span class="line">138</span><br><span class="line">139</span><br><span class="line">140</span><br><span class="line">141</span><br><span class="line">142</span><br><span class="line">143</span><br><span class="line">144</span><br><span class="line">145</span><br><span class="line">146</span><br><span class="line">147</span><br><span class="line">148</span><br><span class="line">149</span><br><span class="line">150</span><br><span class="line">151</span><br><span class="line">152</span><br><span class="line">153</span><br><span class="line">154</span><br><span class="line">155</span><br><span class="line">156</span><br><span class="line">157</span><br><span class="line">158</span><br><span class="line">159</span><br><span class="line">160</span><br><span class="line">161</span><br><span class="line">162</span><br><span class="line">163</span><br><span class="line">164</span><br><span class="line">165</span><br><span class="line">166</span><br><span class="line">167</span><br><span class="line">168</span><br><span class="line">169</span><br><span class="line">170</span><br><span class="line">171</span><br><span class="line">172</span><br><span class="line">173</span><br><span class="line">174</span><br><span class="line">175</span><br><span class="line">176</span><br><span class="line">177</span><br><span class="line">178</span><br><span class="line">179</span><br><span class="line">180</span><br><span class="line">181</span><br><span class="line">182</span><br><span class="line">183</span><br><span class="line">184</span><br><span class="line">185</span><br><span class="line">186</span><br><span class="line">187</span><br><span class="line">188</span><br><span class="line">189</span><br><span class="line">190</span><br><span class="line">191</span><br><span class="line">192</span><br><span class="line">193</span><br><span class="line">194</span><br><span class="line">195</span><br><span class="line">196</span><br><span class="line">197</span><br><span class="line">198</span><br><span class="line">199</span><br><span class="line">200</span><br><span class="line">201</span><br><span class="line">202</span><br><span class="line">203</span><br><span class="line">204</span><br><span class="line">205</span><br><span class="line">206</span><br><span class="line">207</span><br><span class="line">208</span><br><span class="line">209</span><br><span class="line">210</span><br><span class="line">211</span><br><span class="line">212</span><br><span class="line">213</span><br><span class="line">214</span><br></pre></td><td class="code"><pre><span class="line">===-------------------------------------------------------------------------===</span><br><span class="line">                         ... Execution time report ...</span><br><span class="line">===-------------------------------------------------------------------------===</span><br><span class="line">  Total Execution Time: 2.9605 seconds</span><br><span class="line"></span><br><span class="line">  ----Wall Time----  ----Name----</span><br><span class="line">    // =================================== HLO Graph Opt ============================================</span><br><span class="line">    0.0002 (  0.0%)  &#x27;func.func&#x27; Pipeline</span><br><span class="line">    0.0002 (  0.0%)    DiscAlgebraicSimplifierPass</span><br><span class="line">    0.0001 (  0.0%)  DiscInputOutputAliasPass</span><br><span class="line">    0.0001 (  0.0%)  DiscShapePropagatePass</span><br><span class="line">    0.0007 (  0.0%)  Inliner</span><br><span class="line">    0.0000 (  0.0%)    (A) CallGraph</span><br><span class="line">    0.0002 (  0.0%)  &#x27;func.func&#x27; Pipeline</span><br><span class="line">    0.0002 (  0.0%)    Canonicalizer</span><br><span class="line">    0.0061 (  0.2%)  &#x27;func.func&#x27; Pipeline</span><br><span class="line">    0.0001 (  0.0%)    DiscCollectiveOpsRewriterPass</span><br><span class="line">    0.0001 (  0.0%)    MhloDecompositionRewriterPass</span><br><span class="line">    0.0001 (  0.0%)    RemoveShapeConstraintsPass</span><br><span class="line">    0.0002 (  0.0%)    Canonicalizer</span><br><span class="line">    0.0001 (  0.0%)    CSE</span><br><span class="line">    0.0000 (  0.0%)      (A) DominanceInfo</span><br><span class="line">    0.0002 (  0.0%)    Canonicalizer</span><br><span class="line">    0.0001 (  0.0%)    DiscTranformWeightDataLayoutForWeightOnlyQuantPass</span><br><span class="line">    0.0002 (  0.0%)    Canonicalizer</span><br><span class="line">    0.0001 (  0.0%)    DiscCustomCallRewriterPass</span><br><span class="line">    0.0001 (  0.0%)    DiscConvertFakeQuantOpPass</span><br><span class="line">    0.0001 (  0.0%)    DiscLowerGpuQuantizeAndDequantizePass</span><br><span class="line">    0.0048 (  0.2%)    ConvertShapeToStandardPass</span><br><span class="line">    0.0302 (  1.0%)  DiscShapeOptimizationPass</span><br><span class="line">    0.0067 (  0.2%)  &#x27;builtin.func&#x27; Pipeline</span><br><span class="line">    0.0067 (  0.2%)    CSE</span><br><span class="line">    0.0000 (  0.0%)      (A) DominanceInfo</span><br><span class="line">    0.0043 (  0.1%)  &#x27;func.func&#x27; Pipeline</span><br><span class="line">    0.0001 (  0.0%)    ConvertTensorToStandardPass</span><br><span class="line">    0.0001 (  0.0%)    ConvertHloToStandardPass</span><br><span class="line">    0.0003 (  0.0%)    Canonicalizer</span><br><span class="line">    0.0001 (  0.0%)    CSE</span><br><span class="line">    0.0000 (  0.0%)      (A) DominanceInfo</span><br><span class="line">    0.0003 (  0.0%)    Canonicalizer</span><br><span class="line">    0.0017 (  0.1%)    DiscAlgebraicSimplifierPass</span><br><span class="line">    0.0001 (  0.0%)    SplitLargeOpsPass</span><br><span class="line">    0.0017 (  0.1%)    DotRewriterPass</span><br><span class="line">    0.0039 (  0.1%)  DiscShapeOptimizationPass</span><br><span class="line">    0.0028 (  0.1%)  &#x27;func.func&#x27; Pipeline</span><br><span class="line">    0.0028 (  0.1%)    DiscDotMergePass</span><br><span class="line">    0.0049 (  0.2%)  DiscShapeOptimizationPass</span><br><span class="line">    0.0001 (  0.0%)  &#x27;func.func&#x27; Pipeline</span><br><span class="line">    0.0001 (  0.0%)    HloCanonicalizeReductionPass</span><br><span class="line">    0.0039 (  0.1%)  DiscShapeOptimizationPass</span><br><span class="line">    0.0020 (  0.1%)  DiscMarkShapeCalculationPass</span><br><span class="line">    0.0022 (  0.1%)  PlaceOpsPass</span><br><span class="line">    0.0010 (  0.0%)  &#x27;func.func&#x27; Pipeline</span><br><span class="line">    0.0003 (  0.0%)    Canonicalizer</span><br><span class="line">    0.0000 (  0.0%)    CSE</span><br><span class="line">    0.0000 (  0.0%)      (A) DominanceInfo</span><br><span class="line">    0.0002 (  0.0%)    Canonicalizer</span><br><span class="line">    0.0004 (  0.0%)    ElementTypeConverterPass</span><br><span class="line">    0.0041 (  0.1%)  DiscShapeOptimizationPass</span><br><span class="line">    0.0003 (  0.0%)  &#x27;func.func&#x27; Pipeline</span><br><span class="line">    0.0001 (  0.0%)    ReductionRewriterPass</span><br><span class="line">    0.0001 (  0.0%)    ConvRewriterPass</span><br><span class="line">    0.0000 (  0.0%)    ConvRewriterPass</span><br><span class="line">    0.0001 (  0.0%)    QuantizedDotRewriterPass</span><br><span class="line">    0.0041 (  0.1%)  DiscShapeOptimizationPass</span><br><span class="line">    0.0022 (  0.1%)  &#x27;func.func&#x27; Pipeline</span><br><span class="line">    0.0003 (  0.0%)    Canonicalizer</span><br><span class="line">    0.0000 (  0.0%)    CSE</span><br><span class="line">    0.0000 (  0.0%)      (A) DominanceInfo</span><br><span class="line">    0.0003 (  0.0%)    Canonicalizer</span><br><span class="line">    0.0015 (  0.1%)    TransposeSimplifierPass</span><br><span class="line">    0.0000 (  0.0%)    GpuConvPaddingLegalizationPass</span><br><span class="line">    0.0041 (  0.1%)  DiscShapeOptimizationPass</span><br><span class="line">    0.0001 (  0.0%)  &#x27;func.func&#x27; Pipeline</span><br><span class="line">    0.0001 (  0.0%)    DiscAlgebraicSimplifierPass</span><br><span class="line">    0.0054 (  0.2%)  DiscShapeOptimizationPass</span><br><span class="line">    0.0040 (  0.1%)  &#x27;func.func&#x27; Pipeline</span><br><span class="line">    0.0034 (  0.1%)    Canonicalizer</span><br><span class="line">    0.0001 (  0.0%)    CSE</span><br><span class="line">    0.0000 (  0.0%)      (A) DominanceInfo</span><br><span class="line">    0.0006 (  0.0%)    Canonicalizer</span><br><span class="line">    // =================================== Bufferize Passes ============================================</span><br><span class="line">    0.0169 (  0.6%)  FuncBufferize</span><br><span class="line">    0.0135 (  0.5%)  DiscHloLegalizeToLhloPass</span><br><span class="line">    0.0099 (  0.3%)  HloLegalizeToLhloPass</span><br><span class="line">    0.0049 (  0.2%)  &#x27;func.func&#x27; Pipeline</span><br><span class="line">    0.0049 (  0.2%)    Canonicalizer</span><br><span class="line">    0.0002 (  0.0%)  DiscLhloRewriterPass</span><br><span class="line">    0.0099 (  0.3%)  &#x27;func.func&#x27; Pipeline</span><br><span class="line">    0.0004 (  0.0%)    Canonicalizer</span><br><span class="line">    0.0002 (  0.0%)    ConvertShapeToStandardPass</span><br><span class="line">    0.0004 (  0.0%)    Canonicalizer</span><br><span class="line">    0.0001 (  0.0%)    CSE</span><br><span class="line">    0.0000 (  0.0%)      (A) DominanceInfo</span><br><span class="line">    0.0003 (  0.0%)    Canonicalizer</span><br><span class="line">    0.0042 (  0.1%)    LegalizeToTensorOpPass</span><br><span class="line">    0.0042 (  0.1%)    Canonicalizer</span><br><span class="line">    0.0002 (  0.0%)    StdBufferizePass</span><br><span class="line">    0.0001 (  0.0%)  ArithBufferize</span><br><span class="line">    0.0120 (  0.4%)  &#x27;func.func&#x27; Pipeline</span><br><span class="line">    0.0041 (  0.1%)    TensorBufferize</span><br><span class="line">    0.0002 (  0.0%)    FinalizingBufferize</span><br><span class="line">    0.0042 (  0.1%)    Canonicalizer</span><br><span class="line">    0.0001 (  0.0%)    CSE</span><br><span class="line">    0.0000 (  0.0%)      (A) DominanceInfo</span><br><span class="line">    0.0004 (  0.0%)    Canonicalizer</span><br><span class="line">    0.0031 (  0.1%)    DiscMemrefCanonicalizer</span><br><span class="line">    0.0044 (  0.1%)  DiscAssignMemorySpacePass</span><br><span class="line">    0.0750 (  2.5%)  &#x27;func.func&#x27; Pipeline</span><br><span class="line">    0.0081 (  0.3%)    DiscDuplicateComputationForFusionPass</span><br><span class="line">    // =================================== LHLO Graph Opt ============================================</span><br><span class="line">    0.0040 (  0.1%)    PromoteBuffersToStack</span><br><span class="line">    0.0003 (  0.0%)    DiscMemRefLoadStoreSimplifierPass</span><br><span class="line">    0.0162 (  0.5%)    DiscFusionPass</span><br><span class="line">    0.0001 (  0.0%)    DiscFuseSplatConstPass</span><br><span class="line">    0.0170 (  0.6%)    DiscSpecializeFusionWithSpeculationPass</span><br><span class="line">    0.0221 (  0.7%)    Canonicalizer</span><br><span class="line">    0.0066 (  0.2%)    CSE</span><br><span class="line">    0.0000 (  0.0%)      (A) DominanceInfo</span><br><span class="line">    0.0004 (  0.0%)    Canonicalizer</span><br><span class="line">    0.0002 (  0.0%)  DiscOptimizationBarrierExpandPass</span><br><span class="line">    0.0009 (  0.0%)  &#x27;func.func&#x27; Pipeline</span><br><span class="line">    0.0004 (  0.0%)    Canonicalizer</span><br><span class="line">    0.0001 (  0.0%)    CSE</span><br><span class="line">    0.0000 (  0.0%)      (A) DominanceInfo</span><br><span class="line">    0.0004 (  0.0%)    Canonicalizer</span><br><span class="line">    0.0001 (  0.0%)  DiscOpSchedulePass</span><br><span class="line">    0.0140 (  0.5%)  &#x27;func.func&#x27; Pipeline</span><br><span class="line">    0.0065 (  0.2%)    DiscReduceBufferLiveRangePass</span><br><span class="line">    0.0074 (  0.2%)    BufferDeallocation</span><br><span class="line">    0.0002 (  0.0%)    DiscBufferDeallocationPass</span><br><span class="line">    // =================================== Extern Lib Call ============================================</span><br><span class="line">    0.0078 (  0.3%)  RalInjectExecutionContextPass</span><br><span class="line">    0.0339 (  1.1%)  &#x27;func.func&#x27; Pipeline</span><br><span class="line">    0.0339 (  1.1%)    DiscLowerToLibraryCallPass</span><br><span class="line">    0.0221 (  0.7%)  DiscConstToRALPass</span><br><span class="line">    // =================================== end gen ============================================</span><br><span class="line">    0.2155 (  7.3%)  &#x27;func.func&#x27; Pipeline</span><br><span class="line">    0.0088 (  0.3%)    DiscMemRefLoadStoreSimplifierPass</span><br><span class="line">    0.0128 (  0.4%)    DiscLhloLegalizeRootsToParallelLoopsPass</span><br><span class="line">    0.0004 (  0.0%)    ExpandOps</span><br><span class="line">    0.0005 (  0.0%)    UnhandledAtomicRMWConverterPass</span><br><span class="line">    0.0091 (  0.3%)    InputInlineFusionPass</span><br><span class="line">    0.0135 (  0.5%)    ForLoopUnrollInterleave</span><br><span class="line">    0.0125 (  0.4%)    DiscBF16ExpansionPass</span><br><span class="line">    0.0135 (  0.5%)    ArithExpandOps</span><br><span class="line">    0.0131 (  0.4%)    FoldMemRefAliasOps</span><br><span class="line">    0.0292 (  1.0%)    DiscFlattenMemrefAccessPass</span><br><span class="line">    0.0203 (  0.7%)    Canonicalizer</span><br><span class="line">    0.0136 (  0.5%)    CSE</span><br><span class="line">    0.0000 (  0.0%)      (A) DominanceInfo</span><br><span class="line">    0.0009 (  0.0%)    Canonicalizer</span><br><span class="line">    0.0012 (  0.0%)    DiscMemRefCSEPass</span><br><span class="line">    0.0139 (  0.5%)    ConvertShapeToStandardPass</span><br><span class="line">    0.0115 (  0.4%)    Canonicalizer</span><br><span class="line">    0.0004 (  0.0%)    CSE</span><br><span class="line">    0.0000 (  0.0%)      (A) DominanceInfo</span><br><span class="line">    0.0008 (  0.0%)    Canonicalizer</span><br><span class="line">    // =================================== GPU Kernel gen ============================================</span><br><span class="line">    0.0003 (  0.0%)    ParallelLoopCollapsing</span><br><span class="line">    0.0122 (  0.4%)    SCFParallelLoopTiling</span><br><span class="line">    0.0125 (  0.4%)    GpuMapParallelLoopsPass</span><br><span class="line">    0.0146 (  0.5%)    ConvertParallelLoopToGpu</span><br><span class="line">    0.0008 (  0.0%)  &#x27;func&#x27; Pipeline</span><br><span class="line">    0.0008 (  0.0%)    CSE</span><br><span class="line">    0.0000 (  0.0%)      (A) DominanceInfo</span><br><span class="line">    0.0149 (  0.5%)  GpuLaunchSinkIndexComputations</span><br><span class="line">    0.0381 (  1.3%)  GpuKernelOutlining</span><br><span class="line">    0.0171 (  0.6%)  AssignKernelNamePass</span><br><span class="line">    0.0055 (  0.2%)  &#x27;func.func&#x27; Pipeline</span><br><span class="line">    0.0055 (  0.2%)    LhloFusionInlinerPass</span><br><span class="line">    0.0161 (  0.5%)  DiscArgsMutationExpandPass</span><br><span class="line">    0.0005 (  0.0%)  DiscCompIntensFusionToCUDASourcePass</span><br><span class="line">    0.0005 (  0.0%)  ReviseGpuKernelOutliningPass</span><br><span class="line">    // =================================== end gen ============================================</span><br><span class="line">    1.7000 ( 57.4%)  &#x27;gpu.module&#x27; Pipeline</span><br><span class="line">    0.0006 (  0.0%)    LoopInvariantCodeMotion</span><br><span class="line">    0.0008 (  0.0%)    &#x27;gpu.func&#x27; Pipeline</span><br><span class="line">    0.0008 (  0.0%)      SideEffectLoopInvariantCodeMotionPass</span><br><span class="line">    0.0004 (  0.0%)    LoopInvariantCodeMotion</span><br><span class="line">    0.0088 (  0.3%)    CSE</span><br><span class="line">    0.0000 (  0.0%)      (A) DominanceInfo</span><br><span class="line">    0.0011 (  0.0%)    &#x27;gpu.func&#x27; Pipeline</span><br><span class="line">    0.0004 (  0.0%)      DiscEraseBufferDeallocationPass</span><br><span class="line">    0.0007 (  0.0%)      ExpandStridedMetadata</span><br><span class="line">    0.0103 (  0.3%)    SCFToControlFlow</span><br><span class="line">    0.0090 (  0.3%)    ConvertAffineToStandard</span><br><span class="line">    0.0086 (  0.3%)    StripDebugInfo</span><br><span class="line">    0.0627 (  2.1%)    DiscLowerGpuOpsToNVVMOpsPass</span><br><span class="line">    0.0141 (  0.5%)    &#x27;llvm.func&#x27; Pipeline</span><br><span class="line">    0.0141 (  0.5%)      LLVMInsertValueSimplifierPass</span><br><span class="line">    0.0141 (  0.5%)    FunctionDeadArgumentEliminationPass</span><br><span class="line">    1.5690 ( 53.0%)    GpuKernelToBlobPass</span><br><span class="line">    0.0007 (  0.0%)  DiscGPUSourceToLibPass</span><br><span class="line">    0.0057 (  0.2%)  &#x27;func.func&#x27; Pipeline</span><br><span class="line">    0.0047 (  0.2%)    Canonicalizer</span><br><span class="line">    0.0001 (  0.0%)    CSE</span><br><span class="line">    0.0000 (  0.0%)      (A) DominanceInfo</span><br><span class="line">    0.0005 (  0.0%)    Canonicalizer</span><br><span class="line">    0.0001 (  0.0%)    RemoveDeadBufferPass</span><br><span class="line">    0.0002 (  0.0%)    LinalgLowerToLoops</span><br><span class="line">    0.0721 (  2.4%)  SCFToControlFlow</span><br><span class="line">    0.0056 (  0.2%)  &#x27;func.func&#x27; Pipeline</span><br><span class="line">    0.0003 (  0.0%)    ExpandStridedMetadata</span><br><span class="line">    0.0047 (  0.2%)    Canonicalizer</span><br><span class="line">    0.0001 (  0.0%)    CSE</span><br><span class="line">    0.0000 (  0.0%)      (A) DominanceInfo</span><br><span class="line">    0.0005 (  0.0%)    Canonicalizer</span><br><span class="line">    0.0731 (  2.5%)  ConvertAffineToStandard</span><br><span class="line">    0.0727 (  2.5%)  StripDebugInfo</span><br><span class="line">    0.0725 (  2.4%)  DiscStripShapeConstraintOpsPass</span><br><span class="line">    0.1400 (  4.7%)  DiscToLLVMPass</span><br><span class="line">    0.1883 (  6.4%)  Rest</span><br><span class="line">    2.9605 (100.0%)  Total</span><br></pre></td></tr></table></figure>
+
+
+
 <h2 id="Pipeline罗列"><a href="#Pipeline罗列" class="headerlink" title="Pipeline罗列"></a><font color = brown>Pipeline罗列</font></h2><p><img src="/images/pass_pipeline.png" alt="pass_pipeline"></p>
 <p>以下是DISC动态形状编译器Pass管道的阶段划分及对应Passes：</p>
-<h3 id="1-TF-to-HLO转换阶段"><a href="#1-TF-to-HLO转换阶段" class="headerlink" title="1. TF-to-HLO转换阶段"></a><strong>1. TF-to-HLO转换阶段</strong></h3><div class="table-container">
-<table>
+<h3 id="1-TF-to-HLO转换阶段"><a href="#1-TF-to-HLO转换阶段" class="headerlink" title="1. TF-to-HLO转换阶段"></a><strong>1. TF-to-HLO转换阶段</strong></h3><table>
 <thead>
 <tr>
-<th style="text-align:center">Pass名称</th>
-<th style="text-align:center">功能描述</th>
+<th align="center">Pass名称</th>
+<th align="center">功能描述</th>
 </tr>
 </thead>
-<tbody>
-<tr>
-<td style="text-align:center"><code>-disc-tf-revise-args-for-static-rank</code></td>
-<td style="text-align:center">为静态秩编译器修订参数，处理动态形状但静态秩的约束</td>
+<tbody><tr>
+<td align="center"><code>-disc-tf-revise-args-for-static-rank</code></td>
+<td align="center">为静态秩编译器修订参数，处理动态形状但静态秩的约束</td>
 </tr>
 <tr>
-<td style="text-align:center"><code>-disc-lower-tf</code></td>
-<td style="text-align:center">将TensorFlow操作转换为MHLO操作，处理自定义调用（如RandomUniform和TopK）</td>
+<td align="center"><code>-disc-lower-tf</code></td>
+<td align="center">将TensorFlow操作转换为MHLO操作，处理自定义调用（如RandomUniform和TopK）</td>
 </tr>
 <tr>
-<td style="text-align:center"><code>-tf-shape-inference</code></td>
-<td style="text-align:center">执行形状推断，优化静态形状语义</td>
+<td align="center"><code>-tf-shape-inference</code></td>
+<td align="center">执行形状推断，优化静态形状语义</td>
 </tr>
 <tr>
-<td style="text-align:center"><code>-xla-legalize-tf</code></td>
-<td style="text-align:center">将TensorFlow操作合法化为XLA/HLO操作，分阶段处理部分/完全转换</td>
+<td align="center"><code>-xla-legalize-tf</code></td>
+<td align="center">将TensorFlow操作合法化为XLA&#x2F;HLO操作，分阶段处理部分&#x2F;完全转换</td>
 </tr>
-</tbody>
-</table>
-</div>
+</tbody></table>
 <hr>
-<h3 id="2-HLO图优化阶段"><a href="#2-HLO图优化阶段" class="headerlink" title="2. HLO图优化阶段"></a><strong>2. HLO图优化阶段</strong></h3><h4 id="1-形状简化与约束"><a href="#1-形状简化与约束" class="headerlink" title="(1) 形状简化与约束"></a><strong>(1) 形状简化与约束</strong></h4><div class="table-container">
-<table>
+<h3 id="2-HLO图优化阶段"><a href="#2-HLO图优化阶段" class="headerlink" title="2. HLO图优化阶段"></a><strong>2. HLO图优化阶段</strong></h3><h4 id="1-形状简化与约束"><a href="#1-形状简化与约束" class="headerlink" title="(1) 形状简化与约束"></a><strong>(1) 形状简化与约束</strong></h4><table>
 <thead>
 <tr>
-<th style="text-align:center">Pass名称</th>
-<th style="text-align:center">功能描述</th>
+<th align="center">Pass名称</th>
+<th align="center">功能描述</th>
 </tr>
 </thead>
-<tbody>
-<tr>
-<td style="text-align:center"><code>ShapeSimplifierPass</code></td>
-<td style="text-align:center">传播已知形状信息，消除不必要的未知维度（支持静态秩约束）</td>
+<tbody><tr>
+<td align="center"><code>ShapeSimplifierPass</code></td>
+<td align="center">传播已知形状信息，消除不必要的未知维度（支持静态秩约束）</td>
 </tr>
 <tr>
-<td style="text-align:center"><code>InsertTieShapePass</code></td>
-<td style="text-align:center">插入<code>disc_shape.tie_shape</code>操作，显式表达形状约束</td>
+<td align="center"><code>InsertTieShapePass</code></td>
+<td align="center">插入<code>disc_shape.tie_shape</code>操作，显式表达形状约束</td>
 </tr>
-</tbody>
-</table>
-</div>
+</tbody></table>
 <h4 id="2-放置（Placement）-key"><a href="#2-放置（Placement）-key" class="headerlink" title="(2) 放置（Placement）:key:"></a><strong>(2) 放置（Placement）</strong>:key:</h4><ul>
-<li><p>[x] <code>DiscMarkShapeCalculationPass</code></p>
+<li><p><input checked="" disabled="" type="checkbox"> 
+<code>DiscMarkShapeCalculationPass</code></p>
 <pre class="mermaid">  graph TD
     A[开始] --> B[获取Module和主函数main]
     B --> C{主函数存在?}
     C -->|是| D[初始化标记集合shape_calc_ops]
     C -->|否| E[Pass失败终止]
-
+    
     D --> F[直接标记阶段]
     F --> G[遍历基本块所有操作]
     G --> H{是否目标操作?}
     H -->|是| I{是GetDimensionSizeOp/FromElementsOp/ExtractOp?}
     H -->|否| G
-
+    
     I -->|是 且 非WhereOp输入| J[加入标记集合]
     I -->|否| K[查表获取操作数索引]
     K --> L[遍历所有需标记的操作数]
     L --> M{操作数有效且符合条件?}
     M -->|是| N[加入标记集合]
     M -->|否| L
-
+    
     F --> O[逆向传播阶段]
     O --> P[逆序遍历基本块操作]
     P --> Q{已标记操作?}
@@ -375,14 +373,14 @@
     T -->|否| U{静态张量且元素>64?}
     U -->|否| V{来自WhereOp?}
     V -->|否| W[加入标记集合]
-
+    
     O --> X[属性设置阶段]
     X --> Y[遍历标记集合中的操作]
     Y --> Z{输出是元组类型?}
     Z -->|是| AA[设置数组属性]
     Z -->|否| AB[设置布尔属性]
     X --> AC[Pass完成]
-
+    
     style A fill:#90EE90,stroke:#333
     style E fill:#FF6347,stroke:#333
     style J fill:#87CEEB,stroke:#333
@@ -392,7 +390,8 @@
     style AB fill:#FFD700,stroke:#333
     style AC fill:#90EE90,stroke:#333</pre>
 </li>
-<li><p>[x] <code>PlaceOpsPass</code></p>
+<li><p><input checked="" disabled="" type="checkbox"> 
+<code>PlaceOpsPass</code></p>
 <pre class="mermaid">  graph TD
     A[开始] --> B[初始化输入输出放置信息]
     B --> C[处理CustomCallV2操作]
@@ -402,166 +401,140 @@
     F --> G[设置默认设备放置]
     G --> H[插入内存拷贝节点]
     H --> I[结束]
-
+    
     subgraph 初始化
     B[解析入口函数的输入输出属性<br>填充input_placements_和output_placements_]
     end
-
+    
     subgraph 规则处理
     C[遍历CustomCallV2Op<br>根据device属性设置CPU/GPU]
     D[标记返回的i64标量操作<br>向上标记相关操作数]
     E[遍历所有操作<br>根据kDiscShapeCalcAttr标记CPU]
     F[遍历所有操作<br>处理32位整数相关操作规则]
     end
-
+    
     subgraph 默认处理
     G[遍历所有未标记操作<br>设置默认GPU/CPU放置]
     end
-
+    
     subgraph 跨设备处理
     H[遍历所有操作和返回节点<br>分析输入输出设备差异<br>插入H2D/D2H转换操作]
-    end</pre>
-
-
-
-</li>
+    end</pre></li>
 </ul>
-<div class="table-container">
 <table>
 <thead>
 <tr>
-<th style="text-align:center">Pass名称</th>
-<th style="text-align:center">功能描述</th>
+<th align="center">Pass名称</th>
+<th align="center">功能描述</th>
 </tr>
 </thead>
-<tbody>
-<tr>
-<td style="text-align:center"><code>DiscMarkShapeCalculationPass</code></td>
-<td style="text-align:center">标记形状计算操作（如<code>tensor.dim</code>）</td>
+<tbody><tr>
+<td align="center"><code>DiscMarkShapeCalculationPass</code></td>
+<td align="center">标记形状计算操作（如<code>tensor.dim</code>）</td>
 </tr>
 <tr>
-<td style="text-align:center"><code>PlaceOpsPass</code></td>
-<td style="text-align:center">将形状计算操作显式分配到CPU，插入内存拷贝操作</td>
+<td align="center"><code>PlaceOpsPass</code></td>
+<td align="center">将形状计算操作显式分配到CPU，插入内存拷贝操作</td>
 </tr>
-</tbody>
-</table>
-</div>
-<h4 id="3-图优化"><a href="#3-图优化" class="headerlink" title="(3) 图优化"></a><strong>(3) 图优化</strong></h4><div class="table-container">
-<table>
+</tbody></table>
+<h4 id="3-图优化"><a href="#3-图优化" class="headerlink" title="(3) 图优化"></a><strong>(3) 图优化</strong></h4><table>
 <thead>
 <tr>
-<th style="text-align:center">Pass名称</th>
-<th style="text-align:center">功能描述</th>
+<th align="center">Pass名称</th>
+<th align="center">功能描述</th>
 </tr>
 </thead>
-<tbody>
-<tr>
-<td style="text-align:center">代数简化器</td>
-<td style="text-align:center">执行通用代数优化（如常量折叠、冗余消除）</td>
+<tbody><tr>
+<td align="center">代数简化器</td>
+<td align="center">执行通用代数优化（如常量折叠、冗余消除）</td>
 </tr>
-</tbody>
-</table>
-</div>
-<h4 id="4-其他转换"><a href="#4-其他转换" class="headerlink" title="(4) 其他转换"></a><strong>(4) 其他转换</strong></h4><div class="table-container">
-<table>
+</tbody></table>
+<h4 id="4-其他转换"><a href="#4-其他转换" class="headerlink" title="(4) 其他转换"></a><strong>(4) 其他转换</strong></h4><table>
 <thead>
 <tr>
-<th style="text-align:center">Pass名称</th>
-<th style="text-align:center">功能描述</th>
+<th align="center">Pass名称</th>
+<th align="center">功能描述</th>
 </tr>
 </thead>
-<tbody>
-<tr>
-<td style="text-align:center"><code>RemoveShapeConstraintsPass</code></td>
-<td style="text-align:center">移除不再需要的形状约束操作</td>
+<tbody><tr>
+<td align="center"><code>RemoveShapeConstraintsPass</code></td>
+<td align="center">移除不再需要的形状约束操作</td>
 </tr>
 <tr>
-<td style="text-align:center"><code>DotRewriterPass</code></td>
-<td style="text-align:center">将<code>mhlo.dot</code>转换为<code>mhlo.dot_general</code>以支持更灵活的代码生成</td>
+<td align="center"><code>DotRewriterPass</code></td>
+<td align="center">将<code>mhlo.dot</code>转换为<code>mhlo.dot_general</code>以支持更灵活的代码生成</td>
 </tr>
-</tbody>
-</table>
-</div>
+</tbody></table>
 <hr>
-<h3 id="3-缓冲化（Bufferization）阶段"><a href="#3-缓冲化（Bufferization）阶段" class="headerlink" title="3. 缓冲化（Bufferization）阶段"></a><strong>3. 缓冲化（Bufferization）阶段</strong></h3><div class="table-container">
-<table>
+<h3 id="3-缓冲化（Bufferization）阶段"><a href="#3-缓冲化（Bufferization）阶段" class="headerlink" title="3. 缓冲化（Bufferization）阶段"></a><strong>3. 缓冲化（Bufferization）阶段</strong></h3><table>
 <thead>
 <tr>
-<th style="text-align:center">Pass名称</th>
-<th style="text-align:center">功能描述</th>
+<th align="center">Pass名称</th>
+<th align="center">功能描述</th>
 </tr>
 </thead>
-<tbody>
-<tr>
-<td style="text-align:center"><code>HLO-to-LMHLO转换</code></td>
-<td style="text-align:center">将MHLO操作转换为LMHLO（内存缓冲区形式）</td>
+<tbody><tr>
+<td align="center"><code>HLO-to-LMHLO转换</code></td>
+<td align="center">将MHLO操作转换为LMHLO（内存缓冲区形式）</td>
 </tr>
 <tr>
-<td style="text-align:center"><code>ShapeRelatedOpsBufferization</code></td>
-<td style="text-align:center">处理形状相关操作的缓冲化（如<code>tensor.from_elements</code>）</td>
+<td align="center"><code>ShapeRelatedOpsBufferization</code></td>
+<td align="center">处理形状相关操作的缓冲化（如<code>tensor.from_elements</code>）</td>
 </tr>
 <tr>
-<td style="text-align:center"><code>DiscAssignMemorySpacePass</code></td>
-<td style="text-align:center">显式分配内存空间（CPU/GPU）</td>
+<td align="center"><code>DiscAssignMemorySpacePass</code></td>
+<td align="center">显式分配内存空间（CPU&#x2F;GPU）</td>
 </tr>
 <tr>
-<td style="text-align:center"><code>PromoteBuffersToStack</code></td>
-<td style="text-align:center">将小型CPU缓冲区提升为栈分配</td>
+<td align="center"><code>PromoteBuffersToStack</code></td>
+<td align="center">将小型CPU缓冲区提升为栈分配</td>
 </tr>
 <tr>
-<td style="text-align:center"><code>BufferDeallocation</code></td>
-<td style="text-align:center">插入显式的<code>memref.dealloc</code>操作</td>
+<td align="center"><code>BufferDeallocation</code></td>
+<td align="center">插入显式的<code>memref.dealloc</code>操作</td>
 </tr>
-</tbody>
-</table>
-</div>
+</tbody></table>
 <hr>
 <h3 id="4-LHLO图优化阶段-key"><a href="#4-LHLO图优化阶段-key" class="headerlink" title="4. LHLO图优化阶段:key:"></a><strong>4. LHLO图优化阶段</strong>:key:</h3><h4 id="1-融合（Fusion）"><a href="#1-融合（Fusion）" class="headerlink" title="(1) 融合（Fusion）"></a><strong>(1) 融合（Fusion）</strong></h4><p>这一部分内容，详情参考先前的一篇存储密集算子融合博客。</p>
-<div class="table-container">
 <table>
 <thead>
 <tr>
-<th style="text-align:center">Pass名称</th>
-<th style="text-align:center">功能描述</th>
+<th align="center">Pass名称</th>
+<th align="center">功能描述</th>
 </tr>
 </thead>
-<tbody>
-<tr>
-<td style="text-align:center"><code>DiscFusionPass</code></td>
-<td style="text-align:center">基础融合策略（类似XLA的输入/循环融合）</td>
+<tbody><tr>
+<td align="center"><code>DiscFusionPass</code></td>
+<td align="center">基础融合策略（类似XLA的输入&#x2F;循环融合）</td>
 </tr>
 <tr>
-<td style="text-align:center"><code>DiscStitchFusionPass</code></td>
-<td style="text-align:center">激进融合策略（利用共享内存或缓存优化）</td>
+<td align="center"><code>DiscStitchFusionPass</code></td>
+<td align="center">激进融合策略（利用共享内存或缓存优化）</td>
 </tr>
-</tbody>
-</table>
-</div>
+</tbody></table>
 <h4 id="2-推测优化（Speculation）"><a href="#2-推测优化（Speculation）" class="headerlink" title="(2) 推测优化（Speculation）"></a><strong>(2) 推测优化（Speculation）</strong></h4><ul>
-<li>[x] <code>DiscSpecializeFusionWithSpeculationPass</code></li>
+<li><input checked="" disabled="" type="checkbox"> <code>DiscSpecializeFusionWithSpeculationPass</code></li>
 </ul>
 <p><img src="/images/image-20250509170706617.png" alt="image-20250509170706617"></p>
-<div class="table-container">
 <table>
 <thead>
 <tr>
-<th style="text-align:center">Pass名称</th>
-<th style="text-align:center">功能描述</th>
+<th align="center">Pass名称</th>
+<th align="center">功能描述</th>
 </tr>
 </thead>
-<tbody>
-<tr>
-<td style="text-align:center"><code>DiscSpecializeFusionWithSpeculationPass</code></td>
-<td style="text-align:center">生成多版本内核以适配不同运行时形状</td>
+<tbody><tr>
+<td align="center"><code>DiscSpecializeFusionWithSpeculationPass</code></td>
+<td align="center">生成多版本内核以适配不同运行时形状</td>
 </tr>
-</tbody>
-</table>
-</div>
+</tbody></table>
 <hr>
 <h3 id="5-运行时与库调用相关阶段-key"><a href="#5-运行时与库调用相关阶段-key" class="headerlink" title="5. 运行时与库调用相关阶段:key:"></a><strong>5. 运行时与库调用相关阶段</strong>:key:</h3><ul>
-<li><p>[x] <code>RalInjectExecutionContextPass</code>（这个pass比较简单，所以看过代码即可）</p>
+<li><p><input checked="" disabled="" type="checkbox"> 
+<code>RalInjectExecutionContextPass</code>（这个pass比较简单，所以看过代码即可）</p>
 </li>
-<li><p>[x] <code>DiscLowerToLibraryCallPass</code>:fire:这个pass比较重要</p>
+<li><p><input checked="" disabled="" type="checkbox"> 
+<code>DiscLowerToLibraryCallPass</code>:fire:这个pass比较重要</p>
 <p><img src="/images/image-20250509170648846.png" alt="image-20250509170648846"></p>
 <p>这个pass有几个比较有趣的改写过程，接下来详细解读。</p>
 <h4 id="CUDA-GPU-copy操作"><a href="#CUDA-GPU-copy操作" class="headerlink" title="CUDA GPU copy操作"></a>CUDA GPU copy操作</h4><p>首先是代码中对于gpu copy的处理。在cuda中，gpu copy可能有两个方向：H2D和D2H。cuda为了支持数据传输和kernel执行的并行性，引入<code>cuda stream</code>这个概念。可以参考<a target="_blank" rel="noopener" href="https://leimao.github.io/blog/CUDA-Stream/">CUDA stream blog</a>来加强理解。</p>
@@ -574,14 +547,15 @@
 <p>在cuda的默认模式中，不论是kernel执行，h2d的内存拷贝还是d2h的内存拷贝，都使用的默认stream（null stream或是0stream）。在早期版本中，default stream必须等待已经launch的stream完成才能开始，并在其他stream开始之前完成。<strong>显然，default stream是顺序模型</strong>。</p>
 </li>
 </ul>
-<p>​    如下是一段sample code：</p>
+<p>​	如下是一段sample code：</p>
 <figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br><span class="line">116</span><br><span class="line">117</span><br><span class="line">118</span><br><span class="line">119</span><br><span class="line">120</span><br><span class="line">121</span><br><span class="line">122</span><br><span class="line">123</span><br><span class="line">124</span><br><span class="line">125</span><br><span class="line">126</span><br><span class="line">127</span><br><span class="line">128</span><br><span class="line">129</span><br><span class="line">130</span><br><span class="line">131</span><br><span class="line">132</span><br><span class="line">133</span><br><span class="line">134</span><br><span class="line">135</span><br><span class="line">136</span><br><span class="line">137</span><br><span class="line">138</span><br><span class="line">139</span><br><span class="line">140</span><br><span class="line">141</span><br><span class="line">142</span><br><span class="line">143</span><br><span class="line">144</span><br><span class="line">145</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;stdio.h&gt;</span></span></span><br><span class="line"></span><br><span class="line"><span class="comment">// Convenience function for checking CUDA runtime API results</span></span><br><span class="line"><span class="comment">// can be wrapped around any runtime API call. No-op in release builds.</span></span><br><span class="line"><span class="function"><span class="keyword">inline</span></span></span><br><span class="line"><span class="function">cudaError_t <span class="title">checkCuda</span><span class="params">(cudaError_t result)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line"><span class="meta">#<span class="keyword">if</span> defined(DEBUG) || defined(_DEBUG)</span></span><br><span class="line">  <span class="keyword">if</span> (result != cudaSuccess) &#123;</span><br><span class="line">    <span class="built_in">fprintf</span>(stderr, <span class="string">&quot;CUDA Runtime Error: %s\n&quot;</span>, <span class="built_in">cudaGetErrorString</span>(result));</span><br><span class="line">    <span class="built_in">assert</span>(result == cudaSuccess);</span><br><span class="line">  &#125;</span><br><span class="line"><span class="meta">#<span class="keyword">endif</span></span></span><br><span class="line">  <span class="keyword">return</span> result;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function">__global__ <span class="type">void</span> <span class="title">kernel</span><span class="params">(<span class="type">float</span> *a, <span class="type">int</span> offset)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">  <span class="comment">// 一维数据，通过threadIdx.x以及offset结合完成索引工作</span></span><br><span class="line">  <span class="type">int</span> i = offset + threadIdx.x + blockIdx.x*blockDim.x;</span><br><span class="line">  <span class="type">float</span> x = (<span class="type">float</span>)i;</span><br><span class="line">  <span class="type">float</span> s = <span class="built_in">sinf</span>(x); </span><br><span class="line">  <span class="type">float</span> c = <span class="built_in">cosf</span>(x);</span><br><span class="line">  a[i] = a[i] + <span class="built_in">sqrtf</span>(s*s+c*c);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="type">float</span> <span class="title">maxError</span><span class="params">(<span class="type">float</span> *a, <span class="type">int</span> n)</span> </span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">  <span class="type">float</span> maxE = <span class="number">0</span>;</span><br><span class="line">  <span class="keyword">for</span> (<span class="type">int</span> i = <span class="number">0</span>; i &lt; n; i++) &#123;</span><br><span class="line">    <span class="type">float</span> error = <span class="built_in">fabs</span>(a[i]<span class="number">-1.0f</span>);</span><br><span class="line">    <span class="keyword">if</span> (error &gt; maxE) maxE = error;</span><br><span class="line">  &#125;</span><br><span class="line">  <span class="keyword">return</span> maxE;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="type">int</span> <span class="title">main</span><span class="params">(<span class="type">int</span> argc, <span class="type">char</span> **argv)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">  <span class="comment">// 定义每一个block有多大，以及有多少个stream</span></span><br><span class="line">  <span class="comment">// stream表示潜在并行性</span></span><br><span class="line">  <span class="type">const</span> <span class="type">int</span> blockSize = <span class="number">256</span>, nStreams = <span class="number">4</span>;</span><br><span class="line">  <span class="type">const</span> <span class="type">int</span> n = <span class="number">4</span> * <span class="number">1024</span> * blockSize * nStreams;</span><br><span class="line"></span><br><span class="line">  <span class="comment">//</span></span><br><span class="line">  <span class="type">const</span> <span class="type">int</span> streamSize = n / nStreams;</span><br><span class="line">  <span class="type">const</span> <span class="type">int</span> streamBytes = streamSize * <span class="built_in">sizeof</span>(<span class="type">float</span>);</span><br><span class="line">  <span class="type">const</span> <span class="type">int</span> bytes = n * <span class="built_in">sizeof</span>(<span class="type">float</span>);</span><br><span class="line">   </span><br><span class="line">  <span class="type">int</span> devId = <span class="number">0</span>;</span><br><span class="line">  <span class="keyword">if</span> (argc &gt; <span class="number">1</span>) devId = <span class="built_in">atoi</span>(argv[<span class="number">1</span>]);</span><br><span class="line"></span><br><span class="line">  cudaDeviceProp prop;</span><br><span class="line">  <span class="built_in">checkCuda</span>( <span class="built_in">cudaGetDeviceProperties</span>(&amp;prop, devId));</span><br><span class="line">  <span class="built_in">printf</span>(<span class="string">&quot;Device : %s\n&quot;</span>, prop.name);</span><br><span class="line">  <span class="built_in">checkCuda</span>( <span class="built_in">cudaSetDevice</span>(devId) );</span><br><span class="line">  </span><br><span class="line">  <span class="comment">// allocate pinned host memory and device memory</span></span><br><span class="line">  <span class="type">float</span> *a, *d_a;</span><br><span class="line">  <span class="built_in">checkCuda</span>( <span class="built_in">cudaMallocHost</span>((<span class="type">void</span>**)&amp;a, bytes) );      <span class="comment">// host pinned</span></span><br><span class="line">  <span class="built_in">checkCuda</span>( <span class="built_in">cudaMalloc</span>((<span class="type">void</span>**)&amp;d_a, bytes) ); <span class="comment">// device</span></span><br><span class="line"></span><br><span class="line">  <span class="type">float</span> ms; <span class="comment">// elapsed time in milliseconds</span></span><br><span class="line">  </span><br><span class="line">  <span class="comment">// create events and streams</span></span><br><span class="line">  cudaEvent_t startEvent, stopEvent, dummyEvent;</span><br><span class="line">  cudaStream_t stream[nStreams];</span><br><span class="line">  <span class="built_in">checkCuda</span>( <span class="built_in">cudaEventCreate</span>(&amp;startEvent) );</span><br><span class="line">  <span class="built_in">checkCuda</span>( <span class="built_in">cudaEventCreate</span>(&amp;stopEvent) );</span><br><span class="line">  <span class="built_in">checkCuda</span>( <span class="built_in">cudaEventCreate</span>(&amp;dummyEvent) );</span><br><span class="line"></span><br><span class="line">  <span class="comment">// 构建stream</span></span><br><span class="line">  <span class="keyword">for</span> (<span class="type">int</span> i = <span class="number">0</span>; i &lt; nStreams; ++i)</span><br><span class="line">    <span class="built_in">checkCuda</span>( <span class="built_in">cudaStreamCreate</span>(&amp;stream[i]) );</span><br><span class="line">  </span><br><span class="line">  <span class="comment">// baseline case - sequential transfer and execute</span></span><br><span class="line">  <span class="built_in">memset</span>(a, <span class="number">0</span>, bytes);</span><br><span class="line">  <span class="built_in">checkCuda</span>( <span class="built_in">cudaEventRecord</span>(startEvent,<span class="number">0</span>) );</span><br><span class="line">  <span class="built_in">checkCuda</span>( <span class="built_in">cudaMemcpy</span>(d_a, a, bytes, cudaMemcpyHostToDevice) );</span><br><span class="line">  kernel&lt;&lt;&lt;n/blockSize, blockSize&gt;&gt;&gt;(d_a, <span class="number">0</span>);</span><br><span class="line">  <span class="built_in">checkCuda</span>( <span class="built_in">cudaMemcpy</span>(a, d_a, bytes, cudaMemcpyDeviceToHost) );</span><br><span class="line">  <span class="built_in">checkCuda</span>( <span class="built_in">cudaEventRecord</span>(stopEvent, <span class="number">0</span>) );</span><br><span class="line">  <span class="built_in">checkCuda</span>( <span class="built_in">cudaEventSynchronize</span>(stopEvent) );</span><br><span class="line">  <span class="built_in">checkCuda</span>( <span class="built_in">cudaEventElapsedTime</span>(&amp;ms, startEvent, stopEvent) );</span><br><span class="line">  <span class="built_in">printf</span>(<span class="string">&quot;Time for sequential transfer and execute (ms): %f\n&quot;</span>, ms);</span><br><span class="line">  <span class="built_in">printf</span>(<span class="string">&quot;  max error: %e\n&quot;</span>, <span class="built_in">maxError</span>(a, n));</span><br><span class="line"></span><br><span class="line">  <span class="comment">// asynchronous version 1: loop over &#123;copy, kernel, copy&#125;</span></span><br><span class="line">  <span class="built_in">memset</span>(a, <span class="number">0</span>, bytes);</span><br><span class="line">  <span class="built_in">checkCuda</span>( <span class="built_in">cudaEventRecord</span>(startEvent,<span class="number">0</span>) );</span><br><span class="line">  <span class="keyword">for</span> (<span class="type">int</span> i = <span class="number">0</span>; i &lt; nStreams; ++i) &#123;</span><br><span class="line">    <span class="type">int</span> offset = i * streamSize;</span><br><span class="line">    <span class="built_in">checkCuda</span>( <span class="built_in">cudaMemcpyAsync</span>(&amp;d_a[offset], &amp;a[offset], </span><br><span class="line">                               streamBytes, cudaMemcpyHostToDevice, </span><br><span class="line">                               stream[i]) );</span><br><span class="line">    kernel&lt;&lt;&lt;streamSize/blockSize, blockSize, <span class="number">0</span>, stream[i]&gt;&gt;&gt;(d_a, offset);</span><br><span class="line">    <span class="built_in">checkCuda</span>( <span class="built_in">cudaMemcpyAsync</span>(&amp;a[offset], &amp;d_a[offset], </span><br><span class="line">                               streamBytes, cudaMemcpyDeviceToHost,</span><br><span class="line">                               stream[i]) );</span><br><span class="line">  &#125;</span><br><span class="line">  <span class="built_in">checkCuda</span>( <span class="built_in">cudaEventRecord</span>(stopEvent, <span class="number">0</span>) );</span><br><span class="line">  <span class="built_in">checkCuda</span>( <span class="built_in">cudaEventSynchronize</span>(stopEvent) );</span><br><span class="line">  <span class="built_in">checkCuda</span>( <span class="built_in">cudaEventElapsedTime</span>(&amp;ms, startEvent, stopEvent) );</span><br><span class="line">  <span class="built_in">printf</span>(<span class="string">&quot;Time for asynchronous V1 transfer and execute (ms): %f\n&quot;</span>, ms);</span><br><span class="line">  <span class="built_in">printf</span>(<span class="string">&quot;  max error: %e\n&quot;</span>, <span class="built_in">maxError</span>(a, n));</span><br><span class="line"></span><br><span class="line">  <span class="comment">// asynchronous version 2: </span></span><br><span class="line">  <span class="comment">// loop over copy, loop over kernel, loop over copy</span></span><br><span class="line">  <span class="built_in">memset</span>(a, <span class="number">0</span>, bytes);</span><br><span class="line">  <span class="built_in">checkCuda</span>( <span class="built_in">cudaEventRecord</span>(startEvent,<span class="number">0</span>) );</span><br><span class="line">  <span class="keyword">for</span> (<span class="type">int</span> i = <span class="number">0</span>; i &lt; nStreams; ++i)</span><br><span class="line">  &#123;</span><br><span class="line">    <span class="type">int</span> offset = i * streamSize;</span><br><span class="line">    <span class="built_in">checkCuda</span>( <span class="built_in">cudaMemcpyAsync</span>(&amp;d_a[offset], &amp;a[offset], </span><br><span class="line">                               streamBytes, cudaMemcpyHostToDevice,</span><br><span class="line">                               stream[i]) );</span><br><span class="line">  &#125;</span><br><span class="line">  <span class="keyword">for</span> (<span class="type">int</span> i = <span class="number">0</span>; i &lt; nStreams; ++i)</span><br><span class="line">  &#123;</span><br><span class="line">    <span class="type">int</span> offset = i * streamSize;</span><br><span class="line">    kernel&lt;&lt;&lt;streamSize/blockSize, blockSize, <span class="number">0</span>, stream[i]&gt;&gt;&gt;(d_a, offset);</span><br><span class="line">  &#125;</span><br><span class="line">  <span class="keyword">for</span> (<span class="type">int</span> i = <span class="number">0</span>; i &lt; nStreams; ++i)</span><br><span class="line">  &#123;</span><br><span class="line">    <span class="type">int</span> offset = i * streamSize;</span><br><span class="line">    <span class="built_in">checkCuda</span>( <span class="built_in">cudaMemcpyAsync</span>(&amp;a[offset], &amp;d_a[offset], </span><br><span class="line">                               streamBytes, cudaMemcpyDeviceToHost,</span><br><span class="line">                               stream[i]) );</span><br><span class="line">  &#125;</span><br><span class="line">  <span class="built_in">checkCuda</span>( <span class="built_in">cudaEventRecord</span>(stopEvent, <span class="number">0</span>) );</span><br><span class="line">  <span class="built_in">checkCuda</span>( <span class="built_in">cudaEventSynchronize</span>(stopEvent) );</span><br><span class="line">  <span class="built_in">checkCuda</span>( <span class="built_in">cudaEventElapsedTime</span>(&amp;ms, startEvent, stopEvent) );</span><br><span class="line">  <span class="built_in">printf</span>(<span class="string">&quot;Time for asynchronous V2 transfer and execute (ms): %f\n&quot;</span>, ms);</span><br><span class="line">  <span class="built_in">printf</span>(<span class="string">&quot;  max error: %e\n&quot;</span>, <span class="built_in">maxError</span>(a, n));</span><br><span class="line"></span><br><span class="line">  <span class="comment">// cleanup</span></span><br><span class="line">  <span class="built_in">checkCuda</span>( <span class="built_in">cudaEventDestroy</span>(startEvent) );</span><br><span class="line">  <span class="built_in">checkCuda</span>( <span class="built_in">cudaEventDestroy</span>(stopEvent) );</span><br><span class="line">  <span class="built_in">checkCuda</span>( <span class="built_in">cudaEventDestroy</span>(dummyEvent) );</span><br><span class="line">  <span class="keyword">for</span> (<span class="type">int</span> i = <span class="number">0</span>; i &lt; nStreams; ++i)</span><br><span class="line">    <span class="built_in">checkCuda</span>( <span class="built_in">cudaStreamDestroy</span>(stream[i]) );</span><br><span class="line">  <span class="built_in">cudaFree</span>(d_a);</span><br><span class="line">  <span class="built_in">cudaFreeHost</span>(a);</span><br><span class="line"></span><br><span class="line">  <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
 <p><img src="/images/image-20250509153548265.png" alt="image-20250509153548265"></p>
 <p>从结果来看，stream有效提高并行性，降低等待延迟。<strong>至于V2相比V1，由于V1中的每个stream的H2D，kernel计算和D2H必须顺序执行，因此计算资源和dma带宽利用率不如V2</strong>。</p>
-<font color = red>注意，目前的BladeDISC只支持单个stream（没有多流支持），因此性能上BladeDISC的传输效率有缺失。这里mark住，后续可以尝试改进。</font>
-
+<p><font color = red>注意，目前的BladeDISC只支持单个stream（没有多流支持），因此性能上BladeDISC的传输效率有缺失。这里mark住，后续可以尝试改进。</font></p>
 <pre><code>#### ConvolutionOp Convertor
-</code></pre><p>这个convertor干的事情十分简单：将卷积操作变成显示的lib call。其主要完成的工作如下：</p>
+</code></pre>
+<p>这个convertor干的事情十分简单：将卷积操作变成显示的lib call。其主要完成的工作如下：</p>
 <ul>
 <li><p>提取出convolution操作的输入（两个）和输出（一个）</p>
 </li>
@@ -598,6 +572,7 @@
 <li><strong>核常量标记</strong>：指示核数据是否编译期常量</li>
 </ul>
 <figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line"># 元数据内存布局（i32数组）</span><br><span class="line">[</span><br><span class="line">  # 输入布局</span><br><span class="line">  <span class="number">0</span>,  # N维度位置</span><br><span class="line">  <span class="number">3</span>,  # C维度位置</span><br><span class="line">  <span class="number">1</span>, <span class="number">2</span>,  # 空间维度H、W的位置  </span><br><span class="line">  # 核布局</span><br><span class="line">  <span class="number">2</span>,  # 输入通道（I）位置（HWC中的C）</span><br><span class="line">  <span class="number">3</span>,  # 输出通道（O）位置</span><br><span class="line">  <span class="number">0</span>, <span class="number">1</span>,  # 空间维度H、W的位置  </span><br><span class="line">  # 输出布局</span><br><span class="line">  <span class="number">0</span>,  # N维度位置</span><br><span class="line">  <span class="number">3</span>,  # C维度位置</span><br><span class="line">  <span class="number">1</span>, <span class="number">2</span>,  # 空间维度H、W的位置 </span><br><span class="line">  # 步长（H方向步长<span class="number">2</span>，W方向步长<span class="number">1</span>）</span><br><span class="line">  <span class="number">2</span>, <span class="number">1</span>,  </span><br><span class="line">  # 膨胀（H方向膨胀<span class="number">1</span>，W方向膨胀<span class="number">1</span>）</span><br><span class="line">  <span class="number">1</span>, <span class="number">1</span>,</span><br><span class="line">  # 核常量标记</span><br><span class="line">  <span class="number">1</span>  # 假设核是常量</span><br><span class="line">]</span><br></pre></td></tr></table></figure>
+
 <p>其中膨胀这个概念比较陌生。其动机是为了扩大感受野的同时不增加计算量，具体地自行参考文献，不是本文重点：</p>
 <p><img src="/images/image-20250509161455535.png" alt="image-20250509161455535"></p>
 </li>
@@ -606,10 +581,12 @@
 </ul>
 <p>完整的流程如下：</p>
 <figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br></pre></td><td class="code"><pre><span class="line"><span class="function">LogicalResult <span class="title">matchAndRewrite</span><span class="params">(ConvolutionOp op,</span></span></span><br><span class="line"><span class="params"><span class="function">                                PatternRewriter&amp; rewriter)</span> <span class="type">const</span> <span class="keyword">override</span> </span>&#123;</span><br><span class="line">    Location loc = op.<span class="built_in">getLoc</span>();</span><br><span class="line">    Value ctx = <span class="built_in">GetContextValueFromFunctionArguments</span>(op);</span><br><span class="line">    <span class="keyword">if</span> (!ctx) &#123;</span><br><span class="line">      <span class="keyword">return</span> op-&gt;<span class="built_in">emitOpError</span>()</span><br><span class="line">             &lt;&lt; <span class="string">&quot;the first argument of the function is not ral context type.&quot;</span>;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 如果数据来源也是H2D，则是同一个stream（目前只支持单stream）</span></span><br><span class="line">    Value stream_handle = <span class="built_in">GetDefaultStreamHandle</span>(op, rewriter);</span><br><span class="line">    SmallVector&lt;Value, <span class="number">4</span>&gt; newOperands&#123;stream_handle&#125;;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// input</span></span><br><span class="line">    newOperands.<span class="built_in">push_back</span>(op.<span class="built_in">getOperand</span>(<span class="number">0</span>));</span><br><span class="line">    <span class="comment">// kernel</span></span><br><span class="line">    newOperands.<span class="built_in">push_back</span>(op.<span class="built_in">getOperand</span>(<span class="number">1</span>));</span><br><span class="line">    <span class="comment">// padding</span></span><br><span class="line">    newOperands.<span class="built_in">push_back</span>(<span class="built_in">GetPadding</span>(op, rewriter));</span><br><span class="line">    <span class="comment">// output</span></span><br><span class="line">    newOperands.<span class="built_in">push_back</span>(op.<span class="built_in">getOperand</span>(<span class="number">2</span>));</span><br><span class="line">    <span class="comment">// input &amp; kernel &amp; output layouts, strides and dilation</span></span><br><span class="line">    newOperands.<span class="built_in">push_back</span>(<span class="built_in">GetConvMetadata</span>(op, rewriter));</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 判断输出的存储空间是否是GPU</span></span><br><span class="line">    <span class="type">bool</span> on_gpu = placement_utils::<span class="built_in">isGpuMemRef</span>(op-&gt;<span class="built_in">getOperand</span>(<span class="number">2</span>));</span><br><span class="line">    rewriter.<span class="built_in">replaceOpWithNewOp</span>&lt;DispatchOp&gt;(op, TypeRange&#123;&#125;, ctx, newOperands,</span><br><span class="line">                                            <span class="string">&quot;ral_conv&quot;</span>, <span class="literal">false</span>,</span><br><span class="line">                                            on_gpu ? <span class="string">&quot;gpu&quot;</span> : <span class="string">&quot;cpu&quot;</span>);</span><br><span class="line">    <span class="keyword">return</span> <span class="built_in">success</span>();</span><br><span class="line">  &#125;</span><br></pre></td></tr></table></figure>
+
 <ul>
-<li><p>[x] <code>DiscConstToRALPass</code></p>
+<li><p><input checked="" disabled="" type="checkbox"> 
+<code>DiscConstToRALPass</code></p>
 <ol>
-<li><strong>跨平台兼容</strong>：通过<code>on_host</code>标志区分主机/设备常量</li>
+<li><strong>跨平台兼容</strong>：通过<code>on_host</code>标志区分主机&#x2F;设备常量</li>
 <li><strong>零冗余存储</strong>：相同常量数据只保存一份</li>
 <li><strong>运行时高效查找</strong>：通过预生成索引加速常量加载</li>
 <li><strong>类型安全</strong>：在名称中编码数据类型和形状信息</li>
@@ -636,7 +613,7 @@
     P --> Q{成功?}
     Q --> |否| R[报错终止]
     Q --> |是| S[结束]
-
+    
     subgraph convertConstantOp子流程
         I --> I1[转换i1类型到i8]
         I1 --> I2[提取常量数据]
@@ -645,34 +622,28 @@
         I4 --> I5[更新元数据索引]
         I5 --> I6[创建LLVM全局符号]
         I6 --> I7[构建DispatchOp参数]
-    end</pre>
-
-</li>
+    end</pre></li>
 </ul>
-<div class="table-container">
 <table>
 <thead>
 <tr>
-<th style="text-align:center">Pass名称</th>
-<th style="text-align:center">功能描述</th>
+<th align="center">Pass名称</th>
+<th align="center">功能描述</th>
 </tr>
 </thead>
-<tbody>
-<tr>
-<td style="text-align:center"><code>RalInjectExecutionContextPass</code></td>
-<td style="text-align:center">注入RAL执行上下文参数</td>
+<tbody><tr>
+<td align="center"><code>RalInjectExecutionContextPass</code></td>
+<td align="center">注入RAL执行上下文参数</td>
 </tr>
 <tr>
-<td style="text-align:center"><code>DiscLowerToLibraryCallPass</code></td>
-<td style="text-align:center">将非代码生成操作（如GEMM/Conv）转换为<code>disc_ral.dispatch</code>调用</td>
+<td align="center"><code>DiscLowerToLibraryCallPass</code></td>
+<td align="center">将非代码生成操作（如GEMM&#x2F;Conv）转换为<code>disc_ral.dispatch</code>调用</td>
 </tr>
 <tr>
-<td style="text-align:center"><code>DiscConstToRALPass</code></td>
-<td style="text-align:center">将常量操作转换为RAL库调用，管理常量生命周期</td>
+<td align="center"><code>DiscConstToRALPass</code></td>
+<td align="center">将常量操作转换为RAL库调用，管理常量生命周期</td>
 </tr>
-</tbody>
-</table>
-</div>
+</tbody></table>
 <hr>
 <h3 id="6-代码生成阶段-key"><a href="#6-代码生成阶段-key" class="headerlink" title="6. 代码生成阶段:key:"></a><strong>6. 代码生成阶段</strong>:key:</h3><p>这个阶段的最主要工作是将mhlo操作下降到嵌套循环中。<a target="_blank" rel="noopener" href="https://github.com/alibaba/BladeDISC/blob/main/docs/developers/pass_pipeline.md#runtime---library-call-related-passes">BladeDISC pass pipeline guide</a>中指明代码生成阶段的设计思路：</p>
 <p><img src="/images/image-20250509165358358.png" alt="image-20250509165358358"></p>
@@ -689,169 +660,145 @@
 <li><strong>LoopSchedule</strong>：普通循环融合调度，通用性强，可与其他调度组合。</li>
 </ul>
 <p>若同时存在行和列归约，优先选择行归约调度，列归约退化为原子操作实现，可能生成独立的初始化内核（避免数据竞争）。这一段代码比较有意思，下面重点分析（涉及代码生成的调度选择问题，是gpu launch比较有意思的话题）。</p>
-<font color = brown>**GPU并行调度选择算法**</font>
-
+<p><font color = brown><strong>GPU并行调度选择算法</strong></font></p>
 <p>从test case来看：</p>
 <p><img src="/images/image-20250509190401475.png" alt="image-20250509190401475"></p>
 <p>将<code>lmhlo.fusion</code>操作的root操作做了循环展开，用<code>scf.parallel</code>来表示可并行的点，在后续的后端特定pass中会变成threadIdx.x和blockIdx.x的gpu访问模型。这里比较有趣的点是<code>scf.parallel</code>内部还嵌套一个<code>scf.for</code>循环，维度为4。这个分支是当维度为4的倍数时做的向量化，一个thread可以并行处理4的SIMD。</p>
 <figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// -----// IR Dump After DiscMemRefLoadStoreSimplifierPass (disc-memref-load-store-simplifier) //----- //</span></span><br><span class="line">func.func @<span class="built_in">main</span>(%arg0: !disc_ral.context) attributes &#123;tf.entry_function = &#123;input_placements = <span class="string">&quot;gpu&quot;</span>, inputs = <span class="string">&quot;input.1_&quot;</span>, output_placements = <span class="string">&quot;gpu&quot;</span>, outputs = <span class="string">&quot;8&quot;</span>&#125;&#125; &#123;</span><br><span class="line">  %c3_i32 = arith.constant <span class="number">3</span> : i32</span><br><span class="line">  %c2_i32 = arith.constant <span class="number">2</span> : i32</span><br><span class="line">  %c1_i32 = arith.constant <span class="number">1</span> : i32</span><br><span class="line">  %c0_i32 = arith.constant <span class="number">0</span> : i32</span><br><span class="line">  %<span class="number">0</span> = llvm.mlir.<span class="built_in">constant</span>(<span class="number">0</span> : i32) : i32</span><br><span class="line">  %<span class="literal">false</span> = arith.constant <span class="literal">false</span></span><br><span class="line">  %<span class="literal">true</span> = arith.constant <span class="literal">true</span></span><br><span class="line">  %c1 = arith.constant <span class="number">1</span> : index</span><br><span class="line">  %c4 = arith.constant <span class="number">4</span> : index</span><br><span class="line">  %c10 = arith.constant <span class="number">10</span> : index</span><br><span class="line">  %c0 = arith.constant <span class="number">0</span> : index</span><br><span class="line">  %<span class="number">1</span> = <span class="string">&quot;disc_ral.dispatch&quot;</span>(%arg0, %c0) &#123;backend_config = <span class="string">&quot;&quot;</span>, call_target_name = <span class="string">&quot;ral_recv_input&quot;</span>, device = <span class="string">&quot;cpu&quot;</span>, has_side_effect = <span class="literal">false</span>&#125; : (!disc_ral.context, index) -&gt; memref&lt;?x10xf32, <span class="meta">#gpu.address_space<span class="string">&lt;global&gt;</span>&gt;</span></span><br><span class="line">  %dim = memref.dim %<span class="number">1</span>, %c0 : memref&lt;?x10xf32, <span class="meta">#gpu.address_space<span class="string">&lt;global&gt;</span>&gt;</span></span><br><span class="line">  %<span class="number">2</span> = llvm.mlir.addressof @__global_const_0 : !llvm.ptr&lt;array&lt;<span class="number">43</span> x i8&gt;&gt;</span><br><span class="line">  %<span class="number">3</span> = llvm.getelementptr %<span class="number">2</span>[<span class="number">0</span>, <span class="number">0</span>] : (!llvm.ptr&lt;array&lt;<span class="number">43</span> x i8&gt;&gt;) -&gt; !llvm.ptr&lt;i8&gt;</span><br><span class="line">  %<span class="number">4</span> = llvm.inttoptr %<span class="number">0</span> : i32 to !llvm.ptr&lt;i8&gt;</span><br><span class="line">  %<span class="number">5</span> = <span class="string">&quot;disc_ral.dispatch&quot;</span>(%arg0, %<span class="number">4</span>, %<span class="number">3</span>, %c0_i32) &#123;backend_config = <span class="string">&quot;&quot;</span>, call_target_name = <span class="string">&quot;ral_const&quot;</span>, device = <span class="string">&quot;gpu&quot;</span>, has_side_effect = <span class="literal">false</span>&#125; : (!disc_ral.context, !llvm.ptr&lt;i8&gt;, !llvm.ptr&lt;i8&gt;, i32) -&gt; memref&lt;<span class="number">10</span>x10xf32, <span class="meta">#gpu.address_space<span class="string">&lt;global&gt;</span>&gt;</span></span><br><span class="line">  %<span class="number">6</span> = llvm.mlir.addressof @__global_const_1 : !llvm.ptr&lt;array&lt;<span class="number">43</span> x i8&gt;&gt;</span><br><span class="line">  %<span class="number">7</span> = llvm.getelementptr %<span class="number">6</span>[<span class="number">0</span>, <span class="number">0</span>] : (!llvm.ptr&lt;array&lt;<span class="number">43</span> x i8&gt;&gt;) -&gt; !llvm.ptr&lt;i8&gt;</span><br><span class="line">  %<span class="number">8</span> = llvm.inttoptr %<span class="number">0</span> : i32 to !llvm.ptr&lt;i8&gt;</span><br><span class="line">  %<span class="number">9</span> = <span class="string">&quot;disc_ral.dispatch&quot;</span>(%arg0, %<span class="number">8</span>, %<span class="number">7</span>, %c1_i32) &#123;backend_config = <span class="string">&quot;&quot;</span>, call_target_name = <span class="string">&quot;ral_const&quot;</span>, device = <span class="string">&quot;gpu&quot;</span>, has_side_effect = <span class="literal">false</span>&#125; : (!disc_ral.context, !llvm.ptr&lt;i8&gt;, !llvm.ptr&lt;i8&gt;, i32) -&gt; memref&lt;<span class="number">10</span>x10xf32, <span class="meta">#gpu.address_space<span class="string">&lt;global&gt;</span>&gt;</span></span><br><span class="line">  %<span class="number">10</span> = llvm.mlir.addressof @__global_const_2 : !llvm.ptr&lt;array&lt;<span class="number">40</span> x i8&gt;&gt;</span><br><span class="line">  %<span class="number">11</span> = llvm.getelementptr %<span class="number">10</span>[<span class="number">0</span>, <span class="number">0</span>] : (!llvm.ptr&lt;array&lt;<span class="number">40</span> x i8&gt;&gt;) -&gt; !llvm.ptr&lt;i8&gt;</span><br><span class="line">  %<span class="number">12</span> = llvm.inttoptr %<span class="number">0</span> : i32 to !llvm.ptr&lt;i8&gt;</span><br><span class="line">  %<span class="number">13</span> = <span class="string">&quot;disc_ral.dispatch&quot;</span>(%arg0, %<span class="number">12</span>, %<span class="number">11</span>, %c2_i32) &#123;backend_config = <span class="string">&quot;&quot;</span>, call_target_name = <span class="string">&quot;ral_const&quot;</span>, device = <span class="string">&quot;gpu&quot;</span>, has_side_effect = <span class="literal">false</span>&#125; : (!disc_ral.context, !llvm.ptr&lt;i8&gt;, !llvm.ptr&lt;i8&gt;, i32) -&gt; memref&lt;<span class="number">10</span>xf32, <span class="meta">#gpu.address_space<span class="string">&lt;global&gt;</span>&gt;</span></span><br><span class="line">  %<span class="number">14</span> = llvm.mlir.addressof @__global_const_3 : !llvm.ptr&lt;array&lt;<span class="number">40</span> x i8&gt;&gt;</span><br><span class="line">  %<span class="number">15</span> = llvm.getelementptr %<span class="number">14</span>[<span class="number">0</span>, <span class="number">0</span>] : (!llvm.ptr&lt;array&lt;<span class="number">40</span> x i8&gt;&gt;) -&gt; !llvm.ptr&lt;i8&gt;</span><br><span class="line">  %<span class="number">16</span> = llvm.inttoptr %<span class="number">0</span> : i32 to !llvm.ptr&lt;i8&gt;</span><br><span class="line">  %<span class="number">17</span> = <span class="string">&quot;disc_ral.dispatch&quot;</span>(%arg0, %<span class="number">16</span>, %<span class="number">15</span>, %c3_i32) &#123;backend_config = <span class="string">&quot;&quot;</span>, call_target_name = <span class="string">&quot;ral_const&quot;</span>, device = <span class="string">&quot;gpu&quot;</span>, has_side_effect = <span class="literal">false</span>&#125; : (!disc_ral.context, !llvm.ptr&lt;i8&gt;, !llvm.ptr&lt;i8&gt;, i32) -&gt; memref&lt;<span class="number">10</span>xf32, <span class="meta">#gpu.address_space<span class="string">&lt;global&gt;</span>&gt;</span></span><br><span class="line">  %<span class="keyword">reinterpret_cast</span> = memref.<span class="keyword">reinterpret_cast</span> %<span class="number">1</span> to offset: [<span class="number">0</span>], sizes: [%dim, <span class="number">10</span>], strides: [<span class="number">10</span>, <span class="number">1</span>] &#123;kDiscSymbolicDimAttr = [@S0, @C10]&#125; : memref&lt;?x10xf32, <span class="meta">#gpu.address_space<span class="string">&lt;global&gt;</span>&gt; to memref<span class="string">&lt;?x10xf32, #gpu.address_space&lt;global&gt;</span>&gt;</span></span><br><span class="line">  %alloc = memref.<span class="built_in">alloc</span>(%dim) &#123;kDiscSymbolicDimAttr = [@S0, @C10]&#125; : memref&lt;?x10xf32, <span class="meta">#gpu.address_space<span class="string">&lt;global&gt;</span>&gt;</span></span><br><span class="line">  %<span class="number">18</span> = llvm.inttoptr %<span class="number">0</span> : i32 to !llvm.ptr&lt;i8&gt;</span><br><span class="line">  <span class="string">&quot;disc_ral.dispatch&quot;</span>(%arg0, %<span class="number">18</span>, %<span class="keyword">reinterpret_cast</span>, %<span class="number">9</span>, %alloc, %<span class="literal">false</span>, %<span class="literal">false</span>, %<span class="literal">true</span>) &#123;backend_config = <span class="string">&quot;&quot;</span>, call_target_name = <span class="string">&quot;ral_gemm&quot;</span>, device = <span class="string">&quot;gpu&quot;</span>, has_side_effect = <span class="literal">false</span>&#125; : (!disc_ral.context, !llvm.ptr&lt;i8&gt;, memref&lt;?x10xf32, <span class="meta">#gpu.address_space<span class="string">&lt;global&gt;</span>&gt;, memref<span class="string">&lt;10x10xf32, #gpu.address_space&lt;global&gt;</span>&gt;, memref<span class="string">&lt;?x10xf32, #gpu.address_space&lt;global&gt;</span>&gt;, i1, i1, i1) -&gt; ()</span></span><br><span class="line">  memref.dealloc %<span class="number">9</span> : memref&lt;<span class="number">10</span>x10xf32, <span class="meta">#gpu.address_space<span class="string">&lt;global&gt;</span>&gt;</span></span><br><span class="line">  %alloca = memref.<span class="built_in">alloca</span>() &#123;alignment = <span class="number">64</span> : i64&#125; : memref&lt;<span class="number">2</span>xindex&gt;</span><br><span class="line">  memref.store %dim, %alloca[%c0] : memref&lt;<span class="number">2</span>xindex&gt;</span><br><span class="line">  memref.store %c10, %alloca[%c1] : memref&lt;<span class="number">2</span>xindex&gt;</span><br><span class="line">  %<span class="number">19</span> = arith.muli %dim, %c10 : index</span><br><span class="line">  %<span class="number">20</span> = arith.remui %<span class="number">19</span>, %c4 : index</span><br><span class="line">  %<span class="number">21</span> = arith.cmpi eq, %<span class="number">20</span>, %c0 : index</span><br><span class="line">  %alloc_0 = memref.<span class="built_in">alloc</span>() : memref&lt;f32, <span class="meta">#gpu.address_space<span class="string">&lt;global&gt;</span>&gt;</span></span><br><span class="line">  %alloc_1 = memref.<span class="built_in">alloc</span>(%dim) &#123;kDiscSymbolicDimAttr = [@S0, @C10]&#125; : memref&lt;?x10xf32, <span class="meta">#gpu.address_space<span class="string">&lt;global&gt;</span>&gt;</span></span><br><span class="line">  %alloc_2 = memref.<span class="built_in">alloc</span>(%dim) &#123;kDiscSymbolicDimAttr = [@S0, @C10]&#125; : memref&lt;?x10xf32, <span class="meta">#gpu.address_space<span class="string">&lt;global&gt;</span>&gt;</span></span><br><span class="line">  %alloc_3 = memref.<span class="built_in">alloc</span>(%dim) &#123;kDiscSymbolicDimAttr = [@S0, @C10]&#125; : memref&lt;?x10xf32, <span class="meta">#gpu.address_space<span class="string">&lt;global&gt;</span>&gt;</span></span><br><span class="line">  %alloc_4 = memref.<span class="built_in">alloc</span>(%dim) &#123;kDiscSymbolicDimAttr = [@S0, @C10]&#125; : memref&lt;?x10xf32, <span class="meta">#gpu.address_space<span class="string">&lt;global&gt;</span>&gt;</span></span><br><span class="line">  scf.<span class="keyword">if</span> %<span class="number">21</span> &#123;</span><br><span class="line">    <span class="string">&quot;lmhlo.fusion&quot;</span>() (&#123;</span><br><span class="line">      <span class="string">&quot;lmhlo.constant&quot;</span>(%alloc_0) &#123;disc.device = <span class="string">&quot;gpu&quot;</span>, value = dense&lt;<span class="number">0.000000e+00</span>&gt; : tensor&lt;f32&gt;&#125; : (memref&lt;f32, <span class="meta">#gpu.address_space<span class="string">&lt;global&gt;</span>&gt;) -&gt; ()</span></span><br><span class="line">      <span class="string">&quot;lmhlo.dynamic_broadcast_in_dim&quot;</span>(%<span class="number">13</span>, %alloca, %alloc_1) &#123;broadcast_dimensions = dense&lt;<span class="number">1</span>&gt; : tensor&lt;<span class="number">1</span>xi64&gt;, disc.device = <span class="string">&quot;gpu&quot;</span>&#125; : (memref&lt;<span class="number">10</span>xf32, <span class="meta">#gpu.address_space<span class="string">&lt;global&gt;</span>&gt;, memref<span class="string">&lt;2xindex&gt;</span>, memref<span class="string">&lt;?x10xf32, #gpu.address_space&lt;global&gt;</span>&gt;) -&gt; ()</span></span><br><span class="line">      <span class="string">&quot;lmhlo.add&quot;</span>(%alloc, %alloc_1, %alloc_2) &#123;disc.device = <span class="string">&quot;gpu&quot;</span>&#125; : (memref&lt;?x10xf32, <span class="meta">#gpu.address_space<span class="string">&lt;global&gt;</span>&gt;, memref<span class="string">&lt;?x10xf32, #gpu.address_space&lt;global&gt;</span>&gt;, memref<span class="string">&lt;?x10xf32, #gpu.address_space&lt;global&gt;</span>&gt;) -&gt; ()</span></span><br><span class="line">      <span class="string">&quot;lmhlo.dynamic_broadcast_in_dim&quot;</span>(%alloc_0, %alloca, %alloc_4) &#123;broadcast_dimensions = dense&lt;&gt; : tensor&lt;<span class="number">0</span>xi64&gt;, disc.device = <span class="string">&quot;gpu&quot;</span>&#125; : (memref&lt;f32, <span class="meta">#gpu.address_space<span class="string">&lt;global&gt;</span>&gt;, memref<span class="string">&lt;2xindex&gt;</span>, memref<span class="string">&lt;?x10xf32, #gpu.address_space&lt;global&gt;</span>&gt;) -&gt; ()</span></span><br><span class="line">      <span class="string">&quot;lmhlo.maximum&quot;</span>(%alloc_2, %alloc_4, %alloc_3) &#123;disc.device = <span class="string">&quot;gpu&quot;</span>&#125; : (memref&lt;?x10xf32, <span class="meta">#gpu.address_space<span class="string">&lt;global&gt;</span>&gt;, memref<span class="string">&lt;?x10xf32, #gpu.address_space&lt;global&gt;</span>&gt;, memref<span class="string">&lt;?x10xf32, #gpu.address_space&lt;global&gt;</span>&gt;) -&gt; ()</span></span><br><span class="line">      <span class="string">&quot;lmhlo.terminator&quot;</span>() : () -&gt; ()</span><br><span class="line">    &#125;) &#123;disc.device = <span class="string">&quot;gpu&quot;</span>, disc.fusion.name = <span class="string">&quot;main_kLoop_maximum__5_1_0&quot;</span>, disc.fusion.tag = <span class="string">&quot;Vec4&quot;</span>, disc.fusion_type = <span class="string">&quot;kLoop&quot;</span>, disc_vectorize_or_tile_hint = <span class="number">4</span> : i32&#125; : () -&gt; ()</span><br><span class="line">  &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">    <span class="string">&quot;lmhlo.fusion&quot;</span>() (&#123;</span><br><span class="line">      <span class="string">&quot;lmhlo.constant&quot;</span>(%alloc_0) &#123;disc.device = <span class="string">&quot;gpu&quot;</span>, value = dense&lt;<span class="number">0.000000e+00</span>&gt; : tensor&lt;f32&gt;&#125; : (memref&lt;f32, <span class="meta">#gpu.address_space<span class="string">&lt;global&gt;</span>&gt;) -&gt; ()</span></span><br><span class="line">      <span class="string">&quot;lmhlo.dynamic_broadcast_in_dim&quot;</span>(%<span class="number">13</span>, %alloca, %alloc_1) &#123;broadcast_dimensions = dense&lt;<span class="number">1</span>&gt; : tensor&lt;<span class="number">1</span>xi64&gt;, disc.device = <span class="string">&quot;gpu&quot;</span>&#125; : (memref&lt;<span class="number">10</span>xf32, <span class="meta">#gpu.address_space<span class="string">&lt;global&gt;</span>&gt;, memref<span class="string">&lt;2xindex&gt;</span>, memref<span class="string">&lt;?x10xf32, #gpu.address_space&lt;global&gt;</span>&gt;) -&gt; ()</span></span><br><span class="line">      <span class="string">&quot;lmhlo.add&quot;</span>(%alloc, %alloc_1, %alloc_2) &#123;disc.device = <span class="string">&quot;gpu&quot;</span>&#125; : (memref&lt;?x10xf32, <span class="meta">#gpu.address_space<span class="string">&lt;global&gt;</span>&gt;, memref<span class="string">&lt;?x10xf32, #gpu.address_space&lt;global&gt;</span>&gt;, memref<span class="string">&lt;?x10xf32, #gpu.address_space&lt;global&gt;</span>&gt;) -&gt; ()</span></span><br><span class="line">      <span class="string">&quot;lmhlo.dynamic_broadcast_in_dim&quot;</span>(%alloc_0, %alloca, %alloc_4) &#123;broadcast_dimensions = dense&lt;&gt; : tensor&lt;<span class="number">0</span>xi64&gt;, disc.device = <span class="string">&quot;gpu&quot;</span>&#125; : (memref&lt;f32, <span class="meta">#gpu.address_space<span class="string">&lt;global&gt;</span>&gt;, memref<span class="string">&lt;2xindex&gt;</span>, memref<span class="string">&lt;?x10xf32, #gpu.address_space&lt;global&gt;</span>&gt;) -&gt; ()</span></span><br><span class="line">      <span class="string">&quot;lmhlo.maximum&quot;</span>(%alloc_2, %alloc_4, %alloc_3) &#123;disc.device = <span class="string">&quot;gpu&quot;</span>&#125; : (memref&lt;?x10xf32, <span class="meta">#gpu.address_space<span class="string">&lt;global&gt;</span>&gt;, memref<span class="string">&lt;?x10xf32, #gpu.address_space&lt;global&gt;</span>&gt;, memref<span class="string">&lt;?x10xf32, #gpu.address_space&lt;global&gt;</span>&gt;) -&gt; ()</span></span><br><span class="line">      <span class="string">&quot;lmhlo.terminator&quot;</span>() : () -&gt; ()</span><br><span class="line">    &#125;) &#123;disc.device = <span class="string">&quot;gpu&quot;</span>, disc.fusion.name = <span class="string">&quot;main_kLoop_maximum__5_1_0&quot;</span>, disc.fusion_type = <span class="string">&quot;kLoop&quot;</span>, disc_vectorize_or_tile_hint = <span class="number">1</span> : i32&#125; : () -&gt; ()</span><br><span class="line">  &#125;</span><br><span class="line">  memref.dealloc %alloc_4 : memref&lt;?x10xf32, <span class="meta">#gpu.address_space<span class="string">&lt;global&gt;</span>&gt;</span></span><br><span class="line">  memref.dealloc %alloc_2 : memref&lt;?x10xf32, <span class="meta">#gpu.address_space<span class="string">&lt;global&gt;</span>&gt;</span></span><br><span class="line">  memref.dealloc %alloc_1 : memref&lt;?x10xf32, <span class="meta">#gpu.address_space<span class="string">&lt;global&gt;</span>&gt;</span></span><br><span class="line">  memref.dealloc %alloc_0 : memref&lt;f32, <span class="meta">#gpu.address_space<span class="string">&lt;global&gt;</span>&gt;</span></span><br><span class="line">  memref.dealloc %alloc : memref&lt;?x10xf32, <span class="meta">#gpu.address_space<span class="string">&lt;global&gt;</span>&gt;</span></span><br><span class="line">  memref.dealloc %<span class="number">13</span> : memref&lt;<span class="number">10</span>xf32, <span class="meta">#gpu.address_space<span class="string">&lt;global&gt;</span>&gt;</span></span><br><span class="line">  %alloc_5 = memref.<span class="built_in">alloc</span>(%dim) &#123;kDiscSymbolicDimAttr = [@S0, @C10]&#125; : memref&lt;?x10xf32, <span class="meta">#gpu.address_space<span class="string">&lt;global&gt;</span>&gt;</span></span><br><span class="line">  %<span class="number">22</span> = llvm.inttoptr %<span class="number">0</span> : i32 to !llvm.ptr&lt;i8&gt;</span><br><span class="line">  <span class="string">&quot;disc_ral.dispatch&quot;</span>(%arg0, %<span class="number">22</span>, %alloc_3, %<span class="number">5</span>, %alloc_5, %<span class="literal">false</span>, %<span class="literal">false</span>, %<span class="literal">true</span>) &#123;backend_config = <span class="string">&quot;&quot;</span>, call_target_name = <span class="string">&quot;ral_gemm&quot;</span>, device = <span class="string">&quot;gpu&quot;</span>, has_side_effect = <span class="literal">false</span>&#125; : (!disc_ral.context, !llvm.ptr&lt;i8&gt;, memref&lt;?x10xf32, <span class="meta">#gpu.address_space<span class="string">&lt;global&gt;</span>&gt;, memref<span class="string">&lt;10x10xf32, #gpu.address_space&lt;global&gt;</span>&gt;, memref<span class="string">&lt;?x10xf32, #gpu.address_space&lt;global&gt;</span>&gt;, i1, i1, i1) -&gt; ()</span></span><br><span class="line">  memref.dealloc %alloc_3 : memref&lt;?x10xf32, <span class="meta">#gpu.address_space<span class="string">&lt;global&gt;</span>&gt;</span></span><br><span class="line">  memref.dealloc %<span class="number">5</span> : memref&lt;<span class="number">10</span>x10xf32, <span class="meta">#gpu.address_space<span class="string">&lt;global&gt;</span>&gt;</span></span><br><span class="line">  %alloc_6 = memref.<span class="built_in">alloc</span>() : memref&lt;f32, <span class="meta">#gpu.address_space<span class="string">&lt;global&gt;</span>&gt;</span></span><br><span class="line">  %alloc_7 = memref.<span class="built_in">alloc</span>(%dim) &#123;kDiscSymbolicDimAttr = [@S0, @C10]&#125; : memref&lt;?x10xf32, <span class="meta">#gpu.address_space<span class="string">&lt;global&gt;</span>&gt;</span></span><br><span class="line">  %alloc_8 = memref.<span class="built_in">alloc</span>(%dim) &#123;kDiscSymbolicDimAttr = [@S0, @C10]&#125; : memref&lt;?x10xf32, <span class="meta">#gpu.address_space<span class="string">&lt;global&gt;</span>&gt;</span></span><br><span class="line">  %alloc_9 = memref.<span class="built_in">alloc</span>(%dim) &#123;kDiscSymbolicDimAttr = [@S0, @C10]&#125; : memref&lt;?x10xf32, <span class="meta">#gpu.address_space<span class="string">&lt;global&gt;</span>&gt;</span></span><br><span class="line">  %alloc_10 = memref.<span class="built_in">alloc</span>(%dim) &#123;kDiscSymbolicDimAttr = [@S0, @C10]&#125; : memref&lt;?x10xf32, <span class="meta">#gpu.address_space<span class="string">&lt;global&gt;</span>&gt;</span></span><br><span class="line">  scf.<span class="keyword">if</span> %<span class="number">21</span> &#123;</span><br><span class="line">    <span class="string">&quot;lmhlo.fusion&quot;</span>() (&#123;</span><br><span class="line">      <span class="string">&quot;lmhlo.constant&quot;</span>(%alloc_6) &#123;value = dense&lt;<span class="number">0.000000e+00</span>&gt; : tensor&lt;f32&gt;&#125; : (memref&lt;f32, <span class="meta">#gpu.address_space<span class="string">&lt;global&gt;</span>&gt;) -&gt; ()</span></span><br><span class="line">      <span class="string">&quot;lmhlo.dynamic_broadcast_in_dim&quot;</span>(%alloc_6, %alloca, %alloc_7) &#123;broadcast_dimensions = dense&lt;&gt; : tensor&lt;<span class="number">0</span>xi64&gt;, disc.device = <span class="string">&quot;gpu&quot;</span>&#125; : (memref&lt;f32, <span class="meta">#gpu.address_space<span class="string">&lt;global&gt;</span>&gt;, memref<span class="string">&lt;2xindex&gt;</span>, memref<span class="string">&lt;?x10xf32, #gpu.address_space&lt;global&gt;</span>&gt;) -&gt; ()</span></span><br><span class="line">      <span class="string">&quot;lmhlo.dynamic_broadcast_in_dim&quot;</span>(%<span class="number">17</span>, %alloca, %alloc_8) &#123;broadcast_dimensions = dense&lt;<span class="number">1</span>&gt; : tensor&lt;<span class="number">1</span>xi64&gt;, disc.device = <span class="string">&quot;gpu&quot;</span>&#125; : (memref&lt;<span class="number">10</span>xf32, <span class="meta">#gpu.address_space<span class="string">&lt;global&gt;</span>&gt;, memref<span class="string">&lt;2xindex&gt;</span>, memref<span class="string">&lt;?x10xf32, #gpu.address_space&lt;global&gt;</span>&gt;) -&gt; ()</span></span><br><span class="line">      <span class="string">&quot;lmhlo.add&quot;</span>(%alloc_5, %alloc_8, %alloc_9) &#123;disc.device = <span class="string">&quot;gpu&quot;</span>&#125; : (memref&lt;?x10xf32, <span class="meta">#gpu.address_space<span class="string">&lt;global&gt;</span>&gt;, memref<span class="string">&lt;?x10xf32, #gpu.address_space&lt;global&gt;</span>&gt;, memref<span class="string">&lt;?x10xf32, #gpu.address_space&lt;global&gt;</span>&gt;) -&gt; ()</span></span><br><span class="line">      <span class="string">&quot;lmhlo.maximum&quot;</span>(%alloc_9, %alloc_7, %alloc_10) &#123;disc.device = <span class="string">&quot;gpu&quot;</span>&#125; : (memref&lt;?x10xf32, <span class="meta">#gpu.address_space<span class="string">&lt;global&gt;</span>&gt;, memref<span class="string">&lt;?x10xf32, #gpu.address_space&lt;global&gt;</span>&gt;, memref<span class="string">&lt;?x10xf32, #gpu.address_space&lt;global&gt;</span>&gt;) -&gt; ()</span></span><br><span class="line">      <span class="string">&quot;lmhlo.terminator&quot;</span>() : () -&gt; ()</span><br><span class="line">    &#125;) &#123;disc.device = <span class="string">&quot;gpu&quot;</span>, disc.fusion.name = <span class="string">&quot;main_kLoop_maximum__5_1_1&quot;</span>, disc.fusion.tag = <span class="string">&quot;Vec4&quot;</span>, disc.fusion_type = <span class="string">&quot;kLoop&quot;</span>, disc_vectorize_or_tile_hint = <span class="number">4</span> : i32&#125; : () -&gt; ()</span><br><span class="line">  &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">    <span class="string">&quot;lmhlo.fusion&quot;</span>() (&#123;</span><br><span class="line">      <span class="string">&quot;lmhlo.constant&quot;</span>(%alloc_6) &#123;value = dense&lt;<span class="number">0.000000e+00</span>&gt; : tensor&lt;f32&gt;&#125; : (memref&lt;f32, <span class="meta">#gpu.address_space<span class="string">&lt;global&gt;</span>&gt;) -&gt; ()</span></span><br><span class="line">      <span class="string">&quot;lmhlo.dynamic_broadcast_in_dim&quot;</span>(%alloc_6, %alloca, %alloc_7) &#123;broadcast_dimensions = dense&lt;&gt; : tensor&lt;<span class="number">0</span>xi64&gt;, disc.device = <span class="string">&quot;gpu&quot;</span>&#125; : (memref&lt;f32, <span class="meta">#gpu.address_space<span class="string">&lt;global&gt;</span>&gt;, memref<span class="string">&lt;2xindex&gt;</span>, memref<span class="string">&lt;?x10xf32, #gpu.address_space&lt;global&gt;</span>&gt;) -&gt; ()</span></span><br><span class="line">      <span class="string">&quot;lmhlo.dynamic_broadcast_in_dim&quot;</span>(%<span class="number">17</span>, %alloca, %alloc_8) &#123;broadcast_dimensions = dense&lt;<span class="number">1</span>&gt; : tensor&lt;<span class="number">1</span>xi64&gt;, disc.device = <span class="string">&quot;gpu&quot;</span>&#125; : (memref&lt;<span class="number">10</span>xf32, <span class="meta">#gpu.address_space<span class="string">&lt;global&gt;</span>&gt;, memref<span class="string">&lt;2xindex&gt;</span>, memref<span class="string">&lt;?x10xf32, #gpu.address_space&lt;global&gt;</span>&gt;) -&gt; ()</span></span><br><span class="line">      <span class="string">&quot;lmhlo.add&quot;</span>(%alloc_5, %alloc_8, %alloc_9) &#123;disc.device = <span class="string">&quot;gpu&quot;</span>&#125; : (memref&lt;?x10xf32, <span class="meta">#gpu.address_space<span class="string">&lt;global&gt;</span>&gt;, memref<span class="string">&lt;?x10xf32, #gpu.address_space&lt;global&gt;</span>&gt;, memref<span class="string">&lt;?x10xf32, #gpu.address_space&lt;global&gt;</span>&gt;) -&gt; ()</span></span><br><span class="line">      <span class="string">&quot;lmhlo.maximum&quot;</span>(%alloc_9, %alloc_7, %alloc_10) &#123;disc.device = <span class="string">&quot;gpu&quot;</span>&#125; : (memref&lt;?x10xf32, <span class="meta">#gpu.address_space<span class="string">&lt;global&gt;</span>&gt;, memref<span class="string">&lt;?x10xf32, #gpu.address_space&lt;global&gt;</span>&gt;, memref<span class="string">&lt;?x10xf32, #gpu.address_space&lt;global&gt;</span>&gt;) -&gt; ()</span></span><br><span class="line">      <span class="string">&quot;lmhlo.terminator&quot;</span>() : () -&gt; ()</span><br><span class="line">    &#125;) &#123;disc.device = <span class="string">&quot;gpu&quot;</span>, disc.fusion.name = <span class="string">&quot;main_kLoop_maximum__5_1_1&quot;</span>, disc.fusion_type = <span class="string">&quot;kLoop&quot;</span>, disc_vectorize_or_tile_hint = <span class="number">1</span> : i32&#125; : () -&gt; ()</span><br><span class="line">  &#125;</span><br><span class="line">  memref.dealloc %alloc_9 : memref&lt;?x10xf32, <span class="meta">#gpu.address_space<span class="string">&lt;global&gt;</span>&gt;</span></span><br><span class="line">  memref.dealloc %alloc_8 : memref&lt;?x10xf32, <span class="meta">#gpu.address_space<span class="string">&lt;global&gt;</span>&gt;</span></span><br><span class="line">  memref.dealloc %alloc_7 : memref&lt;?x10xf32, <span class="meta">#gpu.address_space<span class="string">&lt;global&gt;</span>&gt;</span></span><br><span class="line">  memref.dealloc %alloc_6 : memref&lt;f32, <span class="meta">#gpu.address_space<span class="string">&lt;global&gt;</span>&gt;</span></span><br><span class="line">  memref.dealloc %alloc_5 : memref&lt;?x10xf32, <span class="meta">#gpu.address_space<span class="string">&lt;global&gt;</span>&gt;</span></span><br><span class="line">  memref.dealloc %<span class="number">17</span> : memref&lt;<span class="number">10</span>xf32, <span class="meta">#gpu.address_space<span class="string">&lt;global&gt;</span>&gt;</span></span><br><span class="line">  <span class="string">&quot;disc_ral.dispatch&quot;</span>(%arg0, %c0, %alloc_10) &#123;backend_config = <span class="string">&quot;&quot;</span>, call_target_name = <span class="string">&quot;ral_send_output&quot;</span>, device = <span class="string">&quot;cpu&quot;</span>, has_side_effect = <span class="literal">false</span>&#125; : (!disc_ral.context, index, memref&lt;?x10xf32, <span class="meta">#gpu.address_space<span class="string">&lt;global&gt;</span>&gt;) -&gt; ()</span></span><br><span class="line">  <span class="keyword">return</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
 <p>如上是整个代码段，该IR代码实现了一个包含两个全连接层（矩阵乘法）和ReLU激活函数的神经网络前向计算流程。具体数学表达式为：<code>output = ReLU(ReLU(input * W1 + b1) * W2 + b2)</code>。同时由于BladeDISC的编译speculation，runtime选择机制，针对是否可以向量化（&lt;?x10&gt;的维度是否可以乘除4），做了多版本代码生成。</p>
 </li>
 </ul>
-<div class="table-container">
 <table>
 <thead>
 <tr>
-<th style="text-align:center">Pass名称</th>
-<th style="text-align:center">功能描述</th>
+<th align="center">Pass名称</th>
+<th align="center">功能描述</th>
 </tr>
 </thead>
-<tbody>
-<tr>
-<td style="text-align:center"><code>DiscLhloLegalizeRootsToParallelLoopsPass</code></td>
-<td style="text-align:center">将LMHLO根操作转换为并行循环</td>
+<tbody><tr>
+<td align="center"><code>DiscLhloLegalizeRootsToParallelLoopsPass</code></td>
+<td align="center">将LMHLO根操作转换为并行循环</td>
 </tr>
 <tr>
-<td style="text-align:center"><code>InputInlineFusionPass</code></td>
-<td style="text-align:center">内联融合生产者操作到循环中</td>
+<td align="center"><code>InputInlineFusionPass</code></td>
+<td align="center">内联融合生产者操作到循环中</td>
 </tr>
-</tbody>
-</table>
-</div>
-<h4 id="2-后端特定优化"><a href="#2-后端特定优化" class="headerlink" title="(2) 后端特定优化"></a><strong>(2) 后端特定优化</strong></h4><div class="table-container">
-<table>
+</tbody></table>
+<h4 id="2-后端特定优化"><a href="#2-后端特定优化" class="headerlink" title="(2) 后端特定优化"></a><strong>(2) 后端特定优化</strong></h4><table>
 <thead>
 <tr>
-<th style="text-align:center">Pass名称</th>
-<th style="text-align:center">功能描述</th>
+<th align="center">Pass名称</th>
+<th align="center">功能描述</th>
 </tr>
 </thead>
-<tbody>
-<tr>
-<td style="text-align:center"><code>DiscLowerGpuOpsToNVVMOpsPass</code></td>
-<td style="text-align:center">将GPU操作转换为NVIDIA CUDA后端操作</td>
+<tbody><tr>
+<td align="center"><code>DiscLowerGpuOpsToNVVMOpsPass</code></td>
+<td align="center">将GPU操作转换为NVIDIA CUDA后端操作</td>
 </tr>
 <tr>
-<td style="text-align:center"><code>DiscLowerGpuOpsToROCDLOpsPass</code></td>
-<td style="text-align:center">将GPU操作转换为AMD ROCm后端操作</td>
+<td align="center"><code>DiscLowerGpuOpsToROCDLOpsPass</code></td>
+<td align="center">将GPU操作转换为AMD ROCm后端操作</td>
 </tr>
 <tr>
-<td style="text-align:center"><code>DiscOutlineCpuKernelPass</code></td>
-<td style="text-align:center">生成CPU多线程内核包装函数</td>
+<td align="center"><code>DiscOutlineCpuKernelPass</code></td>
+<td align="center">生成CPU多线程内核包装函数</td>
 </tr>
-</tbody>
-</table>
-</div>
-<h4 id="3-内存访问优化"><a href="#3-内存访问优化" class="headerlink" title="(3) 内存访问优化"></a><strong>(3) 内存访问优化</strong></h4><div class="table-container">
-<table>
+</tbody></table>
+<h4 id="3-内存访问优化"><a href="#3-内存访问优化" class="headerlink" title="(3) 内存访问优化"></a><strong>(3) 内存访问优化</strong></h4><table>
 <thead>
 <tr>
-<th style="text-align:center">Pass名称</th>
-<th style="text-align:center">功能描述</th>
+<th align="center">Pass名称</th>
+<th align="center">功能描述</th>
 </tr>
 </thead>
-<tbody>
-<tr>
-<td style="text-align:center"><code>DiscFlattenMemrefAccessPass</code></td>
-<td style="text-align:center">扁平化内存访问模式</td>
+<tbody><tr>
+<td align="center"><code>DiscFlattenMemrefAccessPass</code></td>
+<td align="center">扁平化内存访问模式</td>
 </tr>
 <tr>
-<td style="text-align:center"><code>DiscMemRefCSEPass</code></td>
-<td style="text-align:center">消除冗余内存访问</td>
+<td align="center"><code>DiscMemRefCSEPass</code></td>
+<td align="center">消除冗余内存访问</td>
 </tr>
-</tbody>
-</table>
-</div>
+</tbody></table>
 <hr>
-<h3 id="7-GPU模块到二进制阶段"><a href="#7-GPU模块到二进制阶段" class="headerlink" title="7. GPU模块到二进制阶段"></a><strong>7. GPU模块到二进制阶段</strong></h3><div class="table-container">
-<table>
+<h3 id="7-GPU模块到二进制阶段"><a href="#7-GPU模块到二进制阶段" class="headerlink" title="7. GPU模块到二进制阶段"></a><strong>7. GPU模块到二进制阶段</strong></h3><table>
 <thead>
 <tr>
-<th style="text-align:center">Pass名称</th>
-<th style="text-align:center">功能描述</th>
+<th align="center">Pass名称</th>
+<th align="center">功能描述</th>
 </tr>
 </thead>
-<tbody>
-<tr>
-<td style="text-align:center"><code>GpuKernelOutlining</code></td>
-<td style="text-align:center">将<code>gpu.launch</code>分离为<code>gpu.launch_func</code>和<code>gpu.module</code></td>
+<tbody><tr>
+<td align="center"><code>GpuKernelOutlining</code></td>
+<td align="center">将<code>gpu.launch</code>分离为<code>gpu.launch_func</code>和<code>gpu.module</code></td>
 </tr>
 <tr>
-<td style="text-align:center"><code>GpuKernelToBlobPass</code></td>
-<td style="text-align:center">将LLVM IR编译为GPU二进制（CUBIN/HSACO）</td>
+<td align="center"><code>GpuKernelToBlobPass</code></td>
+<td align="center">将LLVM IR编译为GPU二进制（CUBIN&#x2F;HSACO）</td>
 </tr>
 <tr>
-<td style="text-align:center"><code>ReviseGpuKernelOutliningPass</code></td>
-<td style="text-align:center">处理主机-设备内存参数传递</td>
+<td align="center"><code>ReviseGpuKernelOutliningPass</code></td>
+<td align="center">处理主机-设备内存参数传递</td>
 </tr>
-</tbody>
-</table>
-</div>
+</tbody></table>
 <hr>
-<h3 id="8-主机侧编译阶段"><a href="#8-主机侧编译阶段" class="headerlink" title="8. 主机侧编译阶段"></a><strong>8. 主机侧编译阶段</strong></h3><div class="table-container">
-<table>
+<h3 id="8-主机侧编译阶段"><a href="#8-主机侧编译阶段" class="headerlink" title="8. 主机侧编译阶段"></a><strong>8. 主机侧编译阶段</strong></h3><table>
 <thead>
 <tr>
-<th style="text-align:center">Pass名称</th>
-<th style="text-align:center">功能描述</th>
+<th align="center">Pass名称</th>
+<th align="center">功能描述</th>
 </tr>
 </thead>
-<tbody>
-<tr>
-<td style="text-align:center"><code>DiscToLLVMPass</code></td>
-<td style="text-align:center">将操作最终转换为LLVM Dialect</td>
+<tbody><tr>
+<td align="center"><code>DiscToLLVMPass</code></td>
+<td align="center">将操作最终转换为LLVM Dialect</td>
 </tr>
 <tr>
-<td style="text-align:center"><code>DiscCpuMapParallelLoopPass</code></td>
-<td style="text-align:center">将<code>scf.parallel</code>映射到CPU多线程执行</td>
+<td align="center"><code>DiscCpuMapParallelLoopPass</code></td>
+<td align="center">将<code>scf.parallel</code>映射到CPU多线程执行</td>
 </tr>
-</tbody>
-</table>
-</div>
+</tbody></table>
 <hr>
-<h3 id="关键特征总结"><a href="#关键特征总结" class="headerlink" title="关键特征总结"></a><strong>关键特征总结</strong></h3><div class="table-container">
-<table>
+<h3 id="关键特征总结"><a href="#关键特征总结" class="headerlink" title="关键特征总结"></a><strong>关键特征总结</strong></h3><table>
 <thead>
 <tr>
-<th style="text-align:center"><strong>阶段</strong></th>
-<th style="text-align:center"><strong>核心目标</strong></th>
-<th style="text-align:center"><strong>关键技术</strong></th>
+<th align="center"><strong>阶段</strong></th>
+<th align="center"><strong>核心目标</strong></th>
+<th align="center"><strong>关键技术</strong></th>
 </tr>
 </thead>
-<tbody>
-<tr>
-<td style="text-align:center">TF-to-HLO</td>
-<td style="text-align:center">统一前端语义</td>
-<td style="text-align:center">静态秩约束处理</td>
+<tbody><tr>
+<td align="center">TF-to-HLO</td>
+<td align="center">统一前端语义</td>
+<td align="center">静态秩约束处理</td>
 </tr>
 <tr>
-<td style="text-align:center">HLO优化</td>
-<td style="text-align:center">形状传播与融合</td>
-<td style="text-align:center">代数简化与约束分析</td>
+<td align="center">HLO优化</td>
+<td align="center">形状传播与融合</td>
+<td align="center">代数简化与约束分析</td>
 </tr>
 <tr>
-<td style="text-align:center">缓冲化</td>
-<td style="text-align:center">内存管理</td>
-<td style="text-align:center">显式内存空间分配</td>
+<td align="center">缓冲化</td>
+<td align="center">内存管理</td>
+<td align="center">显式内存空间分配</td>
 </tr>
 <tr>
-<td style="text-align:center">运行时集成</td>
-<td style="text-align:center">跨平台抽象</td>
-<td style="text-align:center">RAL上下文隔离</td>
+<td align="center">运行时集成</td>
+<td align="center">跨平台抽象</td>
+<td align="center">RAL上下文隔离</td>
 </tr>
 <tr>
-<td style="text-align:center">代码生成</td>
-<td style="text-align:center">动态形状代码生成</td>
-<td style="text-align:center">推测多版本内核生成</td>
+<td align="center">代码生成</td>
+<td align="center">动态形状代码生成</td>
+<td align="center">推测多版本内核生成</td>
 </tr>
 <tr>
-<td style="text-align:center">后端适配</td>
-<td style="text-align:center">硬件优化</td>
-<td style="text-align:center">GPU循环映射与CPU多线程</td>
+<td align="center">后端适配</td>
+<td align="center">硬件优化</td>
+<td align="center">GPU循环映射与CPU多线程</td>
 </tr>
-</tbody>
-</table>
-</div>
+</tbody></table>
 <h2 id="参考资料"><a href="#参考资料" class="headerlink" title="参考资料"></a><font color = brown>参考资料</font></h2><ol>
 <li><a target="_blank" rel="noopener" href="https://github.com/alibaba/BladeDISC/blob/main/docs/developers/pass_pipeline.md#gpu-module-to-cubin">BladeDISC pass pipeline</a></li>
 <li><a target="_blank" rel="noopener" href="https://zhuanlan.zhihu.com/p/622562160">XLA解读</a></li>
@@ -1006,13 +953,13 @@
       <i class="fa fa-chart-area"></i>
     </span>
       <span class="post-meta-item-text">站点总字数：</span>
-    <span title="站点总字数">292k</span>
+    <span title="站点总字数">294k</span>
     <span class="post-meta-divider">|</span>
     <span class="post-meta-item-icon">
       <i class="fa fa-coffee"></i>
     </span>
       <span class="post-meta-item-text">站点阅读时长 &asymp;</span>
-    <span title="站点阅读时长">4:26</span>
+    <span title="站点阅读时长">4:27</span>
 </div>
   <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://pisces.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Pisces</a> 强力驱动
   </div>
