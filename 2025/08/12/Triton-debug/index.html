@@ -279,10 +279,7 @@
       
         <p><img src="/images/image-20250605183401865.png" alt="image-20250605183401865"></p>
 <span id="more"></span>
-
-<h1 id="Triton-Debugger"><a href="#Triton-Debugger" class="headerlink" title="Triton Debugger"></a><font color = brown>Triton Debugger</font></h1><h2 id="Print-in-Triton"><a href="#Print-in-Triton" class="headerlink" title="Print in Triton"></a><font color = green>Print in Triton</font></h2><p><code>static_print</code> is for compile time print log, and <code>device_print</code> is for runtime print log.  </p>
-<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">tl.static_print(<span class="string">f&quot;BLOCK_SIZE: <span class="subst">&#123;BLOCK_SIZE&#125;</span>&quot;</span>) </span><br><span class="line">tl.device_print(<span class="string">&quot;pid: &quot;</span>, pid)</span><br></pre></td></tr></table></figure>
-
+<h1 id="Triton-Debugger"><a href="#Triton-Debugger" class="headerlink" title="Triton Debugger"></a><font color = brown>Triton Debugger</font></h1><h2 id="Print-in-Triton"><a href="#Print-in-Triton" class="headerlink" title="Print in Triton"></a><font color = green>Print in Triton</font></h2><p><code>static_print</code> is for compile time print log, and <code>device_print</code> is for runtime print log.<br><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">tl.static_print(<span class="string">f&quot;BLOCK_SIZE: <span class="subst">&#123;BLOCK_SIZE&#125;</span>&quot;</span>) </span><br><span class="line">tl.device_print(<span class="string">&quot;pid: &quot;</span>, pid)</span><br></pre></td></tr></table></figure></p>
 <p><code>static_assert</code> and <code>device_assert</code> also exists for assertion.</p>
 <h2 id="Pdb-debugger"><a href="#Pdb-debugger" class="headerlink" title="Pdb debugger"></a><font color = green>Pdb debugger</font></h2><p>For debugging python code in upper layer, we can use pdb. First <code>import pdb</code>, then use <code>pdb.set_trace()</code> to make a breakpoint in source code. </p>
 <blockquote>
@@ -290,14 +287,10 @@
 </blockquote>
 <h2 id="C-code-debugger"><a href="#C-code-debugger" class="headerlink" title="C++ code debugger"></a><font color = green>C++ code debugger</font></h2><p>To debug c++ code behind python wrapper, we can simply use <code>gdb</code> tool. Following command is a way to debug both python and c++ parts:</p>
 <figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">gdb --args python xxx.py</span><br></pre></td></tr></table></figure>
-
 <blockquote>
 <p>to be able to step into c++ part, make sure triton is installed in debug mode. See build docs for how to install from source.</p>
 </blockquote>
-<p>make a break point in MLIR source code:</p>
-<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">b /home/douliyang/large/triton-workspace/triton-tutorial/lib/Conversion/TritonToTritonGPU/TritonToTritonGPUPass.cpp:784</span><br></pre></td></tr></table></figure>
-
-
+<p>make a break point in MLIR source code:<br><figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">b /home/douliyang/large/triton-workspace/triton-tutorial/lib/Conversion/TritonToTritonGPU/TritonToTritonGPUPass.cpp:784</span><br></pre></td></tr></table></figure></p>
 <h2 id="IR-Dump"><a href="#IR-Dump" class="headerlink" title="IR Dump"></a><font color = green>IR Dump</font></h2><p>Below are some useful commands that can help debug Triton Kernel.  </p>
 <ul>
 <li><code>MLIR_ENABLE_DUMP=1</code> to help dump ir code before and after each mlir pass transformation.    <figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">MLIR_ENABLE_DUMP=1 pythonvector_add.py &amp;&gt; ir_dump.log</span><br></pre></td></tr></table></figure></li>
@@ -306,15 +299,17 @@
 <li><code>TRITON_PRINT_AUTOTUNING=1</code> dump metadata after auto tune.</li>
 </ul>
 <p>refer to <a target="_blank" rel="noopener" href="https://github.com/triton-lang/triton/blob/main/python/triton/knobs.py">Triton knobs.py</a> for detailed dump commands.</p>
-<h2 id="Pdb-GDB-commands"><a href="#Pdb-GDB-commands" class="headerlink" title="Pdb &amp; GDB commands"></a><font color = green>Pdb &amp; GDB commands</font></h2><p>Below is from chatgpt  </p>
-<h3 id="🐍-pdb-Python-Debugger-Commands"><a href="#🐍-pdb-Python-Debugger-Commands" class="headerlink" title="🐍 pdb (Python Debugger) Commands"></a>🐍 pdb (Python Debugger) Commands</h3><table>
+<h2 id="Pdb-amp-GDB-commands"><a href="#Pdb-amp-GDB-commands" class="headerlink" title="Pdb &amp; GDB commands"></a><font color = green>Pdb &amp; GDB commands</font></h2><p>Below is from chatgpt  </p>
+<h3 id="🐍-pdb-Python-Debugger-Commands"><a href="#🐍-pdb-Python-Debugger-Commands" class="headerlink" title="🐍 pdb (Python Debugger) Commands"></a>🐍 pdb (Python Debugger) Commands</h3><div class="table-container">
+<table>
 <thead>
 <tr>
 <th>Command</th>
 <th>Description</th>
 </tr>
 </thead>
-<tbody><tr>
+<tbody>
+<tr>
 <td><code>l</code></td>
 <td>List source code around the current line</td>
 </tr>
@@ -363,7 +358,7 @@
 <td>Quit the debugger</td>
 </tr>
 <tr>
-<td><code>w</code> &#x2F; <code>where</code></td>
+<td><code>w</code> / <code>where</code></td>
 <td>Show the current call stack</td>
 </tr>
 <tr>
@@ -378,20 +373,24 @@
 <td><code>help</code></td>
 <td>Show help message or help for a specific command</td>
 </tr>
-</tbody></table>
-<h3 id="🧰-gdb-GNU-Debugger-Commands"><a href="#🧰-gdb-GNU-Debugger-Commands" class="headerlink" title="🧰 gdb (GNU Debugger) Commands"></a>🧰 gdb (GNU Debugger) Commands</h3><table>
+</tbody>
+</table>
+</div>
+<h3 id="🧰-gdb-GNU-Debugger-Commands"><a href="#🧰-gdb-GNU-Debugger-Commands" class="headerlink" title="🧰 gdb (GNU Debugger) Commands"></a>🧰 gdb (GNU Debugger) Commands</h3><div class="table-container">
+<table>
 <thead>
 <tr>
 <th>Command</th>
 <th>Description</th>
 </tr>
 </thead>
-<tbody><tr>
+<tbody>
+<tr>
 <td><code>start</code></td>
 <td>Start the program and stop at <code>main</code></td>
 </tr>
 <tr>
-<td><code>run</code> &#x2F; <code>r</code></td>
+<td><code>run</code> / <code>r</code></td>
 <td>Run the program with arguments</td>
 </tr>
 <tr>
@@ -403,19 +402,19 @@
 <td>List current breakpoints</td>
 </tr>
 <tr>
-<td><code>d</code> &#x2F; <code>delete</code></td>
+<td><code>d</code> / <code>delete</code></td>
 <td>Delete breakpoints</td>
 </tr>
 <tr>
-<td><code>c</code> &#x2F; <code>continue</code></td>
+<td><code>c</code> / <code>continue</code></td>
 <td>Continue execution</td>
 </tr>
 <tr>
-<td><code>s</code> &#x2F; <code>step</code></td>
+<td><code>s</code> / <code>step</code></td>
 <td>Step into the next instruction</td>
 </tr>
 <tr>
-<td><code>n</code> &#x2F; <code>next</code></td>
+<td><code>n</code> / <code>next</code></td>
 <td>Step over function calls</td>
 </tr>
 <tr>
@@ -459,7 +458,7 @@
 <td>Set the value of a variable</td>
 </tr>
 <tr>
-<td><code>list</code> &#x2F; <code>l</code></td>
+<td><code>list</code> / <code>l</code></td>
 <td>Show source code near the current line</td>
 </tr>
 <tr>
@@ -471,10 +470,12 @@
 <td>Disable output paging</td>
 </tr>
 <tr>
-<td><code>q</code> &#x2F; <code>quit</code></td>
+<td><code>q</code> / <code>quit</code></td>
 <td>Exit GDB</td>
 </tr>
-</tbody></table>
+</tbody>
+</table>
+</div>
 
     </div>
 
@@ -560,7 +561,7 @@
 
       <!--noindex-->
       <div class="post-toc-wrap sidebar-panel">
-          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#Triton-Debugger"><span class="nav-number">1.</span> <span class="nav-text">Triton Debugger</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#Print-in-Triton"><span class="nav-number">1.1.</span> <span class="nav-text">Print in Triton</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Pdb-debugger"><span class="nav-number">1.2.</span> <span class="nav-text">Pdb debugger</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#C-code-debugger"><span class="nav-number">1.3.</span> <span class="nav-text">C++ code debugger</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#IR-Dump"><span class="nav-number">1.4.</span> <span class="nav-text">IR Dump</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Pdb-GDB-commands"><span class="nav-number">1.5.</span> <span class="nav-text">Pdb &amp; GDB commands</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%F0%9F%90%8D-pdb-Python-Debugger-Commands"><span class="nav-number">1.5.1.</span> <span class="nav-text">🐍 pdb (Python Debugger) Commands</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%F0%9F%A7%B0-gdb-GNU-Debugger-Commands"><span class="nav-number">1.5.2.</span> <span class="nav-text">🧰 gdb (GNU Debugger) Commands</span></a></li></ol></li></ol></li></ol></div>
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#Triton-Debugger"><span class="nav-number">1.</span> <span class="nav-text">Triton Debugger</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#Print-in-Triton"><span class="nav-number">1.1.</span> <span class="nav-text">Print in Triton</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Pdb-debugger"><span class="nav-number">1.2.</span> <span class="nav-text">Pdb debugger</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#C-code-debugger"><span class="nav-number">1.3.</span> <span class="nav-text">C++ code debugger</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#IR-Dump"><span class="nav-number">1.4.</span> <span class="nav-text">IR Dump</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Pdb-amp-GDB-commands"><span class="nav-number">1.5.</span> <span class="nav-text">Pdb &amp; GDB commands</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%F0%9F%90%8D-pdb-Python-Debugger-Commands"><span class="nav-number">1.5.1.</span> <span class="nav-text">🐍 pdb (Python Debugger) Commands</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%F0%9F%A7%B0-gdb-GNU-Debugger-Commands"><span class="nav-number">1.5.2.</span> <span class="nav-text">🧰 gdb (GNU Debugger) Commands</span></a></li></ol></li></ol></li></ol></div>
       </div>
       <!--/noindex-->
 
@@ -574,20 +575,20 @@
       <div class="site-state-item site-state-posts">
           <a href="/archives/">
         
-          <span class="site-state-item-count">29</span>
+          <span class="site-state-item-count">30</span>
           <span class="site-state-item-name">日志</span>
         </a>
       </div>
       <div class="site-state-item site-state-categories">
             <a href="/categories/">
           
-        <span class="site-state-item-count">24</span>
+        <span class="site-state-item-count">26</span>
         <span class="site-state-item-name">分类</span></a>
       </div>
       <div class="site-state-item site-state-tags">
             <a href="/tags/">
           
-        <span class="site-state-item-count">20</span>
+        <span class="site-state-item-count">22</span>
         <span class="site-state-item-name">标签</span></a>
       </div>
   </nav>
