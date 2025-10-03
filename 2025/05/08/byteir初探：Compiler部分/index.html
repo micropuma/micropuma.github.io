@@ -268,8 +268,10 @@
     <div class="post-body" itemprop="articleBody">
 
       
-        <p><img src="/images/image-20250508125112166.png" alt="image-20250508125112166" style="zoom:50%;" /></p>
+        <img src="/images/image-20250508125112166.png" alt="image-20250508125112166" style="zoom:50%;" />
+
 <span id="more"></span>
+
 <h2 id="Compiler部分概览"><a href="#Compiler部分概览" class="headerlink" title="Compiler部分概览"></a><font color = brown>Compiler部分概览</font></h2><p><img src="/images/image-20250508165752639.png" alt="image-20250508165752639"></p>
 <p>ByteIR的compiler部分设计遵循标准的mlir层级转换流程，上图所示是前端，中间compiler和后端runtime的架构图。compiler的输入是MHLO dialect（包含部分ByteIR针对特定算子的扩展），输出是mlir（host code）和ptx（默认的cuda device后端中间形式）。最终输出给到runtime做调度和GPU上执行。如下图所示是compiler的编译优化流水线架构图：</p>
 <pre class="mermaid">graph TD
@@ -440,13 +442,13 @@
       <i class="fa fa-chart-area"></i>
     </span>
       <span class="post-meta-item-text">站点总字数：</span>
-    <span title="站点总字数">321k</span>
+    <span title="站点总字数">323k</span>
     <span class="post-meta-divider">|</span>
     <span class="post-meta-item-icon">
       <i class="fa fa-coffee"></i>
     </span>
       <span class="post-meta-item-text">站点阅读时长 &asymp;</span>
-    <span title="站点阅读时长">4:52</span>
+    <span title="站点阅读时长">4:54</span>
 </div>
   <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://pisces.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Pisces</a> 强力驱动
   </div>
