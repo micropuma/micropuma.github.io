@@ -1,0 +1,650 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 7.3.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"example.com","root":"/","scheme":"Pisces","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":true,"show_result":true,"style":"mac"},"back2top":{"enable":true,"sidebar":false,"scrollpercent":true},"bookmark":{"enable":true,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":"gitalk","storage":true,"lazyload":false,"nav":null,"activeClass":"gitalk"},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":5,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta property="og:type" content="article">
+<meta property="og:title" content="硬件专题: data orchastration">
+<meta property="og:url" content="http://example.com/2025/10/09/%E7%A1%AC%E4%BB%B6%E4%B8%93%E9%A2%98-data-orchastration/index.html">
+<meta property="og:site_name" content="Leon&#39;s Blog">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://example.com/images/image-20251009232853003.png">
+<meta property="og:image" content="http://example.com/images/image-20251009233135003.png">
+<meta property="og:image" content="http://example.com/images/image-20251009233154031.png">
+<meta property="og:image" content="http://example.com/images/image-20251009233214614.png">
+<meta property="article:published_time" content="2025-10-09T15:24:27.000Z">
+<meta property="article:modified_time" content="2025-10-09T15:32:35.552Z">
+<meta property="article:author" content="Leon Dou">
+<meta property="article:tag" content="硬件专题">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://example.com/images/image-20251009232853003.png">
+
+<link rel="canonical" href="http://example.com/2025/10/09/%E7%A1%AC%E4%BB%B6%E4%B8%93%E9%A2%98-data-orchastration/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>硬件专题: data orchastration | Leon's Blog</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">Leon's Blog</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">分享一点有趣的技术</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocapitalize="off"
+           placeholder="搜索..." spellcheck="false"
+           type="search" class="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result">
+  <div id="no-result">
+    <i class="fa fa-spinner fa-pulse fa-5x fa-fw"></i>
+  </div>
+</div>
+
+    </div>
+  </div>
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+  <div class="reading-progress-bar"></div>
+  <a role="button" class="book-mark-link book-mark-link-fixed"></a>
+
+  <a href="https://github.com/micropuma" class="github-corner" title="Follow me on GitHub" aria-label="Follow me on GitHub" rel="noopener" target="_blank"><svg width="80" height="80" viewBox="0 0 250 250" aria-hidden="true"><path d="M0,0 L115,115 L130,115 L142,142 L250,250 L250,0 Z"></path><path d="M128.3,109.0 C113.8,99.7 119.0,89.6 119.0,89.6 C122.0,82.7 120.5,78.6 120.5,78.6 C119.2,72.0 123.4,76.3 123.4,76.3 C127.3,80.9 125.5,87.3 125.5,87.3 C122.9,97.6 130.6,101.9 134.4,103.2" fill="currentColor" style="transform-origin: 130px 106px;" class="octo-arm"></path><path d="M115.0,115.0 C114.9,115.1 118.7,116.5 119.8,115.4 L133.7,101.6 C136.9,99.2 139.9,98.4 142.2,98.6 C133.8,88.0 127.5,74.4 143.8,58.0 C148.5,53.4 154.0,51.2 159.7,51.0 C160.3,49.4 163.2,43.6 171.4,40.1 C171.4,40.1 176.1,42.5 178.8,56.2 C183.1,58.6 187.2,61.8 190.9,65.4 C194.5,69.0 197.7,73.2 200.1,77.6 C213.8,80.2 216.3,84.9 216.3,84.9 C212.7,93.1 206.9,96.0 205.4,96.6 C205.1,102.4 203.0,107.8 198.3,112.5 C181.9,128.9 168.3,122.5 157.7,114.1 C157.9,116.9 156.7,120.9 152.7,124.9 L141.0,136.5 C139.8,137.7 141.6,141.9 141.8,141.8 Z" fill="currentColor" class="octo-body"></path></svg></a>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://example.com/2025/10/09/%E7%A1%AC%E4%BB%B6%E4%B8%93%E9%A2%98-data-orchastration/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="Leon Dou">
+      <meta itemprop="description" content="关注领域：体系结构，编译技术">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Leon's Blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          硬件专题: data orchastration
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+              
+
+              <time title="创建时间：2025-10-09 23:24:27 / 修改时间：23:32:35" itemprop="dateCreated datePublished" datetime="2025-10-09T23:24:27+08:00">2025-10-09</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/%E7%A1%AC%E4%BB%B6%E4%B8%93%E9%A2%98/" itemprop="url" rel="index"><span itemprop="name">硬件专题</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span><br>
+            <span class="post-meta-item" title="本文字数">
+              <span class="post-meta-item-icon">
+                <i class="far fa-file-word"></i>
+              </span>
+                <span class="post-meta-item-text">本文字数：</span>
+              <span>2.2k</span>
+            </span>
+            <span class="post-meta-item" title="阅读时长">
+              <span class="post-meta-item-icon">
+                <i class="far fa-clock"></i>
+              </span>
+                <span class="post-meta-item-text">阅读时长 &asymp;</span>
+              <span>2 分钟</span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p><img src="/images/image-20251009232853003.png" alt="image-20251009232853003"></p>
+<span id="more"></span>
+
+<blockquote>
+<p>硬件专题第二章，讲解AI芯片的数据编排。主要参考《Efficient processing of DNN》一书，强烈推荐。申明，本文大量引用《Data Orchestration 的设计哲学与演进》一文。</p>
+</blockquote>
+<h2 id="数据编排重要性"><a href="#数据编排重要性" class="headerlink" title="数据编排重要性"></a><font color = brown>数据编排重要性</font></h2><blockquote>
+<p>数据编排（Data Orchestration）是一门关于如何精确、高效地在存储层次结构中移动数据的艺术与科学。</p>
+</blockquote>
+<p>数据编排指在编译期就静态配置好数据的传输网络（时间和空间两个维度均要确定好，即传给谁，什么时候传）。对于面向AI应用的Dataflow芯片，由于上层任务的规整性，设计良好的数据编排模型是十分有收益的（减少&#x2F;合理化数据搬运，大幅降低能耗成本）。  </p>
+<p>一个好的数据编排要满足如下要点：  </p>
+<ol>
+<li>高效地且及时地传输消费者恰好需要的数据。  </li>
+<li>将未来所需数据的接收与当前所用数据的使用在时间上重叠起来。  </li>
+<li>在数据不再需要时将其立即移除。   </li>
+<li>并以精确且低开销的同步机制完成以上所有操作。</li>
+</ol>
+<blockquote>
+<p>:key: 一个优秀的数据编排系统，必须在设计层面回答一系列根本性问题：数据应被置于何处（Placement Strategy）？何时进行传输（Timing）？数据的访问模式（Access Pattern）和生命周期如何 ？以及，当存在多个数据消费者时，它们之间如何协调与同步（Coordination and Synchronization）？</p>
+</blockquote>
+<h2 id="数据编排分类"><a href="#数据编排分类" class="headerlink" title="数据编排分类"></a><font color = brown>数据编排分类</font></h2><img src="/images/image-20251009233135003.png" alt="image-20251009233135003" style="zoom:50%;" />
+
+<p>上图是数据编排的分类图，总共有两个象限（implicit&#x2F;explicit以及coupled&#x2F;decoupled）。下表是目前常用数据编排方案的分类划分：   </p>
+<p><img src="/images/image-20251009233154031.png" alt="image-20251009233154031"></p>
+<p>对于AI加速器，其有如下要求以及特性：  </p>
+<ul>
+<li>高性能，低延迟，低功耗</li>
+<li>计算任务比较规整，静态可确定</li>
+</ul>
+<p>因此explicit + decoupled是比较合适的数据重排方案，原因如下： </p>
+<ul>
+<li><p>explicit要求编译器显示控制数据的每一步传输，可以在编译期做极致的buffer优化，降低传输延迟以及功耗。相对的，implicit需要硬件控制，会占用一部分硬件area并带来更高的能耗。  </p>
+<blockquote>
+<p>对于AI-Core，由于是针对特定领域，结合领域信息，显示控制数据相比通用处理器（CPU）要可行。</p>
+</blockquote>
+</li>
+<li><p>decoupled通过解耦load指令发出者和接收者的方式，overlap计算和传输并减少memory占用。</p>
+</li>
+</ul>
+<p>接下来详细解读这几个分类：</p>
+<h3 id="显示-vs-隐式"><a href="#显示-vs-隐式" class="headerlink" title="显示 vs. 隐式 "></a><font color = green>显示 vs. 隐式 </font></h3><blockquote>
+<p> 该维度定义了请求者在发起请求时，对数据物理位置的感知程度 。在隐式系统中，请求者对数据位于何级存储（如L1&#x2F;L2 Cache或DRAM）一无所知，硬件会自动处理地址转换和数据迁移 。这种方式对上层软件屏蔽了底层复杂性，易于编程 。然而，其代价是高昂的硬件开销，例如用于追踪数据状态的标签（tags）和比较器逻辑 。相对地，在显式系统中，请求者（通常是软件或编译器）必须明确指定数据在存储层次间的移动路径和目标地址 。这种方式硬件开销极低 ，但对编程和编译器的要求极为严苛 。</p>
+</blockquote>
+<p>补充一点，隐式还有一个大问题：<strong>landing zone问题</strong>。即发出request后，需要开辟一个存储区域用来填充回复的数据，这块存储区在整个回环（发出request，到接受数据）的过程中都要保留，造成内存资源浪费。</p>
+<h3 id="非解耦-vs-解耦"><a href="#非解耦-vs-解耦" class="headerlink" title="非解耦 vs. 解耦 "></a><font color = green>非解耦 vs. 解耦 </font></h3><blockquote>
+<p>该维度关注数据请求者（Requestor）与消费者（Consumer）是否为同一实体 。在耦合系统中，请求与消费由同一个处理核心执行，其优点是同步机制直观简单 ，但代价是消费者在等待数据时可能会陷入停顿（stall），从而限制了流水线效率 。而在解耦系统中，请求者与消费者分离，例如由一个专门的地址生成单元提前发起访存请求 。这使得访存延迟得以被隐藏在计算过程中，但引入了两者间更为复杂的同步需求 。  </p>
+</blockquote>
+<p>比较典型的解耦方式是引入DMA，搭配以double buffer提高计算-传输overlap。</p>
+<h3 id="已有解决方案的对应分类以及pros-cons"><a href="#已有解决方案的对应分类以及pros-cons" class="headerlink" title="已有解决方案的对应分类以及pros &amp; cons "></a><font color = green>已有解决方案的对应分类以及pros &amp; cons </font></h3><ul>
+<li>cache：implcit + coupled，其能耗对于AI芯片不可接受（tag标签和set associative极大电路空间资源占用）。</li>
+<li>scratchpad：explicit + coupled，可以显示的数据控制。比较典型的例子是GPU的SMEM。其问题是编程控制极其复杂且易出错，如果考虑性能，同步问题也很困难。<strong>GPU通过SIMT编程模型，巧妙规避了scratchpad同步的难题。</strong> 但在dataflow arch上，scratchpad是不可接受的。</li>
+<li>DAE：implicit + decoupled，DAE架构指的是两个processor通过hardware fifo通信，一个为生产者，一个为消费者。由于fifo队列的存在，两个processor可以有不同的timing。这里的producer相当于dma，DAE本质也是一种解耦机制。  </li>
+<li>DMA+FIFO：dataflow芯片最常见的设计方式。fifo的好处是同步机制简单，坏处是AI任务通常是卷积操作，涉及partial sum。所以需要更新buffer里面的东西（读+update），fifo难以支持此类操作（<strong>读没法任意地址读，也没法in-buffer更新</strong>）。</li>
+</ul>
+<h2 id="EDDO"><a href="#EDDO" class="headerlink" title="EDDO"></a><font color = brown>EDDO</font></h2><p>EEDO即explicit+decoupled。我们重点来解读Buffets论文，是目前最前沿的数据编排解决方案。</p>
+<h3 id="一种统一的数据编排框架：Buffets"><a href="#一种统一的数据编排框架：Buffets" class="headerlink" title="一种统一的数据编排框架：Buffets"></a><font color = green>一种统一的数据编排框架：Buffets</font></h3><p>其核心思想很简单，旨在<strong>融合FIFO的流式效率与Scratchpad的随机访问能力</strong>。</p>
+<img src="/images/image-20251009233214614.png" alt="image-20251009233214614" style="zoom:50%;" />
+
+
+
+<h2 id="参考资料"><a href="#参考资料" class="headerlink" title="参考资料"></a><font color = brown>参考资料</font></h2><ol>
+<li><a target="_blank" rel="noopener" href="https://zhuanlan.zhihu.com/p/1931376531361469801">Data Orchestration的设计哲学与演进</a></li>
+<li><a target="_blank" rel="noopener" href="https://dl.acm.org/doi/10.1145/3297858.3304025">Buffets论文</a></li>
+</ol>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/%E7%A1%AC%E4%BB%B6%E4%B8%93%E9%A2%98/" rel="tag"># 硬件专题</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2025/10/06/%E7%A1%AC%E4%BB%B6%E4%B8%93%E9%A2%98%EF%BC%9ATPU/" rel="prev" title="硬件专题：TPU">
+      <i class="fa fa-chevron-left"></i> 硬件专题：TPU
+    </a></div>
+      <div class="post-nav-item"></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+    <div class="comments" id="gitalk-container"></div>
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%95%B0%E6%8D%AE%E7%BC%96%E6%8E%92%E9%87%8D%E8%A6%81%E6%80%A7"><span class="nav-number">1.</span> <span class="nav-text">数据编排重要性</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%95%B0%E6%8D%AE%E7%BC%96%E6%8E%92%E5%88%86%E7%B1%BB"><span class="nav-number">2.</span> <span class="nav-text">数据编排分类</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%98%BE%E7%A4%BA-vs-%E9%9A%90%E5%BC%8F"><span class="nav-number">2.1.</span> <span class="nav-text">显示 vs. 隐式 </span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E9%9D%9E%E8%A7%A3%E8%80%A6-vs-%E8%A7%A3%E8%80%A6"><span class="nav-number">2.2.</span> <span class="nav-text">非解耦 vs. 解耦 </span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%B7%B2%E6%9C%89%E8%A7%A3%E5%86%B3%E6%96%B9%E6%A1%88%E7%9A%84%E5%AF%B9%E5%BA%94%E5%88%86%E7%B1%BB%E4%BB%A5%E5%8F%8Apros-cons"><span class="nav-number">2.3.</span> <span class="nav-text">已有解决方案的对应分类以及pros &amp; cons </span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#EDDO"><span class="nav-number">3.</span> <span class="nav-text">EDDO</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%B8%80%E7%A7%8D%E7%BB%9F%E4%B8%80%E7%9A%84%E6%95%B0%E6%8D%AE%E7%BC%96%E6%8E%92%E6%A1%86%E6%9E%B6%EF%BC%9ABuffets"><span class="nav-number">3.1.</span> <span class="nav-text">一种统一的数据编排框架：Buffets</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%8F%82%E8%80%83%E8%B5%84%E6%96%99"><span class="nav-number">4.</span> <span class="nav-text">参考资料</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">Leon Dou</p>
+  <div class="site-description" itemprop="description">关注领域：体系结构，编译技术</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">31</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">26</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">22</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2025</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Leon Dou</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-area"></i>
+    </span>
+      <span class="post-meta-item-text">站点总字数：</span>
+    <span title="站点总字数">328k</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+      <span class="post-meta-item-text">站点阅读时长 &asymp;</span>
+    <span title="站点阅读时长">4:58</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://pisces.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Pisces</a> 强力驱动
+  </div>
+
+        
+<div class="busuanzi-count">
+  <script data-pjax async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/pjax/pjax.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+<script src="/js/bookmark.js"></script>
+
+  <script>
+var pjax = new Pjax({
+  selectors: [
+    'head title',
+    '#page-configurations',
+    '.content-wrap',
+    '.post-toc-wrap',
+    '.languages',
+    '#pjax'
+  ],
+  switches: {
+    '.post-toc-wrap': Pjax.switches.innerHTML
+  },
+  analytics: false,
+  cacheBust: false,
+  scrollTo : !CONFIG.bookmark.enable
+});
+
+window.addEventListener('pjax:success', () => {
+  document.querySelectorAll('script[data-pjax], script#page-configurations, #pjax script').forEach(element => {
+    var code = element.text || element.textContent || element.innerHTML || '';
+    var parent = element.parentNode;
+    parent.removeChild(element);
+    var script = document.createElement('script');
+    if (element.id) {
+      script.id = element.id;
+    }
+    if (element.className) {
+      script.className = element.className;
+    }
+    if (element.type) {
+      script.type = element.type;
+    }
+    if (element.src) {
+      script.src = element.src;
+      // Force synchronous loading of peripheral JS.
+      script.async = false;
+    }
+    if (element.dataset.pjax !== undefined) {
+      script.dataset.pjax = '';
+    }
+    if (code !== '') {
+      script.appendChild(document.createTextNode(code));
+    }
+    parent.appendChild(script);
+  });
+  NexT.boot.refresh();
+  // Define Motion Sequence & Bootstrap Motion.
+  if (CONFIG.motion.enable) {
+    NexT.motion.integrator
+      .init()
+      .add(NexT.motion.middleWares.subMenu)
+      .add(NexT.motion.middleWares.postList)
+      .bootstrap();
+  }
+  NexT.utils.updateSidebarPosition();
+});
+</script>
+
+
+
+
+  
+
+
+
+
+  
+<script src="/js/local-search.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+    <div id="pjax">
+  
+
+  
+
+  
+
+<link rel="stylesheet" href="//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.min.css">
+
+<script>
+NexT.utils.loadComments(document.querySelector('#gitalk-container'), () => {
+  NexT.utils.getScript('//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.min.js', () => {
+    var gitalk = new Gitalk({
+      clientID    : 'Ov23liFsw1lTgh0R8s8H',
+      clientSecret: '1f947cb0d107ba1ffbcad8c25688c075224fff36',
+      repo        : 'micropuma.github.io',
+      owner       : 'micropuma',
+      admin       : ['micropuma'],
+      id          : 'cb34c9960ff7f28d7df0ccf179c952be',
+        language: 'zh-CN',
+      distractionFreeMode: true
+    });
+    gitalk.render('gitalk-container');
+  }, window.Gitalk);
+});
+</script>
+
+    </div>
+</body>
+</html>
