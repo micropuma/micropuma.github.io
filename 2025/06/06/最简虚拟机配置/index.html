@@ -29,7 +29,7 @@
 <meta property="og:image" content="http://example.com/images/image-20250606125138939.png">
 <meta property="og:image" content="http://example.com/images/image-20250606125728013.png">
 <meta property="article:published_time" content="2025-06-06T02:53:57.000Z">
-<meta property="article:modified_time" content="2025-06-19T13:12:06.297Z">
+<meta property="article:modified_time" content="2025-10-23T12:59:33.017Z">
 <meta property="article:author" content="Leon Dou">
 <meta property="article:tag" content="工具">
 <meta property="article:tag" content="虚拟机">
@@ -227,7 +227,7 @@
                   <i class="far fa-calendar-check"></i>
                 </span>
                 <span class="post-meta-item-text">更新于</span>
-                <time title="修改时间：2025-06-19 21:12:06" itemprop="dateModified" datetime="2025-06-19T21:12:06+08:00">2025-06-19</time>
+                <time title="修改时间：2025-10-23 20:59:33" itemprop="dateModified" datetime="2025-10-23T20:59:33+08:00">2025-10-23</time>
               </span>
             <span class="post-meta-item">
               <span class="post-meta-item-icon">
@@ -256,14 +256,14 @@
                 <i class="far fa-file-word"></i>
               </span>
                 <span class="post-meta-item-text">本文字数：</span>
-              <span>3.2k</span>
+              <span>4.5k</span>
             </span>
             <span class="post-meta-item" title="阅读时长">
               <span class="post-meta-item-icon">
                 <i class="far fa-clock"></i>
               </span>
                 <span class="post-meta-item-text">阅读时长 &asymp;</span>
-              <span>3 分钟</span>
+              <span>4 分钟</span>
             </span>
 
         </div>
@@ -441,8 +441,238 @@
 
 
 
-
-
+<h2 id="Docker命令大全"><a href="#Docker命令大全" class="headerlink" title="Docker命令大全"></a><font color = brown>Docker命令大全</font></h2><h2 id="容器生命周期管理"><a href="#容器生命周期管理" class="headerlink" title="容器生命周期管理"></a><font color=green>容器生命周期管理</font></h2><table>
+<thead>
+<tr>
+<th>命令</th>
+<th>说明</th>
+<th>常用参数</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>docker run</code></td>
+<td>创建并启动新容器</td>
+<td><code>-it</code>（交互式）<br><code>-d</code>（后台运行）<br><code>--name</code>（命名）<br><code>-p</code>（端口映射）<br><code>-v</code>（卷挂载）<br><code>--rm</code>（退出后自动删除）</td>
+</tr>
+<tr>
+<td><code>docker start</code></td>
+<td>启动已停止的容器</td>
+<td><code>-a</code>（附加输出）<br><code>-i</code>（交互式）</td>
+</tr>
+<tr>
+<td><code>docker stop</code></td>
+<td>停止运行中的容器</td>
+<td><code>-t</code>（超时时间）</td>
+</tr>
+<tr>
+<td><code>docker restart</code></td>
+<td>重启容器</td>
+<td></td>
+</tr>
+<tr>
+<td><code>docker pause</code>&#x2F;<code>unpause</code></td>
+<td>暂停&#x2F;恢复容器进程</td>
+<td></td>
+</tr>
+<tr>
+<td><code>docker rm</code></td>
+<td>删除容器</td>
+<td><code>-f</code>（强制删除运行中容器）<br><code>-v</code>（同时删除卷）</td>
+</tr>
+</tbody></table>
+<h2 id="容器运维操作"><a href="#容器运维操作" class="headerlink" title="容器运维操作"></a><font color = green>容器运维操作</font></h2><table>
+<thead>
+<tr>
+<th>命令</th>
+<th>说明</th>
+<th>常用参数</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>docker exec</code></td>
+<td>在运行中容器执行命令</td>
+<td><code>-it</code>（交互式终端）<br><code>-e</code>（设置环境变量）</td>
+</tr>
+<tr>
+<td><code>docker ps</code></td>
+<td>查看容器列表</td>
+<td><code>-a</code>（显示所有容器）<br><code>-q</code>（仅显示ID）<br><code>--format</code>（自定义格式）</td>
+</tr>
+<tr>
+<td><code>docker logs</code></td>
+<td>查看容器日志</td>
+<td><code>-f</code>（实时跟踪）<br><code>--tail N</code>（显示最后N行）</td>
+</tr>
+<tr>
+<td><code>docker inspect</code></td>
+<td>查看容器详情</td>
+<td><code>--format &#39;&#123;&#123;.NetworkSettings.IPAddress&#125;&#125;&#39;</code>（提取特定信息）</td>
+</tr>
+<tr>
+<td><code>docker stats</code></td>
+<td>实时监控容器资源</td>
+<td><code>--no-stream</code>（单次输出）</td>
+</tr>
+</tbody></table>
+<h2 id="镜像管理"><a href="#镜像管理" class="headerlink" title="镜像管理"></a><font color = green>镜像管理</font></h2><table>
+<thead>
+<tr>
+<th>命令</th>
+<th>说明</th>
+<th>常用参数</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>docker pull</code></td>
+<td>拉取镜像</td>
+<td><code>-a</code>（所有标签）<br><code>--platform</code>（指定架构）</td>
+</tr>
+<tr>
+<td><code>docker push</code></td>
+<td>推送镜像到仓库</td>
+<td></td>
+</tr>
+<tr>
+<td><code>docker build</code></td>
+<td>构建镜像</td>
+<td><code>-t</code>（打标签）<br><code>--no-cache</code>（禁用缓存）<br><code>-f</code>（指定Dockerfile）</td>
+</tr>
+<tr>
+<td><code>docker images</code></td>
+<td>列出本地镜像</td>
+<td><code>-q</code>（仅显示ID）<br><code>--digests</code>（显示摘要）</td>
+</tr>
+<tr>
+<td><code>docker rmi</code></td>
+<td>删除镜像</td>
+<td><code>-f</code>（强制删除）</td>
+</tr>
+<tr>
+<td><code>docker tag</code></td>
+<td>给镜像打标签</td>
+<td></td>
+</tr>
+<tr>
+<td><code>docker history</code></td>
+<td>查看镜像构建历史</td>
+<td></td>
+</tr>
+</tbody></table>
+<h2 id="数据管理"><a href="#数据管理" class="headerlink" title="数据管理"></a><font color = green>数据管理</font></h2><table>
+<thead>
+<tr>
+<th>命令</th>
+<th>说明</th>
+<th>常用参数</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>docker volume create</code></td>
+<td>创建数据卷</td>
+<td><code>--name</code></td>
+</tr>
+<tr>
+<td><code>docker volume ls</code></td>
+<td>列出数据卷</td>
+<td></td>
+</tr>
+<tr>
+<td><code>docker volume inspect</code></td>
+<td>查看卷详情</td>
+<td></td>
+</tr>
+<tr>
+<td><code>docker volume rm</code></td>
+<td>删除数据卷</td>
+<td></td>
+</tr>
+</tbody></table>
+<h2 id="网络管理"><a href="#网络管理" class="headerlink" title="网络管理"></a><font color = green>网络管理</font></h2><table>
+<thead>
+<tr>
+<th>命令</th>
+<th>说明</th>
+<th>常用参数</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>docker network create</code></td>
+<td>创建网络</td>
+<td><code>--driver</code>（驱动类型）<br><code>--subnet</code>（子网）</td>
+</tr>
+<tr>
+<td><code>docker network ls</code></td>
+<td>列出网络</td>
+<td></td>
+</tr>
+<tr>
+<td><code>docker network connect</code></td>
+<td>连接容器到网络</td>
+<td></td>
+</tr>
+<tr>
+<td><code>docker network inspect</code></td>
+<td>查看网络详情</td>
+<td></td>
+</tr>
+</tbody></table>
+<h2 id="系统管理"><a href="#系统管理" class="headerlink" title="系统管理"></a><font color = green>系统管理</font></h2><table>
+<thead>
+<tr>
+<th>命令</th>
+<th>说明</th>
+<th>常用参数</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>docker system df</code></td>
+<td>查看磁盘使用</td>
+<td></td>
+</tr>
+<tr>
+<td><code>docker system prune</code></td>
+<td>清理无用资源</td>
+<td><code>-a</code>（包括未使用镜像）<br><code>--volumes</code>（包括卷）</td>
+</tr>
+<tr>
+<td><code>docker info</code></td>
+<td>显示系统信息</td>
+<td></td>
+</tr>
+<tr>
+<td><code>docker version</code></td>
+<td>显示版本信息</td>
+<td></td>
+</tr>
+</tbody></table>
+<h2 id="组合命令示例"><a href="#组合命令示例" class="headerlink" title="组合命令示例"></a><font color = green>组合命令示例</font></h2><table>
+<thead>
+<tr>
+<th>场景</th>
+<th>命令示例</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>运行Web服务</strong></td>
+<td><code>docker run -d -p 80:80 --name webserver nginx</code></td>
+</tr>
+<tr>
+<td><strong>调试容器</strong></td>
+<td><code>docker exec -it webserver bash</code></td>
+</tr>
+<tr>
+<td><strong>备份数据</strong></td>
+<td><code>docker run --volumes-from db -v $(pwd):/backup busybox tar cvf /backup/backup.tar /dbdata</code></td>
+</tr>
+<tr>
+<td><strong>查看实时日志</strong></td>
+<td><code>docker logs -f app</code></td>
+</tr>
+<tr>
+<td><strong>构建多架构镜像</strong></td>
+<td><code>docker buildx build --platform linux/amd64,linux/arm64 -t myapp .</code></td>
+</tr>
+</tbody></table>
 
     </div>
 
@@ -528,7 +758,7 @@
 
       <!--noindex-->
       <div class="post-toc-wrap sidebar-panel">
-          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%86%85%E5%AD%98%E7%A9%BA%E9%97%B4%E7%AE%A1%E7%90%86"><span class="nav-number">1.</span> <span class="nav-text">内存空间管理</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%BA%A4%E6%8D%A2%E7%A9%BA%E9%97%B4%E5%92%8C%E5%86%85%E5%AD%98%E6%89%A9%E5%B1%95"><span class="nav-number">1.1.</span> <span class="nav-text">交换空间和内存扩展</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#SSH%E9%85%8D%E7%BD%AE%E7%9B%B8%E5%85%B3"><span class="nav-number">2.</span> <span class="nav-text">SSH配置相关</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#PIP%E5%92%8CAPT%E5%8C%85%E7%AE%A1%E7%90%86"><span class="nav-number">3.</span> <span class="nav-text">PIP和APT包管理</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#PIP%E6%8D%A2%E6%BA%90"><span class="nav-number">3.1.</span> <span class="nav-text">PIP换源</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#apt%E6%8D%A2%E6%BA%90"><span class="nav-number">3.2.</span> <span class="nav-text">apt换源</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Proxy%E4%BB%A3%E7%90%86%E9%85%8D%E7%BD%AE"><span class="nav-number">3.3.</span> <span class="nav-text">Proxy代理配置</span></a></li></ol></li></ol></div>
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%86%85%E5%AD%98%E7%A9%BA%E9%97%B4%E7%AE%A1%E7%90%86"><span class="nav-number">1.</span> <span class="nav-text">内存空间管理</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%BA%A4%E6%8D%A2%E7%A9%BA%E9%97%B4%E5%92%8C%E5%86%85%E5%AD%98%E6%89%A9%E5%B1%95"><span class="nav-number">1.1.</span> <span class="nav-text">交换空间和内存扩展</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#SSH%E9%85%8D%E7%BD%AE%E7%9B%B8%E5%85%B3"><span class="nav-number">2.</span> <span class="nav-text">SSH配置相关</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#PIP%E5%92%8CAPT%E5%8C%85%E7%AE%A1%E7%90%86"><span class="nav-number">3.</span> <span class="nav-text">PIP和APT包管理</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#PIP%E6%8D%A2%E6%BA%90"><span class="nav-number">3.1.</span> <span class="nav-text">PIP换源</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#apt%E6%8D%A2%E6%BA%90"><span class="nav-number">3.2.</span> <span class="nav-text">apt换源</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Proxy%E4%BB%A3%E7%90%86%E9%85%8D%E7%BD%AE"><span class="nav-number">3.3.</span> <span class="nav-text">Proxy代理配置</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Docker%E5%91%BD%E4%BB%A4%E5%A4%A7%E5%85%A8"><span class="nav-number">4.</span> <span class="nav-text">Docker命令大全</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%AE%B9%E5%99%A8%E7%94%9F%E5%91%BD%E5%91%A8%E6%9C%9F%E7%AE%A1%E7%90%86"><span class="nav-number">5.</span> <span class="nav-text">容器生命周期管理</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%AE%B9%E5%99%A8%E8%BF%90%E7%BB%B4%E6%93%8D%E4%BD%9C"><span class="nav-number">6.</span> <span class="nav-text">容器运维操作</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E9%95%9C%E5%83%8F%E7%AE%A1%E7%90%86"><span class="nav-number">7.</span> <span class="nav-text">镜像管理</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%95%B0%E6%8D%AE%E7%AE%A1%E7%90%86"><span class="nav-number">8.</span> <span class="nav-text">数据管理</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%BD%91%E7%BB%9C%E7%AE%A1%E7%90%86"><span class="nav-number">9.</span> <span class="nav-text">网络管理</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%B3%BB%E7%BB%9F%E7%AE%A1%E7%90%86"><span class="nav-number">10.</span> <span class="nav-text">系统管理</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%BB%84%E5%90%88%E5%91%BD%E4%BB%A4%E7%A4%BA%E4%BE%8B"><span class="nav-number">11.</span> <span class="nav-text">组合命令示例</span></a></li></ol></div>
       </div>
       <!--/noindex-->
 
@@ -592,13 +822,13 @@
       <i class="fa fa-chart-area"></i>
     </span>
       <span class="post-meta-item-text">站点总字数：</span>
-    <span title="站点总字数">328k</span>
+    <span title="站点总字数">330k</span>
     <span class="post-meta-divider">|</span>
     <span class="post-meta-item-icon">
       <i class="fa fa-coffee"></i>
     </span>
       <span class="post-meta-item-text">站点阅读时长 &asymp;</span>
-    <span title="站点阅读时长">4:58</span>
+    <span title="站点阅读时长">5:01</span>
 </div>
   <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://pisces.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Pisces</a> 强力驱动
   </div>
