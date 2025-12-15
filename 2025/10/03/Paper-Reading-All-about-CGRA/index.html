@@ -277,6 +277,7 @@
       
         <p><img src="/images/image-20251003150029520.png" alt="image-20251003150029520"></p>
 <span id="more"></span>
+
 <blockquote>
 <p>这一专题主要是记录我的paper阅读过程，按照不同前沿方向进行整理，以求理清不同前沿方向基本概念框架，目前进展和局限瓶颈，促进自己的编译研究工作。  </p>
 </blockquote>
@@ -287,7 +288,7 @@
 </ol>
 <h3 id="CGRA架构特点"><a href="#CGRA架构特点" class="headerlink" title="CGRA架构特点"></a><font color = green>CGRA架构特点</font></h3><p>CGRA的架构思想主要是将计算和传输都做了空间层面的分配，总结下来是如下两点：  </p>
 <ol>
-<li>相比传统的冯诺依曼架构，CGRA通过其空间-时间并行性，支持将数据流图中的不同操作静态映射到不同的处理单元(PE)上执行。这种架构极大地减少了传统指令流水线中指令取指/译码、集中式寄存器访问和流水线寄存器所带来的开销，从而在能效上具有显著优势。</li>
+<li>相比传统的冯诺依曼架构，CGRA通过其空间-时间并行性，支持将数据流图中的不同操作静态映射到不同的处理单元(PE)上执行。这种架构极大地减少了传统指令流水线中指令取指&#x2F;译码、集中式寄存器访问和流水线寄存器所带来的开销，从而在能效上具有显著优势。</li>
 <li>相比传统架构的寄存器存取，CGRA直接通过NoC在互联的PE上传输数据。</li>
 </ol>
 <p><img src="/images/image-20251003152703273.png" alt="image-20251003152703273"></p>
@@ -296,11 +297,11 @@
 <li>CGRA架构的核心是2D的PE阵列。一个PE一般包含FU（功能单元）做基本运算和内存访问操作，并有register file存储临时变量。PE中一般还包含config mem，用于存储配置单个PE的FU和reigster的配置序列。</li>
 <li>PE阵列通过NoC高速互连。每个PE都通过switch连接到其邻居PE，并且可以把计算结果传输到指定的邻居上来进行下一个cycle的计算。每个单独的PE执行的计算以及通过互连将数据路由到邻居都可以按周期为基准进行配置（config mem配置序列控制）。</li>
 <li>PE阵列可以在空间上（不同PE独立配置序列），时间（配置序列按照周期控制单个PE）上两个维度进行配置。</li>
-<li>CGRA是可重构的，即可以重新给整个PE阵列新的配置序列（从外部存储load进CGRA），但存在初始设置时间开销。 </li>
+<li>CGRA是可重构的，即可以重新给整个PE阵列新的配置序列（从外部存储load进CGRA），但存在初始设置时间开销。</li>
 </ul>
 <h3 id="为什么CGRA高效且低功耗？"><a href="#为什么CGRA高效且低功耗？" class="headerlink" title="为什么CGRA高效且低功耗？"></a><font color = green>为什么CGRA高效且低功耗？</font></h3><p>CGRA同时具有低功耗，灵活性和不错的性能，主要依赖于如下几个架构特点：</p>
 <h4 id="规避冯诺依曼体系的指令overhead和集中式寄存器机制开销"><a href="#规避冯诺依曼体系的指令overhead和集中式寄存器机制开销" class="headerlink" title="规避冯诺依曼体系的指令overhead和集中式寄存器机制开销"></a>规避冯诺依曼体系的指令overhead和集中式寄存器机制开销</h4><h4 id="更充分的并行性挖掘"><a href="#更充分的并行性挖掘" class="headerlink" title="更充分的并行性挖掘"></a>更充分的并行性挖掘</h4><blockquote>
-<p>对比DSP/GPU，这两种硬件面对计算任务中可向量化部分均比较高效。比如<code>A[i] = B[i] + C[i]</code>，GPU上可以用N个thread来分别计算<code>[1: N]</code>个加法操作，在DSP上则依赖SIMD指令完成。但如果计算存在依赖，比如<code>A[i+1] = A[i] + B[i] + C[i]</code>，这两种硬件则无能为力了。而对于CGRA，其可以在时间上进行流水并行，并行能力可以得到一定保障。</p>
+<p>对比DSP&#x2F;GPU，这两种硬件面对计算任务中可向量化部分均比较高效。比如<code>A[i] = B[i] + C[i]</code>，GPU上可以用N个thread来分别计算<code>[1: N]</code>个加法操作，在DSP上则依赖SIMD指令完成。但如果计算存在依赖，比如<code>A[i+1] = A[i] + B[i] + C[i]</code>，这两种硬件则无能为力了。而对于CGRA，其可以在时间上进行流水并行，并行能力可以得到一定保障。</p>
 </blockquote>
 <h4 id="粗粒度兼具灵活性与频率功耗性能"><a href="#粗粒度兼具灵活性与频率功耗性能" class="headerlink" title="粗粒度兼具灵活性与频率功耗性能"></a>粗粒度兼具灵活性与频率功耗性能</h4><blockquote>
 <p>和CGRA相对的是FPGA，是一种细粒度可重构硬件。其基本单元是比特级的查找表，配置比特流庞大，布线资源消耗多，导致<strong>频率低、功耗高</strong>（特别是静态功耗）。而CGRA的基本单元是字级的处理单元（如整个ALU、乘法器）。这种<strong>粗粒度</strong>特性使得其配置信息更精简，互连网络更高效，从而能够实现<strong>更高的运行频率</strong>和<strong>更低的功耗</strong>。</p>
@@ -484,13 +485,13 @@
       <i class="fa fa-chart-area"></i>
     </span>
       <span class="post-meta-item-text">站点总字数：</span>
-    <span title="站点总字数">336k</span>
+    <span title="站点总字数">338k</span>
     <span class="post-meta-divider">|</span>
     <span class="post-meta-item-icon">
       <i class="fa fa-coffee"></i>
     </span>
       <span class="post-meta-item-text">站点阅读时长 &asymp;</span>
-    <span title="站点阅读时长">5:06</span>
+    <span title="站点阅读时长">5:07</span>
 </div>
   <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://pisces.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Pisces</a> 强力驱动
   </div>

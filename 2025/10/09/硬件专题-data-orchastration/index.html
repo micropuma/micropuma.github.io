@@ -267,13 +267,14 @@
       
         <p><img src="/images/image-20251009232853003.png" alt="image-20251009232853003"></p>
 <span id="more"></span>
+
 <blockquote>
 <p>硬件专题第二章，讲解AI芯片的数据编排。主要参考《Efficient processing of DNN》一书，强烈推荐。申明，本文大量引用《Data Orchestration 的设计哲学与演进》一文。</p>
 </blockquote>
 <h2 id="数据编排重要性"><a href="#数据编排重要性" class="headerlink" title="数据编排重要性"></a><font color = brown>数据编排重要性</font></h2><blockquote>
 <p>数据编排（Data Orchestration）是一门关于如何精确、高效地在存储层次结构中移动数据的艺术与科学。</p>
 </blockquote>
-<p>数据编排指在编译期就静态配置好数据的传输网络（时间和空间两个维度均要确定好，即传给谁，什么时候传）。对于面向AI应用的Dataflow芯片，由于上层任务的规整性，设计良好的数据编排模型是十分有收益的（减少/合理化数据搬运，大幅降低能耗成本）。  </p>
+<p>数据编排指在编译期就静态配置好数据的传输网络（时间和空间两个维度均要确定好，即传给谁，什么时候传）。对于面向AI应用的Dataflow芯片，由于上层任务的规整性，设计良好的数据编排模型是十分有收益的（减少&#x2F;合理化数据搬运，大幅降低能耗成本）。  </p>
 <p>一个好的数据编排要满足如下要点：  </p>
 <ol>
 <li>高效地且及时地传输消费者恰好需要的数据。  </li>
@@ -284,13 +285,14 @@
 <blockquote>
 <p>:key: 一个优秀的数据编排系统，必须在设计层面回答一系列根本性问题：数据应被置于何处（Placement Strategy）？何时进行传输（Timing）？数据的访问模式（Access Pattern）和生命周期如何 ？以及，当存在多个数据消费者时，它们之间如何协调与同步（Coordination and Synchronization）？</p>
 </blockquote>
-<h2 id="数据编排分类"><a href="#数据编排分类" class="headerlink" title="数据编排分类"></a><font color = brown>数据编排分类</font></h2><p><img src="/images/image-20251009233135003.png" alt="image-20251009233135003" style="zoom:50%;" /></p>
-<p>上图是数据编排的分类图，总共有两个象限（implicit/explicit以及coupled/decoupled）。下表是目前常用数据编排方案的分类划分：   </p>
+<h2 id="数据编排分类"><a href="#数据编排分类" class="headerlink" title="数据编排分类"></a><font color = brown>数据编排分类</font></h2><img src="/images/image-20251009233135003.png" alt="image-20251009233135003" style="zoom:50%;" />
+
+<p>上图是数据编排的分类图，总共有两个象限（implicit&#x2F;explicit以及coupled&#x2F;decoupled）。下表是目前常用数据编排方案的分类划分：   </p>
 <p><img src="/images/image-20251009233154031.png" alt="image-20251009233154031"></p>
 <p>对于AI加速器，其有如下要求以及特性：  </p>
 <ul>
 <li>高性能，低延迟，低功耗</li>
-<li>计算任务比较规整，静态可确定  </li>
+<li>计算任务比较规整，静态可确定</li>
 </ul>
 <p>因此explicit + decoupled是比较合适的数据重排方案，原因如下： </p>
 <ul>
@@ -304,14 +306,14 @@
 </ul>
 <p>接下来详细解读这几个分类：</p>
 <h3 id="显示-vs-隐式"><a href="#显示-vs-隐式" class="headerlink" title="显示 vs. 隐式 "></a><font color = green>显示 vs. 隐式 </font></h3><blockquote>
-<p> 该维度定义了请求者在发起请求时，对数据物理位置的感知程度 。在隐式系统中，请求者对数据位于何级存储（如L1/L2 Cache或DRAM）一无所知，硬件会自动处理地址转换和数据迁移 。这种方式对上层软件屏蔽了底层复杂性，易于编程 。然而，其代价是高昂的硬件开销，例如用于追踪数据状态的标签（tags）和比较器逻辑 。相对地，在显式系统中，请求者（通常是软件或编译器）必须明确指定数据在存储层次间的移动路径和目标地址 。这种方式硬件开销极低 ，但对编程和编译器的要求极为严苛 。</p>
+<p> 该维度定义了请求者在发起请求时，对数据物理位置的感知程度 。在隐式系统中，请求者对数据位于何级存储（如L1&#x2F;L2 Cache或DRAM）一无所知，硬件会自动处理地址转换和数据迁移 。这种方式对上层软件屏蔽了底层复杂性，易于编程 。然而，其代价是高昂的硬件开销，例如用于追踪数据状态的标签（tags）和比较器逻辑 。相对地，在显式系统中，请求者（通常是软件或编译器）必须明确指定数据在存储层次间的移动路径和目标地址 。这种方式硬件开销极低 ，但对编程和编译器的要求极为严苛 。</p>
 </blockquote>
 <p>补充一点，隐式还有一个大问题：<strong>landing zone问题</strong>。即发出request后，需要开辟一个存储区域用来填充回复的数据，这块存储区在整个回环（发出request，到接受数据）的过程中都要保留，造成内存资源浪费。</p>
 <h3 id="非解耦-vs-解耦"><a href="#非解耦-vs-解耦" class="headerlink" title="非解耦 vs. 解耦 "></a><font color = green>非解耦 vs. 解耦 </font></h3><blockquote>
 <p>该维度关注数据请求者（Requestor）与消费者（Consumer）是否为同一实体 。在耦合系统中，请求与消费由同一个处理核心执行，其优点是同步机制直观简单 ，但代价是消费者在等待数据时可能会陷入停顿（stall），从而限制了流水线效率 。而在解耦系统中，请求者与消费者分离，例如由一个专门的地址生成单元提前发起访存请求 。这使得访存延迟得以被隐藏在计算过程中，但引入了两者间更为复杂的同步需求 。  </p>
 </blockquote>
 <p>比较典型的解耦方式是引入DMA，搭配以double buffer提高计算-传输overlap。</p>
-<h3 id="已有解决方案的对应分类以及pros-amp-cons"><a href="#已有解决方案的对应分类以及pros-amp-cons" class="headerlink" title="已有解决方案的对应分类以及pros &amp; cons "></a><font color = green>已有解决方案的对应分类以及pros &amp; cons </font></h3><ul>
+<h3 id="已有解决方案的对应分类以及pros-cons"><a href="#已有解决方案的对应分类以及pros-cons" class="headerlink" title="已有解决方案的对应分类以及pros &amp; cons "></a><font color = green>已有解决方案的对应分类以及pros &amp; cons </font></h3><ul>
 <li>cache：implcit + coupled，其能耗对于AI芯片不可接受（tag标签和set associative极大电路空间资源占用）。</li>
 <li>scratchpad：explicit + coupled，可以显示的数据控制。比较典型的例子是GPU的SMEM。其问题是编程控制极其复杂且易出错，如果考虑性能，同步问题也很困难。<strong>GPU通过SIMT编程模型，巧妙规避了scratchpad同步的难题。</strong> 但在dataflow arch上，scratchpad是不可接受的。</li>
 <li>DAE：implicit + decoupled，DAE架构指的是两个processor通过hardware fifo通信，一个为生产者，一个为消费者。由于fifo队列的存在，两个processor可以有不同的timing。这里的producer相当于dma，DAE本质也是一种解耦机制。  </li>
@@ -319,7 +321,10 @@
 </ul>
 <h2 id="EDDO"><a href="#EDDO" class="headerlink" title="EDDO"></a><font color = brown>EDDO</font></h2><p>EEDO即explicit+decoupled。我们重点来解读Buffets论文，是目前最前沿的数据编排解决方案。</p>
 <h3 id="一种统一的数据编排框架：Buffets"><a href="#一种统一的数据编排框架：Buffets" class="headerlink" title="一种统一的数据编排框架：Buffets"></a><font color = green>一种统一的数据编排框架：Buffets</font></h3><p>其核心思想很简单，旨在<strong>融合FIFO的流式效率与Scratchpad的随机访问能力</strong>。</p>
-<p><img src="/images/image-20251009233214614.png" alt="image-20251009233214614" style="zoom:50%;" /></p>
+<img src="/images/image-20251009233214614.png" alt="image-20251009233214614" style="zoom:50%;" />
+
+
+
 <h2 id="参考资料"><a href="#参考资料" class="headerlink" title="参考资料"></a><font color = brown>参考资料</font></h2><ol>
 <li><a target="_blank" rel="noopener" href="https://zhuanlan.zhihu.com/p/1931376531361469801">Data Orchestration的设计哲学与演进</a></li>
 <li><a target="_blank" rel="noopener" href="https://dl.acm.org/doi/10.1145/3297858.3304025">Buffets论文</a></li>
@@ -408,7 +413,7 @@
 
       <!--noindex-->
       <div class="post-toc-wrap sidebar-panel">
-          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%95%B0%E6%8D%AE%E7%BC%96%E6%8E%92%E9%87%8D%E8%A6%81%E6%80%A7"><span class="nav-number">1.</span> <span class="nav-text">数据编排重要性</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%95%B0%E6%8D%AE%E7%BC%96%E6%8E%92%E5%88%86%E7%B1%BB"><span class="nav-number">2.</span> <span class="nav-text">数据编排分类</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%98%BE%E7%A4%BA-vs-%E9%9A%90%E5%BC%8F"><span class="nav-number">2.1.</span> <span class="nav-text">显示 vs. 隐式 </span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E9%9D%9E%E8%A7%A3%E8%80%A6-vs-%E8%A7%A3%E8%80%A6"><span class="nav-number">2.2.</span> <span class="nav-text">非解耦 vs. 解耦 </span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%B7%B2%E6%9C%89%E8%A7%A3%E5%86%B3%E6%96%B9%E6%A1%88%E7%9A%84%E5%AF%B9%E5%BA%94%E5%88%86%E7%B1%BB%E4%BB%A5%E5%8F%8Apros-amp-cons"><span class="nav-number">2.3.</span> <span class="nav-text">已有解决方案的对应分类以及pros &amp; cons </span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#EDDO"><span class="nav-number">3.</span> <span class="nav-text">EDDO</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%B8%80%E7%A7%8D%E7%BB%9F%E4%B8%80%E7%9A%84%E6%95%B0%E6%8D%AE%E7%BC%96%E6%8E%92%E6%A1%86%E6%9E%B6%EF%BC%9ABuffets"><span class="nav-number">3.1.</span> <span class="nav-text">一种统一的数据编排框架：Buffets</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%8F%82%E8%80%83%E8%B5%84%E6%96%99"><span class="nav-number">4.</span> <span class="nav-text">参考资料</span></a></li></ol></div>
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%95%B0%E6%8D%AE%E7%BC%96%E6%8E%92%E9%87%8D%E8%A6%81%E6%80%A7"><span class="nav-number">1.</span> <span class="nav-text">数据编排重要性</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%95%B0%E6%8D%AE%E7%BC%96%E6%8E%92%E5%88%86%E7%B1%BB"><span class="nav-number">2.</span> <span class="nav-text">数据编排分类</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%98%BE%E7%A4%BA-vs-%E9%9A%90%E5%BC%8F"><span class="nav-number">2.1.</span> <span class="nav-text">显示 vs. 隐式 </span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E9%9D%9E%E8%A7%A3%E8%80%A6-vs-%E8%A7%A3%E8%80%A6"><span class="nav-number">2.2.</span> <span class="nav-text">非解耦 vs. 解耦 </span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%B7%B2%E6%9C%89%E8%A7%A3%E5%86%B3%E6%96%B9%E6%A1%88%E7%9A%84%E5%AF%B9%E5%BA%94%E5%88%86%E7%B1%BB%E4%BB%A5%E5%8F%8Apros-cons"><span class="nav-number">2.3.</span> <span class="nav-text">已有解决方案的对应分类以及pros &amp; cons </span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#EDDO"><span class="nav-number">3.</span> <span class="nav-text">EDDO</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%B8%80%E7%A7%8D%E7%BB%9F%E4%B8%80%E7%9A%84%E6%95%B0%E6%8D%AE%E7%BC%96%E6%8E%92%E6%A1%86%E6%9E%B6%EF%BC%9ABuffets"><span class="nav-number">3.1.</span> <span class="nav-text">一种统一的数据编排框架：Buffets</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%8F%82%E8%80%83%E8%B5%84%E6%96%99"><span class="nav-number">4.</span> <span class="nav-text">参考资料</span></a></li></ol></div>
       </div>
       <!--/noindex-->
 
@@ -472,13 +477,13 @@
       <i class="fa fa-chart-area"></i>
     </span>
       <span class="post-meta-item-text">站点总字数：</span>
-    <span title="站点总字数">336k</span>
+    <span title="站点总字数">338k</span>
     <span class="post-meta-divider">|</span>
     <span class="post-meta-item-icon">
       <i class="fa fa-coffee"></i>
     </span>
       <span class="post-meta-item-text">站点阅读时长 &asymp;</span>
-    <span title="站点阅读时长">5:06</span>
+    <span title="站点阅读时长">5:07</span>
 </div>
   <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://pisces.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Pisces</a> 强力驱动
   </div>

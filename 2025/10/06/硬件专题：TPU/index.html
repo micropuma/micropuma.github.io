@@ -277,10 +277,12 @@
       
         <p><img src="/images/66baf0685c2643343c02470ec6c6c91f.png" alt="66baf0685c2643343c02470ec6c6c91f"></p>
 <span id="more"></span>
+
 <blockquote>
 <p>硬件专题，每一章解读一个AI芯片，主要从硬件架构，软件栈等角度进行解读，查漏补缺。同时关注到今年的MICRO25的一篇PytorchSim的NPU仿真工作，在拓展部分也会结合这篇文章开展更详尽的讨论。</p>
 </blockquote>
-<h2 id="NPU基础架构"><a href="#NPU基础架构" class="headerlink" title="NPU基础架构"></a><font color = brown>NPU基础架构</font></h2><p><img src="/images/f4f02daeb2da8a25bad2998916cd8447.png" alt="f4f02daeb2da8a25bad2998916cd8447" style="zoom:67%;" /></p>
+<h2 id="NPU基础架构"><a href="#NPU基础架构" class="headerlink" title="NPU基础架构"></a><font color = brown>NPU基础架构</font></h2><img src="/images/f4f02daeb2da8a25bad2998916cd8447.png" alt="f4f02daeb2da8a25bad2998916cd8447" style="zoom:67%;" />
+
 <p>上图是NPUv2的架构图，仅仅支持推理。整个架构的<strong>存储体系结构</strong>分为三级别：  </p>
 <ul>
 <li>HMB：片外存储空间（32GiB）</li>
@@ -294,7 +296,7 @@
 <ul>
 <li>MXU：矩阵乘处理单元，是tensor core的核心。内部是128x128的脉动阵列。</li>
 <li>VPU：向量处理单元，主要处理诸如Relu，Reduction等操作。</li>
-<li>Scalar Unit：标量处理单元。  </li>
+<li>Scalar Unit：标量处理单元。</li>
 </ul>
 <blockquote>
 <p>:question:TPU相比GPU，其处理核心远少于GPU的处理核心，所以TPU是如何达到高吞吐同时低功耗的？</p>
@@ -303,13 +305,14 @@
 <ul>
 <li>NPU的脉动阵列 + 流水技术</li>
 <li>NPU的AOT编译技术（:key:google的XLA编译器很强大）  </li>
-<li>DL模型大多是矩阵乘加运算，比较规整，极其适配脉动阵列  </li>
+<li>DL模型大多是矩阵乘加运算，比较规整，极其适配脉动阵列</li>
 </ul>
 <h3 id="脉动阵列"><a href="#脉动阵列" class="headerlink" title="脉动阵列"></a><font color = green>脉动阵列</font></h3><p>下图比较清楚地展示了脉动阵列的原理：   </p>
 <p><img src="/images/bb67ae8f7be38d468be6bb989ee82159.png" alt="bb67ae8f7be38d468be6bb989ee82159"></p>
-<p>更详细的介绍，参考<a target="_blank" rel="noopener" href="https://www.youtube.com/watch?v=8zbh4gWGa7I&amp;t=23s">CMU arch课程</a></p>
+<p>更详细的介绍，参考<a target="_blank" rel="noopener" href="https://www.youtube.com/watch?v=8zbh4gWGa7I&t=23s">CMU arch课程</a></p>
 <p>:question:如何对于脉动阵列做overlap？Scale book中给出了答案：  </p>
-<p>  <img src="/images/pipeline_pointwise-1759748641769-4.gif" alt="pipeline_pointwise" style="zoom:50%;" /></p>
+  <img src="/images/pipeline_pointwise-1759748641769-4.gif" alt="pipeline_pointwise" style="zoom:50%;" />
+
 <p>这种架构的优点很明确：  </p>
 <ul>
 <li>节省memory，节省memory bandwith</li>
@@ -320,79 +323,79 @@
 <li>需要计算任务完美适配脉动阵列，比如<strong>稀疏计算对于Systolic Array就是灾难</strong>。</li>
 </ul>
 <h3 id="编译-硬件-co-design"><a href="#编译-硬件-co-design" class="headerlink" title="编译-硬件 co-design"></a><font color = green>编译-硬件 co-design</font></h3><p>脉动阵列的另一个大优势是没有cache缓存结构。面对DL任务，编译器需要将模型的每一层静态编译map到脉动阵列上，所以所有内存模型也是编译可确定的。这导致的结果就是编译器可以机制的优化内存复用，传统架构的cache机制在TPU中可以被scratchpad所替代。  </p>
-<p>这一部分具体内容十分复杂，google主要研制了XLA编译器，支持AOT/JIT混合编译，即AOT编译子图，JIT的方式调用运行。感兴趣读者自行参考<a target="_blank" rel="noopener" href="https://www.tensorflow.org/xla?hl=zh-cn">XLA官方文档</a>。</p>
+<p>这一部分具体内容十分复杂，google主要研制了XLA编译器，支持AOT&#x2F;JIT混合编译，即AOT编译子图，JIT的方式调用运行。感兴趣读者自行参考<a target="_blank" rel="noopener" href="https://www.tensorflow.org/xla?hl=zh-cn">XLA官方文档</a>。</p>
 <h2 id="TPU集群"><a href="#TPU集群" class="headerlink" title="TPU集群"></a><font color = brown>TPU集群</font></h2><p>为了满足google的云推理服务需求（google最早是为了语音ai启动TPU项目，目前主要业务是广告推荐等应用场景），TPU的设计一大核心特点就是易于扩展（scale）。</p>
 <p>下表按层次结构组织了TPU的各个核心概念，并概括了其定义、关键技术特性和设计优势。</p>
-<div class="table-container">
 <table>
 <thead>
 <tr>
-<th style="text-align:left">架构层级/概念</th>
-<th style="text-align:left">描述与定义</th>
-<th style="text-align:left">关键技术/拓扑</th>
-<th style="text-align:left">关键特性与设计优势</th>
+<th align="left">架构层级&#x2F;概念</th>
+<th align="left">描述与定义</th>
+<th align="left">关键技术&#x2F;拓扑</th>
+<th align="left">关键特性与设计优势</th>
 </tr>
 </thead>
-<tbody>
-<tr>
-<td style="text-align:left"><strong>芯片</strong></td>
-<td style="text-align:left">计算的基本单元，专为线性代数计算的ASIC。一般<strong>包含两个chip</strong></td>
-<td style="text-align:left">-</td>
-<td style="text-align:left">包含矩阵乘单元等核心计算部件。</td>
+<tbody><tr>
+<td align="left"><strong>芯片</strong></td>
+<td align="left">计算的基本单元，专为线性代数计算的ASIC。一般<strong>包含两个chip</strong></td>
+<td align="left">-</td>
+<td align="left">包含矩阵乘单元等核心计算部件。</td>
 </tr>
 <tr>
-<td style="text-align:left"><strong>Tray</strong></td>
-<td style="text-align:left">基础物理封装单元，通常包含<strong>4个TPU芯片</strong>。</td>
-<td style="text-align:left"><strong>ICI</strong></td>
-<td style="text-align:left">芯片间通过高带宽的ICI互联，形成一个紧密的计算模块。配备主机CPU通过PCIe连接。</td>
+<td align="left"><strong>Tray</strong></td>
+<td align="left">基础物理封装单元，通常包含<strong>4个TPU芯片</strong>。</td>
+<td align="left"><strong>ICI</strong></td>
+<td align="left">芯片间通过高带宽的ICI互联，形成一个紧密的计算模块。配备主机CPU通过PCIe连接。</td>
 </tr>
 <tr>
-<td style="text-align:left"><strong>Rack</strong></td>
-<td style="text-align:left">物理机架，包含多个Tray（如TPUv4 Rack含4x4x4个芯片）。</td>
-<td style="text-align:left"><strong>3D Torus</strong> (TPUv4)<br><strong>2D Torus</strong> (v2, v3, v5e)</td>
-<td style="text-align:left">通过ICI和<strong>OCS</strong>连接芯片，形成立方体结构。OCS提供<strong>环绕连接</strong>，减少通信跳数。</td>
+<td align="left"><strong>Rack</strong></td>
+<td align="left">物理机架，包含多个Tray（如TPUv4 Rack含4x4x4个芯片）。</td>
+<td align="left"><strong>3D Torus</strong> (TPUv4)<br><strong>2D Torus</strong> (v2, v3, v5e)</td>
+<td align="left">通过ICI和<strong>OCS</strong>连接芯片，形成立方体结构。OCS提供<strong>环绕连接</strong>，减少通信跳数。</td>
 </tr>
 <tr>
-<td style="text-align:left"><strong>Pod (SuperPod)</strong></td>
-<td style="text-align:left">通过ICI/OCS互联的最大TPU集群单元（如TPUv4 Pod含4096芯片）。</td>
-<td style="text-align:left">3D Torus of Racks</td>
-<td style="text-align:left">代表单一大规模机器学习训练任务所能使用的最大、最快的计算单元。</td>
+<td align="left"><strong>Pod (SuperPod)</strong></td>
+<td align="left">通过ICI&#x2F;OCS互联的最大TPU集群单元（如TPUv4 Pod含4096芯片）。</td>
+<td align="left">3D Torus of Racks</td>
+<td align="left">代表单一大规模机器学习训练任务所能使用的最大、最快的计算单元。</td>
 </tr>
 <tr>
-<td style="text-align:left"><strong>Slice</strong></td>
-<td style="text-align:left">在一个Pod内，通过OCS动态划分出的TPU子集。</td>
-<td style="text-align:left">可配置（立方体、雪茄形等）</td>
-<td style="text-align:left"><strong>核心灵活性</strong>：<br>• 拓扑即超参数<br>• 非连续分配<br>• 可重构拓扑（支持扭曲环面）</td>
+<td align="left"><strong>Slice</strong></td>
+<td align="left">在一个Pod内，通过OCS动态划分出的TPU子集。</td>
+<td align="left">可配置（立方体、雪茄形等）</td>
+<td align="left"><strong>核心灵活性</strong>：<br>• 拓扑即超参数<br>• 非连续分配<br>• 可重构拓扑（支持扭曲环面）</td>
 </tr>
 <tr>
-<td style="text-align:left"><strong>Multi-Pod</strong></td>
-<td style="text-align:left">多个Pod通过数据中心网络联合工作。</td>
-<td style="text-align:left">DCN</td>
-<td style="text-align:left">用于超大规模训练，Pod间通信带宽低于ICI。</td>
+<td align="left"><strong>Multi-Pod</strong></td>
+<td align="left">多个Pod通过数据中心网络联合工作。</td>
+<td align="left">DCN</td>
+<td align="left">用于超大规模训练，Pod间通信带宽低于ICI。</td>
 </tr>
 <tr>
-<td style="text-align:left"><strong>ICI</strong></td>
-<td style="text-align:left"><strong>芯片间互联</strong>，TPU专用的高速内部网络。</td>
-<td style="text-align:left">2D/3D Torus</td>
-<td style="text-align:left">提供极高带宽和低延迟，使TPU芯片能像统一内存系统一样工作。</td>
+<td align="left"><strong>ICI</strong></td>
+<td align="left"><strong>芯片间互联</strong>，TPU专用的高速内部网络。</td>
+<td align="left">2D&#x2F;3D Torus</td>
+<td align="left">提供极高带宽和低延迟，使TPU芯片能像统一内存系统一样工作。</td>
 </tr>
 <tr>
-<td style="text-align:left"><strong>OCS</strong></td>
-<td style="text-align:left"><strong>光电路交换</strong>，用于灵活的芯片连接。</td>
-<td style="text-align:left">-</td>
-<td style="text-align:left"><strong>三大优势</strong>：<br>• 环绕连接优化网络<br>• 实现非连续切片<br>• 支持拓扑重构</td>
+<td align="left"><strong>OCS</strong></td>
+<td align="left"><strong>光电路交换</strong>，用于灵活的芯片连接。</td>
+<td align="left">-</td>
+<td align="left"><strong>三大优势</strong>：<br>• 环绕连接优化网络<br>• 实现非连续切片<br>• 支持拓扑重构</td>
 </tr>
-</tbody>
-</table>
-</div>
+</tbody></table>
 <h4 id="Chip"><a href="#Chip" class="headerlink" title="Chip"></a>Chip</h4><p>chip结构如下：两个TPU core，搭配一个共享的HBM。</p>
-<p><img src="/images/212a3823252a38a318e9fd37e9002bc3.png" alt="212a3823252a38a318e9fd37e9002bc3" style="zoom: 33%;" /></p>
+<img src="/images/212a3823252a38a318e9fd37e9002bc3.png" alt="212a3823252a38a318e9fd37e9002bc3" style="zoom: 33%;" />
+
 <h4 id="Tray"><a href="#Tray" class="headerlink" title="Tray"></a>Tray</h4><p>一个Tray一般有4个Chip，并有host通过PCIe总线连接控制。</p>
-<p><img src="/images/5617051d8bf06cf70ec85bde3eac6349.png" alt="5617051d8bf06cf70ec85bde3eac6349" style="zoom:33%;" /></p>
+<img src="/images/5617051d8bf06cf70ec85bde3eac6349.png" alt="5617051d8bf06cf70ec85bde3eac6349" style="zoom:33%;" />
+
 <h3 id="Pod"><a href="#Pod" class="headerlink" title="Pod"></a>Pod</h3><p>在一个pod中，每个chip可以和邻居4个方向或6个方向（3D 拓扑网络，专业名称ICI）互联。</p>
-<p><img src="/images/21d00738a6c6be16eecc7ea3e6cf6016.png" alt="21d00738a6c6be16eecc7ea3e6cf6016" style="zoom:33%;" /></p>
+<img src="/images/21d00738a6c6be16eecc7ea3e6cf6016.png" alt="21d00738a6c6be16eecc7ea3e6cf6016" style="zoom:33%;" />
+
 <h4 id="MultiPod"><a href="#MultiPod" class="headerlink" title="MultiPod"></a>MultiPod</h4><p>Pod里面的chip数可以很大，最大的（superpod）可以达到16x16x16（TPU v4）以及16x20x28（TPU v5P）。一个可重构cube是4x4x4，每个pod都是由这些cube组成，通过 optical wraparound links互联（是可重构的）。  </p>
-<p><img src="/images/71d3c5a5350d1be40d3d119cf8ec967e.png" alt="71d3c5a5350d1be40d3d119cf8ec967e" style="zoom:33%;" /></p>
+<img src="/images/71d3c5a5350d1be40d3d119cf8ec967e.png" alt="71d3c5a5350d1be40d3d119cf8ec967e" style="zoom:33%;" />
+
 <p>对于TPU和GPU互联机制，书中的一些思考：  </p>
 <blockquote>
 <p>This nearest-neighbor connectivity is a key difference between TPUs and GPUs. GPUs are connected with a hierarchy of switches that approximate a point-to-point connection between every GPU, rather than using local connections like a TPU. Typically, GPUs within a node (8 GPUs for H100 or as many as 72 for B200 NVL72) are directly connected, while larger topologies require O(log(N)) hops between each GPU. On the one hand, that means GPUs can send arbitrary data within a small number of hops. On the other hand, TPUs are dramatically cheaper (since NVLink switches are expensive), simpler to wire together, and can scale to much larger topologies because the number of links per device and the bandwidth per device is constant. Read more <a target="_blank" rel="noopener" href="https://jax-ml.github.io/scaling-book/gpus/#networking">here</a>.</p>
@@ -559,13 +562,13 @@
       <i class="fa fa-chart-area"></i>
     </span>
       <span class="post-meta-item-text">站点总字数：</span>
-    <span title="站点总字数">336k</span>
+    <span title="站点总字数">338k</span>
     <span class="post-meta-divider">|</span>
     <span class="post-meta-item-icon">
       <i class="fa fa-coffee"></i>
     </span>
       <span class="post-meta-item-text">站点阅读时长 &asymp;</span>
-    <span title="站点阅读时长">5:06</span>
+    <span title="站点阅读时长">5:07</span>
 </div>
   <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://pisces.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Pisces</a> 强力驱动
   </div>

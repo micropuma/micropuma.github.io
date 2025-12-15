@@ -35,9 +35,10 @@
 <meta property="og:image" content="http://example.com/images/image-20251215202915563.png">
 <meta property="og:image" content="http://example.com/images/image-20251215204126724.png">
 <meta property="og:image" content="http://example.com/images/image-20251215210840266.png">
+<meta property="og:image" content="http://example.com/images/image-20251216001641489.png">
 <meta property="og:image" content="http://example.com/images/image-20251215210235442.png">
 <meta property="article:published_time" content="2025-12-15T07:41:46.000Z">
-<meta property="article:modified_time" content="2025-12-15T15:13:17.731Z">
+<meta property="article:modified_time" content="2025-12-15T16:16:43.834Z">
 <meta property="article:author" content="Leon Dou">
 <meta property="article:tag" content="论文阅读">
 <meta property="article:tag" content="前沿科技">
@@ -227,10 +228,16 @@
                 <i class="far fa-calendar"></i>
               </span>
               <span class="post-meta-item-text">发表于</span>
-              
 
-              <time title="创建时间：2025-12-15 15:41:46 / 修改时间：23:13:17" itemprop="dateCreated datePublished" datetime="2025-12-15T15:41:46+08:00">2025-12-15</time>
+              <time title="创建时间：2025-12-15 15:41:46" itemprop="dateCreated datePublished" datetime="2025-12-15T15:41:46+08:00">2025-12-15</time>
             </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2025-12-16 00:16:43" itemprop="dateModified" datetime="2025-12-16T00:16:43+08:00">2025-12-16</time>
+              </span>
             <span class="post-meta-item">
               <span class="post-meta-item-icon">
                 <i class="far fa-folder"></i>
@@ -258,7 +265,7 @@
                 <i class="far fa-file-word"></i>
               </span>
                 <span class="post-meta-item-text">本文字数：</span>
-              <span>8.2k</span>
+              <span>7.8k</span>
             </span>
             <span class="post-meta-item" title="阅读时长">
               <span class="post-meta-item-icon">
@@ -279,6 +286,7 @@
       
         <p><img src="/images/image-20251215154331216.png" alt="image-20251215154331216"></p>
 <span id="more"></span>
+
 <blockquote>
 <p>这一专题主要是记录我的paper阅读过程，按照不同前沿方向进行整理，以求理清不同前沿方向基本概念框架，目前进展和局限瓶颈，促进自己的编译研究工作。 </p>
 <p>本次分享<a target="_blank" rel="noopener" href="https://dl.acm.org/doi/10.1145/3503222.3507723">AStitch: Enabling a New Multi-dimensional Optimization Space for Memory-Intensive ML Training and Inference on Modern SIMT Architectures</a>，是阿里PAI部分工作。</p>
@@ -289,19 +297,19 @@
 <li>现有的XLA，tensor-rt等编译加速技术无法针对访存密集算子做高效融合。  </li>
 <li>大模型时代（transformer based），访存密集算子在整个模型计算图中数量占比高，性能占比也很高，逐渐成为训练推理的性能瓶颈。</li>
 </ul>
-<p>进一步深入分析XLA/Tensor-RT等编译器，论文中总结出了如下几个核心问题：  </p>
+<p>进一步深入分析XLA&#x2F;Tensor-RT等编译器，论文中总结出了如下几个核心问题：  </p>
 <ul>
-<li>访存密集算子的<strong>依赖关系是two-level</strong>的（element-level和operator-level），fusion更加困难。XLA/TVM等编译器往往引入大量重复计算开销，或是干脆直接不融合，性能提升很小。</li>
+<li>访存密集算子的<strong>依赖关系是two-level</strong>的（element-level和operator-level），fusion更加困难。XLA&#x2F;TVM等编译器往往引入大量重复计算开销，或是干脆直接不融合，性能提升很小。</li>
 <li>AI编译器服务一个模型必须是<strong>JIT模式</strong>，前期大量的AOT优化工作没有实际生产意义。 </li>
-<li>tensor有<strong>大量非常规形状</strong>，XLA/TVM的代码生成往往没法自适应shape形状生成高效的线程映射代码。  </li>
+<li>tensor有<strong>大量非常规形状</strong>，XLA&#x2F;TVM的代码生成往往没法自适应shape形状生成高效的线程映射代码。</li>
 </ul>
 <h3 id="方法"><a href="#方法" class="headerlink" title="方法"></a><font color = green>方法</font></h3><p>基于上述动机和核心问题，Astitch做了如下尝试：  </p>
 <ul>
-<li>整个编译器是JIT模式。即TensorFlow/Pytorch自动圈图，Astitch编译优化后再由TensorFlow/Pytorch的runtime发射运行。</li>
+<li>整个编译器是JIT模式。即TensorFlow&#x2F;Pytorch自动圈图，Astitch编译优化后再由TensorFlow&#x2F;Pytorch的runtime发射运行。</li>
 <li>Astitch提出的Stitch访存密集优化：  <ol>
 <li><strong>针对不同类型operators，提出四类融合策略</strong>。</li>
 <li><strong>多层级的数据重用技术</strong>。具体有thread reg，shared memory和global memory三个层级。 </li>
-<li><strong>自适应thread mapping技术</strong>。解决cuda blocks数量过少，或单个block计算量太小没法打满threads两种情况。  </li>
+<li><strong>自适应thread mapping技术</strong>。解决cuda blocks数量过少，或单个block计算量太小没法打满threads两种情况。</li>
 </ol>
 </li>
 <li>最终的Astitch，支持训练+推理优化。</li>
@@ -325,17 +333,17 @@
 <li>访存密集算子涉及大量的off-chip存储访问。（:key:Astitch的核心关注点）</li>
 <li>访存密集算子量大且不好融合，带来巨大的kernel launch以及context switch开销。（:ghost:微软的Rammer等工作关注这些非计算开销）</li>
 </ul>
-<p>论文中进一步给访存密集算子分类，分为（1）逐元素算子（2）规约算子。其中逐元素算子又进一步分为light-weight（add / sub这种硬件上实现简单的计算）和heavy-weight（tanh这种复合计算）。值得注意的是，broadcast算子算作逐元素算子。  </p>
+<p>论文中进一步给访存密集算子分类，分为（1）逐元素算子（2）规约算子。其中逐元素算子又进一步分为light-weight（add &#x2F; sub这种硬件上实现简单的计算）和heavy-weight（tanh这种复合计算）。值得注意的是，broadcast算子算作逐元素算子。  </p>
 <blockquote>
 <p><img src="/images/image-20251215184223040.png" alt="image-20251215184223040"></p>
 <p>论文对Bert等模型做了perf，得出截图中的结论，可以看到reduce算子，broadcast算子的占比相当高，表明论文研究的问题是有意义的。</p>
 </blockquote>
 </li>
-<li><p><strong>XLA/TVM等SOTA编译器算子融合能力十分局限</strong>  </p>
+<li><p><strong>XLA&#x2F;TVM等SOTA编译器算子融合能力十分局限</strong>  </p>
 <blockquote>
 <p>论文中一个很有意思的观点：算子融合能力取决于后端代码生成能力。只有在编译器后端能够针对特定pattern生成高效的代码（比如面向GPU生成GPU IR），前端融合才有价值。</p>
 </blockquote>
-<p>目前XLA/TVM的代码生成，只支持将producer元素one to one inline到consumer，大量潜在的访存密集融合难以支持。如下图所示，XLA的融合可以归结为kLoop和kInput融合，条件比较苛刻。对于XLA融合感兴趣读者建议参考<a target="_blank" rel="noopener" href="http://arxiv.org/abs/2301.13062">Operator Fusion in XLA: Analysis and Evaluation</a>。</p>
+<p>目前XLA&#x2F;TVM的代码生成，只支持将producer元素one to one inline到consumer，大量潜在的访存密集融合难以支持。如下图所示，XLA的融合可以归结为kLoop和kInput融合，条件比较苛刻。对于XLA融合感兴趣读者建议参考<a target="_blank" rel="noopener" href="http://arxiv.org/abs/2301.13062">Operator Fusion in XLA: Analysis and Evaluation</a>。</p>
 <p><img src="/images/image-20251215190312500.png" alt="image-20251215190312500"></p>
 </li>
 </ol>
@@ -346,10 +354,11 @@
 <p>接下来分别针对两个level，分析TVM和XLA在融合上的瓶颈。  </p>
 <ol>
 <li><p>Element level融合缺陷  </p>
-<p>XLA/TVM对于两种典型的element依赖pattern，无法做到高效融合：（1）reduce op -&gt; consumer融合（2）计算量大的逐元素 -&gt; broadcast。  </p>
-<p><img src="/images/image-20251215194059484.png" alt="image-20251215194059484" style="zoom:50%;" /></p>
-<p>上图是论文中的case，其结构很简单：逐元素（light-weight） -&gt; 广播 -&gt; 逐元素（heavy-weight）。如果你是GPU kernel开发专家，你一定会把逐元素的结果存到shared memory，使得广播的每个thread能够高效获取结果。<strong>可惜的是，XLA/TVM仅仅支持per thread register共享数据，这种one-to-many通过shared memory的方式对于目前SOTA编译器是out of scope的</strong>。</p>
-<p>因此，XLA/TVM有两种策略：  </p>
+<p>XLA&#x2F;TVM对于两种典型的element依赖pattern，无法做到高效融合：（1）reduce op -&gt; consumer融合（2）计算量大的逐元素 -&gt; broadcast。  </p>
+<img src="/images/image-20251215194059484.png" alt="image-20251215194059484" style="zoom:50%;" />
+
+<p>上图是论文中的case，其结构很简单：逐元素（light-weight） -&gt; 广播 -&gt; 逐元素（heavy-weight）。如果你是GPU kernel开发专家，你一定会把逐元素的结果存到shared memory，使得广播的每个thread能够高效获取结果。<strong>可惜的是，XLA&#x2F;TVM仅仅支持per thread register共享数据，这种one-to-many通过shared memory的方式对于目前SOTA编译器是out of scope的</strong>。</p>
+<p>因此，XLA&#x2F;TVM有两种策略：  </p>
 <ul>
 <li><strong>duplicate计算然后融合</strong>。即add算子操作的每个element，都需要经过power处理，直接选择每个线程重复做一遍power计算。power计算是heavy-weight，开销无法忽略。而大模型中时常出现的一个场景是reduce后接broadcast（layer norm！！！），reduce极其占计算时间，这种duplicate操作根本无法接受。  </li>
 <li><strong>单纯跳过</strong>。这种方案导致碎片化的kernel launch，大量的non-computation overhead！！！。</li>
@@ -360,12 +369,12 @@
 </ol>
 <h4 id="瓶颈2：动态shape，不规则shape导致低效代码生成"><a href="#瓶颈2：动态shape，不规则shape导致低效代码生成" class="headerlink" title="瓶颈2：动态shape，不规则shape导致低效代码生成"></a>瓶颈2：动态shape，不规则shape导致低效代码生成</h4><p><img src="/images/image-20251215195033815.png" alt="image-20251215195033815"></p>
 <p>如上是论文中的case，主要分为两个问题：（1）block块过小（2）block数过少。  </p>
-<p>对于问题1，一个例子是DIEN模型中出现的将一个<750000，32> 归约到<750000>这样的pattern。关键问题是：  </p>
+<p>对于问题1，一个例子是DIEN模型中出现的将一个&lt;750000，32&gt; 归约到&lt;750000&gt;这样的pattern。关键问题是：  </p>
 <ul>
 <li>太多blocks，750000个。但是GPU能够并行运行的block数目是受限的，并行性很差。  </li>
-<li>每个block里的threads总共完成32个数据规约，计算任务过于小，block内部资源也无法打满。  </li>
+<li>每个block里的threads总共完成32个数据规约，计算任务过于小，block内部资源也无法打满。</li>
 </ul>
-<p>对于问题2，transfomer模型中的极端case是对<64,30000>做行规约。以V100gpu为例，关键问题是：  </p>
+<p>对于问题2，transfomer模型中的极端case是对&lt;64,30000&gt;做行规约。以V100gpu为例，关键问题是：  </p>
 <ul>
 <li>编译自动生成64个threadblocks，每个block 1024 threads。</li>
 <li>V100gpu支持160blocks并行，硬件资源利用极低。</li>
@@ -375,12 +384,12 @@
 <p><img src="/images/image-20251215200743746.png" alt="image-20251215200743746"></p>
 <ul>
 <li>independent：operator间无依赖，怎么融合都行  </li>
-<li>local scheme：逐元素依赖，consumer直接用producer生成的每个thread的寄存器即可 （至此XLA/TVM均支持）</li>
+<li>local scheme：逐元素依赖，consumer直接用producer生成的每个thread的寄存器即可 （至此XLA&#x2F;TVM均支持）</li>
 <li>Region scheme：适用于一个算子的<strong>某个元素输出</strong>会被 <strong>多个后续算子的元素使用</strong>这一情景。该策略支持一个 thread block内算出来的中间数据被block内多个线程复用。<font color = red>强制producer和consumer使用同一个thread block，即<strong>thread block 局部性</strong>。</font></li>
-<li>Global scheme：所有中间结果写入全局内存，不强制要求producer和consumer使用同一个thread block。任何算子可用此策略进行缝合。  </li>
+<li>Global scheme：所有中间结果写入全局内存，不强制要求producer和consumer使用同一个thread block。任何算子可用此策略进行缝合。</li>
 </ul>
 <p>后两个策略涉及tradeoff：<strong>并行度 vs. 局部性</strong>。如果使用Region策略，需要将相关线程装入一个block，可能无法打满GPU资源（原本可以用更多的thread blocks来获取更好地并行性）。因此针对不同场景，编译器需要能够自动做出选择（工程实践章节会重点展开论述）。</p>
-<p>上述四个策略，使得Astitch在面对Operator-level/Element-level的数据重用场景，都能高效融合（借助于shared memory和global memory做缓存）。如下是论文中的case，论文没有对每个op如何选取策略做详细解释，仅做演示例子：  </p>
+<p>上述四个策略，使得Astitch在面对Operator-level&#x2F;Element-level的数据重用场景，都能高效融合（借助于shared memory和global memory做缓存）。如下是论文中的case，论文没有对每个op如何选取策略做详细解释，仅做演示例子：  </p>
 <p><img src="/images/image-20251215202915563.png" alt="image-20251215202915563"></p>
 <p>具体的收益如下：  </p>
 <ul>
@@ -398,15 +407,16 @@
 <li><p>packing分为两个维度：横向和纵向。  </p>
 <ul>
 <li><p>横向packing解决block size过小问题。</p>
-<p>例子是将<750000, 32>数据块，原本是一个thread block处理一行32个元素，做横向打包，变成&lt;? , 32x32&gt;，即一个thread block现在处理1024个元素。映射到线程上，32个线程处理一行数据（<750000，32>数据块shape不变，变的是thread映射），共处理32行（即<750000， 32> 变成 <750000/32块， 32行， 32列>）。一个warp处理一行，做reduction是极其高效的。  </p>
+<p>例子是将&lt;750000, 32&gt;数据块，原本是一个thread block处理一行32个元素，做横向打包，变成&lt;? , 32x32&gt;，即一个thread block现在处理1024个元素。映射到线程上，32个线程处理一行数据（&lt;750000，32&gt;数据块shape不变，变的是thread映射），共处理32行（即&lt;750000， 32&gt; 变成 &lt;750000&#x2F;32块， 32行， 32列&gt;）。一个warp处理一行，做reduction是极其高效的。  </p>
 <figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">Thread block (1024 threads)</span><br><span class="line">│</span><br><span class="line">├── threads 0–31     → row 0</span><br><span class="line">├── threads 32–63    → row 1</span><br><span class="line">├── threads 64–95    → row 2</span><br><span class="line">...</span><br><span class="line">├── threads 992–1023 → row 31</span><br></pre></td></tr></table></figure>
+
 <p>:cry:文笔不行，写的很乱，勿喷。</p>
 </li>
 <li><p>纵向packing解决block数太多的问题。block太多的问题是如果一批thread blocks没法在同一wave上完成，则没法做thread blocks同步。解决方案是将多个block的任务变成一个block内顺序执行的任务。</p>
 </li>
 </ul>
 </li>
-<li><p>Task-splitting解决的问题是block数目太少。以<64,30000>行规约为例，可以变成<128，150000>，即launch128个block做行规约，然后block之间还需要做跨block规约。  </p>
+<li><p>Task-splitting解决的问题是block数目太少。以&lt;64,30000&gt;行规约为例，可以变成&lt;128，150000&gt;，即launch128个block做行规约，然后block之间还需要做跨block规约。  </p>
 <blockquote>
 <p>:question:思考一下为啥这种是划算的：  </p>
 <ol>
@@ -426,14 +436,15 @@
 <li>如何决定哪些operators组成一个stitch region？  </li>
 <li>thread mapping具体如何实现？  </li>
 <li>融合出的kernel如何确定launch时候的grid size和block size？</li>
-<li>如何做成编译器的pass pipeline？如何工程化？  </li>
+<li>如何做成编译器的pass pipeline？如何工程化？</li>
 </ol>
 <h4 id="划分stitch区域"><a href="#划分stitch区域" class="headerlink" title="划分stitch区域"></a>划分stitch区域</h4><p>这一部分重点是：</p>
 <ul>
 <li>确定哪些operators组成访存密集子图，即stitch区域。</li>
 <li>确定stitch区域中的dominant operator，后续整个stitich区域的thread mapping完全取决于该dominant operator。</li>
 </ul>
-<p><img src="/images/image-20251215210840266.png" alt="image-20251215210840266" style="zoom: 67%;" /></p>
+<img src="/images/image-20251215210840266.png" alt="image-20251215210840266" style="zoom: 67%;" />
+
 <p>具体步骤如下：  </p>
 <ol>
 <li><p>用BFS做图遍历得到访存密集子图 ，并表示成一个stitch op。</p>
@@ -445,7 +456,7 @@
 <p>论文中选择reduce op以及heavy-weight逐元素+broadcast为潜在dominant操作。</p>
 <ul>
 <li>因为逐个元素，或是light-weight逐元素+broadcast（duplicate是合适的），可以用local策略，local策略的thread mapping可以传播的，没必要做dominant。</li>
-<li>倾向于reduce为dominant op，因为reduce需要高并行度，thread mapping应该优先考虑reduce的需求。  </li>
+<li>倾向于reduce为dominant op，因为reduce需要高并行度，thread mapping应该优先考虑reduce的需求。</li>
 </ul>
 </blockquote>
 </li>
@@ -458,12 +469,12 @@
 <blockquote>
 <p>:key:takeaway：  </p>
 <ul>
-<li>dominant op/sub dominant op需要后续选择是regional/global，其他op都是local策略。</li>
+<li>dominant op&#x2F;sub dominant op需要后续选择是regional&#x2F;global，其他op都是local策略。</li>
 </ul>
 </blockquote>
 <h4 id="Thread-Mapping实现"><a href="#Thread-Mapping实现" class="headerlink" title="Thread Mapping实现"></a>Thread Mapping实现</h4><p>这一块也涉及两个发现：</p>
 <ul>
-<li><p><strong>thread mapping存在传播机制：</strong>和stich策略分配一样，作者发现只需对dominant op做好线程映射，同一stitch区域其他operator的线程mapping存在传播机制。</p>
+<li><p>**thread mapping存在传播机制：**和stich策略分配一样，作者发现只需对dominant op做好线程映射，同一stitch区域其他operator的线程mapping存在传播机制。</p>
 <blockquote>
 <p>对于dominant op的thread mapping，以reduction op为例，Astitch使用如下机制：  </p>
 <ul>
@@ -473,7 +484,7 @@
 </blockquote>
 </li>
 <li><p><strong>thread mapping传播过程中，可以同步完成对每个operator的stitch策略的选取</strong>：<font color = red>这一点基于一个共识：是thread register fusion，还是shared memory fusion亦或是global memory fusion，都依赖于两个operator的线程映射是哪种match。</font>Astitch针对shared memory stitch策略，还引入两种机制：（1）被动的block局部性检查；（2）主动的block局部性自适应。</p>
-<p>| 维度                    | Passive Block-Locality Checking                              | Proactive Block-Locality Adaptation                          |<br>| ———————————- | —————————————————————————————— | —————————————————————————————— |<br>| 适用算子类型            | 以 <strong>Reduce（规约）算子</strong> 为主                               | 以 <strong>Element-wise（逐元素）算子</strong> 为主                       |<br>| 主要目标                | <strong>优先保证并行度（Parallelism）</strong>                            | <strong>优先保证数据局部性（Locality）</strong>                           |<br>| 是否调整线程映射        | ❌ 不调整线程 mapping                                         | ✅ 主动调整线程 mapping                                       |<br>| 决策方式                | 计算 producer/consumer 每个 block 产生/需要的连续元素数，判断是否匹配 | 根据 producer 每个 block 产生的连续元素数，重新设计 element-wise 的线程映射 |<br>| Locality 不匹配时的处理 | 使用 <strong>Global scheme</strong>，中间结果放在 global memory           | 调整 thread mapping 以 <strong>主动匹配 block-locality</strong>           |<br>| Locality 匹配时的处理   | 使用 <strong>Regional scheme</strong>，中间结果放在 shared memory         | 使用 <strong>Regional scheme</strong>，尽量共享 shared memory             |<br>| 背后原因                | Reduce 计算量大，调整 mapping 可能降低 SM 并行利用率         | Element-wise 计算便宜，牺牲少量并行度换 locality 更划算      |<br>| AStitch 的策略选择      | 被动判断是否能利用 block-locality                            | 主动创造 block-locality                                      |</p>
+<p><img src="/images/image-20251216001641489.png" alt="image-20251216001641489"></p>
 </li>
 </ul>
 <h4 id="资源感知的-GPU-Kernel-启动配置"><a href="#资源感知的-GPU-Kernel-启动配置" class="headerlink" title="资源感知的 GPU Kernel 启动配置"></a>资源感知的 GPU Kernel 启动配置</h4><p>这一块比较有趣。首选是Astitch的大尺寸stitch融合面临的一个重要难题：  </p>
@@ -509,10 +520,10 @@
 </ul>
 <h2 id="我的一些疑问"><a href="#我的一些疑问" class="headerlink" title="我的一些疑问"></a><font color = brown>我的一些疑问</font></h2><ul>
 <li>BladeDISC是阿里PAI后续的延伸工作，主要针对动态shape进行了更深入的研究（动态shape + Stitch融合）。后续结合BladeDISC开源源码进行分析。目前有如下疑点：  <ul>
-<li>似乎GPU 生成默认没有开启Stitch，why？  </li>
+<li>似乎GPU 生成默认没有开启Stitch，why？</li>
 </ul>
 </li>
-<li>编译算子融合，推理端和训练端需要考虑的因素差异是哪些？  </li>
+<li>编译算子融合，推理端和训练端需要考虑的因素差异是哪些？</li>
 </ul>
 
     </div>
@@ -660,13 +671,13 @@
       <i class="fa fa-chart-area"></i>
     </span>
       <span class="post-meta-item-text">站点总字数：</span>
-    <span title="站点总字数">336k</span>
+    <span title="站点总字数">338k</span>
     <span class="post-meta-divider">|</span>
     <span class="post-meta-item-icon">
       <i class="fa fa-coffee"></i>
     </span>
       <span class="post-meta-item-text">站点阅读时长 &asymp;</span>
-    <span title="站点阅读时长">5:06</span>
+    <span title="站点阅读时长">5:07</span>
 </div>
   <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://pisces.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Pisces</a> 强力驱动
   </div>
